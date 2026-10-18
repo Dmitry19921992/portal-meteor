@@ -531,7 +531,10 @@ vec2 sdCat(vec3 q, float f){
     U(r, sdRBox(q - vec3(0.0, 1.05, 0.2), vec3(0.85, 0.38, 1.45), 0.36), 40.0);
     U(r, length(qs - vec3(0.25, 1.15, 1.72)) - 0.08, 4.0);
     U(r, length(qs - vec3(0.45, 1.05, 1.6)) - 0.06, 4.0);
-    U(r, sdCapsule(qs, vec3(0.4, 0.75, 1.6), vec3(0.25, 0.45, 2.3), 0.07), 5.0);
+    // клешни
+    U(r, sdCapsule(qs, vec3(0.5, 0.9, 1.5), vec3(0.75, 0.75, 2.2), 0.1), 1.0);
+    U(r, sdCapsule(qs, vec3(0.75, 0.75, 2.2), vec3(0.45, 0.7, 2.75), 0.08), 5.0);
+    U(r, sdCapsule(qs, vec3(0.75, 0.75, 2.2), vec3(0.62, 0.95, 2.7), 0.06), 5.0);
     vec3 w = vec3(abs(q.x) - 0.95, q.y - 0.47, abs(q.z - 0.2) - 0.85);
     U(r, sdWheel(w, 0.45, 0.17, 0.07), 8.0);
     U(r, sdRBox(vec3(abs(q.x) - 0.95, q.y - 0.95, abs(q.z - 0.2) - 0.85), vec3(0.25, 0.06, 0.5), 0.04), 1.0);
@@ -542,12 +545,14 @@ vec2 sdCat(vec3 q, float f){
     vec3 p1 = p0 + vec3(0.0, cos(b1), sin(b1)) * 1.0;
     vec3 p2 = p1 + vec3(0.0, cos(b1 + b2), sin(b1 + b2)) * 0.9;
     vec3 p3 = p2 + vec3(0.0, cos(b1 + b2 + b3), sin(b1 + b2 + b3)) * 0.75;
-    U(r, sdCapsule(t, p0, p1, 0.17), 1.0);
-    U(r, sdCapsule(t, p1, p2, 0.14), 1.0);
-    U(r, sdCapsule(t, p2, p3, 0.11), 1.0);
-    U(r, length(t - p1) - 0.2, 2.0);
-    U(r, length(t - p2) - 0.17, 2.0);
-    U(r, length(t - p3) - (gTh > 0.5 ? 0.3 : 0.14), gTh > 0.5 ? 42.0 : 5.0);
+    U(r, sdCapsule(t, p0, p1, 0.21), 40.0);
+    U(r, sdCapsule(t, p1, p2, 0.18), 40.0);
+    U(r, sdCapsule(t, p2, p3, 0.15), 40.0);
+    U(r, length(t - p1) - 0.25, 1.0);
+    U(r, length(t - p2) - 0.21, 1.0);
+    vec3 sd = vec3(0.0, cos(b1 + b2 + b3 + 0.9), sin(b1 + b2 + b3 + 0.9));
+    U(r, sdCapsule(t, p3, p3 + sd * 0.75, 0.05), 5.0);          // жало
+    U(r, length(t - p3 + sd * 0.15) - (gTh > 0.5 ? 0.34 : 0.17), gTh > 0.5 ? 42.0 : 1.0);
   }
   return r;
 }
@@ -904,17 +909,17 @@ void objMaterial(float m, vec3 q, out vec3 alb, out vec3 em, out float sp){
     if (m < 40.5){
       float n1 = nz(q * 0.9 + 0.2), n2 = nz(q * 3.1 + 1.3);
       if (gTeam < 0.5){   // песочный беж с оливковыми пятнами, сколы до металла, грязь снизу
-        float camo = smoothstep(0.47, 0.53, nz(q * 0.33 + vec3(gV * 1.7, 0.0, 0.0)));
+        float camo = smoothstep(0.47, 0.53, nz(q * 0.55 + vec3(gV * 1.7, 0.0, 0.0)));
         alb = mix(teamB(0.0), teamA(0.0) * 1.2, camo);
         float chip = smoothstep(0.7, 0.76, n2 * 0.6 + n1 * 0.5);
         alb = mix(alb, vec3(0.085, 0.08, 0.075), chip);
         alb *= (0.78 + 0.34 * n1) * mix(0.6, 1.0, smoothstep(0.3, 1.1, q.y));
         sp = mix(0.1, 0.5, chip);
-      } else {            // воронёная сталь с тлеющими красными швами
-        alb = teamA(1.0) * (0.8 + 0.5 * n1);
-        float seam = smoothstep(0.46, 0.5, abs(fract(q.z * 1.4 + n1 * 0.35) - 0.5));
-        em = vec3(1.0, 0.08, 0.03) * 1.3 * seam * smoothstep(0.35, 0.65, n2);
-        sp = 0.45;
+      } else {            // воронёная сталь пластинами, редкие тлеющие красные швы
+        alb = teamA(1.0) * (1.1 + 0.5 * n1) * (1.0 + 0.35 * step(0.5, fract(q.z * 1.3)));   // пластины чуть разного тона
+        float seam = smoothstep(0.485, 0.5, abs(fract(q.z * 0.9 + 0.25) - 0.5)) * step(0.5, n2);
+        em = vec3(1.0, 0.08, 0.03) * 0.8 * seam;
+        sp = 0.5;
       }
     } else if (m < 41.5){ alb = vec3(0.5, 0.48, 0.42) * (0.8 + 0.3 * nz(q * 2.0)); sp = 0.5; }
     else { alb = vec3(0.03); em = vec3(1.0, 0.1, 0.03) * (2.2 + 0.8 * sin(uTime * 6.0 + q.z * 4.0)); }

@@ -643,17 +643,18 @@ const V2 = {
     if (!nFactory) return;
     const time = S.time, swarm = t === 1;
     const n = k => countProduct(t, k);
-    const add2 = (after, items) => { let i = -1; for (let j = 0; j < plan.length; j++) if (plan[j][1] === after) { i = j; break; } plan.splice(i < 0 ? plan.length : i + 1, 0, ...items); };
-    const early = [];
-    if (time > 90 && n('raider') < (swarm ? 2 : 1)) early.push(['p', 'raider']);
-    add2('tank', early);
+    // ранние рейдеры — сразу после первого танка; средняя техника — перед «добором» танков до 4
+    const tk = []; plan.forEach((p, i) => { if (p[1] === 'tank') tk.push(i); });
     const mid = [];
     if (time > 300 && n('cat') < 1) mid.push(['p', 'cat']);
     if (time > 420 && n('mlrs') < 1) mid.push(['p', 'mlrs']);
-    if (time > 400 && n('raider') < (swarm ? 3 : 2)) mid.push(['p', 'raider']);
+    if (time > 360 && n('raider') < (swarm ? 3 : 2)) mid.push(['p', 'raider']);
     if (time > 700 && n('cat') < 2) mid.push(['p', 'cat']);
     if (time > 800 && n('mlrs') < 2) mid.push(['p', 'mlrs']);
-    add2('drone', mid);
+    plan.splice(tk.length > 1 ? tk[1] : plan.length, 0, ...mid);
+    const early = [];
+    if (time > 90 && n('raider') < (swarm ? 2 : 1)) early.push(['p', 'raider']);
+    plan.splice(tk.length ? tk[0] + 1 : plan.length, 0, ...early);
   },
   // ---------------- звук (процедурный, через AU)
   sound(e){
