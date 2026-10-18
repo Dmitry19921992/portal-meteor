@@ -72,6 +72,14 @@ const MISSION = {
     this.cpOwn = S.cps.map(cp => cp.owner);
     this.soloStep();
     this.pace(c, g);
+    // долгий игнор одного и того же приказа тоже считается: каждые 45 с без продвижения к цели
+    const tk = TACT.task;
+    if (tk && !tk.done && !this.free() && tk.kind !== 'retreat' && tk.kind !== 'avoid' && tk.kind !== 'player' && (tk.ticks || 0) - (tk.ignMark || 0) >= 45){
+      const on = (tk.onTicks || 0) - (tk.ignOn || 0);
+      tk.ignMark = tk.ticks; tk.ignOn = tk.onTicks || 0;
+      if (on < 7){ this.ignoreRun++; tk.ignCounted = true; if (this.ignoreRun >= 3 && S.time > this.askT && !this.ask && !S.attract) this.showAsk(); }
+      else this.ignoreRun = 0;
+    }
     if (this.ask && S.rtime > this.ask.until) this.answer(false, true);
     // подсказка про переброску, когда цель далеко
     const p = TACT.navPos();
@@ -325,7 +333,8 @@ const MISSION = {
   // ---------------------------------------------------------------------
   //  ПЕРЕБРОСКА: капсула к цели (с отрядом) или прыжок в гущу боя
   // ---------------------------------------------------------------------
-  trackTarget(){ const p = this.nav ? this.nav.raw : TACT.navPos(); return p; },
+  // цель переброски: отслеживаемая точка; ядро — через ближайшую шахту
+  trackTarget(){ const p = this.nav ? this.nav.raw : TACT.navPos(), c = ctrlEntity(); return p && c && len(p) < 80 ? navTargetFor(p, c.pos) : p; },
   canRedeploy(){
     const c = ctrlEntity(), p = this.trackTarget();
     return !!(c && c.cls === 'inf' && p && len(p) > 80 && S.time >= this.podReadyT && surfDist(c.pos, p) > 150 && !underground(c.pos));
@@ -455,7 +464,7 @@ const MISSION = {
     if (this.free() || t.kind === 'retreat' || t.kind === 'avoid' || t.kind === 'player') return;
     const ticks = t.ticks || 0, on = t.onTicks || 0;
     if (ok || (ticks > 4 && on / ticks > 0.4)){ this.ignoreRun = 0; return; }
-    if (ticks >= 12 && on / ticks < 0.2) this.ignoreRun++;
+    if (ticks >= 12 && on / ticks < 0.2 && !t.ignCounted) this.ignoreRun++;
     if (this.ignoreRun >= 3 && S.time > this.askT && !this.ask && !S.attract) this.showAsk();
   },
   showAsk(){
@@ -526,7 +535,9 @@ const MISSION = {
     if (TOUCH.on && !this.tbtn) this.addTouch();
   },
   drawCompass(c){
-    const W = innerWidth, cw = min(TOUCH.on ? 250 : 400, W * 0.42), cx = W / 2, y = 3, h = 19, span = 1.35;
+    // компас — прямо под карточкой приказа (на её оси), без карточки — вверху по центру
+    const ob = objEl && objEl.style.display !== 'none' ? objEl.getBoundingClientRect() : null;
+    const W = innerWidth, cw = min(TOUCH.on ? 230 : 360, W * 0.4), cx = ob && ob.width ? ob.left + ob.width / 2 : W / 2, y = ob && ob.height ? ob.bottom + 4 : 6, h = 18, span = 1.35;
     const up = norm(c.pos), f = tangent(S.cam.fwd, up), r = norm(cross(f, up));
     let north = tangent([0, 1, 0], up); if (abs(up[1]) > 0.98) north = tangent([0, 0, 1], up);
     const east = norm(cross(north, up));
@@ -548,7 +559,7 @@ const MISSION = {
     }
     const items = [];
     for (const hq of S.hq) if (hq.alive) items.push({ p: hq.pos, col: TEAM[hq.team].css, txt: hq.team ? tr('Р', 'S', 'B') : tr('Ш', 'H', 'S') });
-    for (const cp of S.cps) if (!cp.core && surfDist(cp.pos, c.pos) < 280) items.push({ p: cp.pos, col: teamCss(cp.owner), txt: cp.name });
+    for (const cp of S.cps) if (!cp.core && surfDist(cp.pos, c.pos) < 280) items.push({ p: cp.pos, col: teamCss(cp.owner), txt: '◇' + cp.name });
     const sp = SIDEQ.pos(); if (sp) items.push({ p: sp, col: '#ffa94d', txt: '◆', mode: 'side' });
     const t = TACT.task, op = t && !t.done ? TACT.navPos() : null;
     if (op) items.push({ p: navTargetFor(op, c.pos), col: this.free() && !t.accepted ? '#b9c9bd' : (t.kind !== 'strat' && t.kind !== 'player' ? '#ffbe5a' : '#8fffaa'), txt: '◆', mode: 'order' });
@@ -584,8 +595,8 @@ const MISSION = {
     if (this.inited) return; this.inited = true;
     const st = document.createElement('style');
     st.textContent = `
-#obj{top:30px} #sq{top:118px} #tut{top:126px}
-body.touch #obj{top:26px} body.touch #sq{top:62px}
+#sq{top:126px} #tut{top:132px}
+body.touch #sq{top:70px}
 #obj.free{background:rgba(14,18,16,.55);border-color:rgba(185,201,189,.35)} #obj.free small{color:#b9c9bd} #obj.free b{font-size:15px;color:#dfe8e1}
 #squadp .mm{display:flex;gap:4px;margin:0 0 3px;pointer-events:auto}
 #squadp .mm span{flex:1;cursor:pointer;font:600 10px "Exo 2";letter-spacing:.06em;padding:2px 5px;background:rgba(10,30,16,.6);border:1px solid rgba(143,255,170,.4);color:#cfeedd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -601,6 +612,8 @@ body.touch #obj{top:26px} body.touch #sq{top:62px}
 #screen .srow button{font-size:12px;padding:4px 8px}
 #screen textarea{width:100%;height:120px;background:#0b0c0d;color:#cfc6ad;border:1px solid var(--line);font:11px Consolas,monospace}
 #screen .why{font-size:12px;color:#9a937e;line-height:1.45;margin:4px 0 8px}
+#screen .mcol{max-height:96vh;overflow-y:auto}
+body:has(#screen[style*="flex"]) #hint{display:none !important}
 `;
     document.head.appendChild(st);
     const sp = $('squadp');

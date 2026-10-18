@@ -270,6 +270,7 @@ const TACT = {
       if (typeof MISSION !== 'undefined') MISSION.taskEnd(t, ok);
       if (ok){ PROG.onTaskDone(t); const say = VOX.ok('done', 25) && !MISSION.free(); if (say) VOX.mark('done'); emit('objdone', { text: say ? this.doneText(t) : '' }); }
     };
+    if (t.dir && t.targets && t.pos && surfDist(c.pos, t.pos) > 300) return finish(false);   // цель ушла далеко — не гоняем игрока
     switch (t.kind){
       case 'engage': case 'tank': case 'struct': case 'hunt': case 'raid':
         if (t.targets.every(e => !e.alive)) return finish(t.killed > 0);
