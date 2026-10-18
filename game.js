@@ -271,7 +271,7 @@ function groupsOf(team){ return [...S.squads.filter(s => s.team === team), ...S.
 function groupLabel(g){
   if (!g) return '';
   if (isSquad(g)) return (g.solo ? N2(ROLES[g.solo].n) : g.elite ? tr('Десант', 'Sky squad', 'Đội đổ bộ') : tr('Отряд', 'Squad', 'Đội')) + ' ' + g.id;
-  if (g.cls === 'tank') return tr('Танк', 'Tank', 'Xe tăng') + ' ' + g.serial;
+  if (g.cls === 'tank') return g.vk ? V2.label(g) : tr('Танк', 'Tank', 'Xe tăng') + ' ' + g.serial;
   return tr('Дрон', 'Drone', 'Drone') + ' ' + g.serial;
 }
 function groupHP(g){ let h = 0, m = 0; for (const u of groupUnits(g)){ h += max(0, u.hp); m += u.maxhp; } return m ? h / m : 0; }
@@ -420,7 +420,7 @@ function centerOf(e){
 }
 function hitRadius(e){
   if (e.cls === 'inf') return e.crouch ? 0.6 : 0.8;
-  if (e.cls === 'tank') return 2.4;
+  if (e.cls === 'tank') return e.hitR || 2.4;
   if (e.cls === 'drone') return 1.1;
   if (e.cls === 'builder') return 0.7;
   if (e.cls === 'hq') return 14;
@@ -513,7 +513,7 @@ function rangeFactor(d){ return 0.45 + 0.85 * smoothstep(2, 20, d) - 0.55 * smoo
 function damage(e, dmg, src, ptype){
   if (!e.alive) return;
   ptype = ptype || 'b';
-  const arm = ARMOR[e.cls] || ARMOR.inf;
+  const arm = ARMOR[e.armor || e.cls] || ARMOR.inf;
   dmg *= (arm[ptype] !== undefined ? arm[ptype] : 1);
   if (dmg <= 0) return;
   if (src && src.team !== undefined && src.team < 2){
@@ -607,7 +607,7 @@ function destroy(e, src){
     fxExplosion(add(e.pos, mul(e.up, 0.6)), 3);
     scrap(40);
     S.vehicles.splice(S.vehicles.indexOf(e), 1); S.sel.delete(e);
-    if (!S.attract) feed(e.team === 0 ? tr(`Наш ${groupLabel(e).toLowerCase()} уничтожен`, `Our ${groupLabel(e)} destroyed`, `${groupLabel(e)} của ta đã bị phá hủy`) : tr('Вражеский танк уничтожен', 'Enemy tank destroyed', 'Đã hạ xe tăng địch'), e.team === 0 ? '#f88' : TEAM[0].css);
+    if (!S.attract) feed(e.team === 0 ? tr(`Наш ${groupLabel(e).toLowerCase()} уничтожен`, `Our ${groupLabel(e)} destroyed`, `${groupLabel(e)} của ta đã bị phá hủy`) : (e.vk ? tr(`Уничтожен ${V2.name(e)} Роя`, `Swarm ${V2.name(e)} destroyed`, `Swarm ${V2.name(e)} destroyed`) : tr('Вражеский танк уничтожен', 'Enemy tank destroyed', 'Đã hạ xe tăng địch')), e.team === 0 ? '#f88' : TEAM[0].css);
     if (e === S.me){ S.me = null; ADAPT.deaths++; }
   } else if (e.cls === 'drone'){
     fxExplosion(e.pos, 1.2); scrap(10);
@@ -728,7 +728,8 @@ function productionSite(team, key){
 function countProduct(team, key){
   let n = countQueued(team, [key]);
   if (key === 'squad' || key === 'elite') n += S.squads.filter(s => s.team === team).length;
-  if (key === 'tank') n += S.vehicles.filter(v => v.team === team).length;
+  if (key === 'tank') n += S.vehicles.filter(v => v.team === team && !v.vk).length;
+  if (PRODUCTS[key].vk) n += S.vehicles.filter(v => v.team === team && v.vk === PRODUCTS[key].vk).length;
   if (key === 'drone') n += S.drones.filter(d => d.team === team).length;
   return n;
 }
@@ -743,6 +744,7 @@ function canProduce(team, key){
   if ((key === 'squad' || key === 'elite') && S.squads.filter(s => s.team === team).length + countQueued(team, ['squad', 'elite']) >= GAME.MAX_SQUADS) return tr('Лимит отрядов', 'Squad limit', 'Đã đạt giới hạn đội');
   if (key === 'tank' && countProduct(team, 'tank') >= GAME.MAX_TANKS) return tr('Лимит танков', 'Tank limit', 'Đã đạt giới hạn xe tăng');
   if (key === 'drone' && countProduct(team, 'drone') >= GAME.MAX_DRONES) return tr('Лимит дронов', 'Drone limit', 'Đã đạt giới hạn drone');
+  if (P.vk){ const w = V2.canProduce(team, key); if (w) return w; }
   if (site.queue.length >= 5) return tr('Очередь заполнена', 'Queue is full', 'Hàng chờ đã đầy');
   return null;
 }
@@ -793,6 +795,8 @@ function finishProduct(site, key){
   } else if (key === 'drone'){
     made = makeDrone(add(site.pos, mul(site.up, 6)), t);
     made.fwd = tangent(site.fwd, made.up);
+  } else if (PRODUCTS[key].vk){
+    made = V2.spawnAt(site, key);
   } else if (PRODUCTS[key].solo){
     made = spawnSquad(t, false, site.cls === 'hq' ? null : siteExit(site, 5), 1, [PRODUCTS[key].solo]);
     made.solo = PRODUCTS[key].solo;

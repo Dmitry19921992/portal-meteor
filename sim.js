@@ -121,12 +121,12 @@ function update(rdt){
     v.seen[0] = max(0, v.seen[0] - edt); v.seen[1] = max(0, v.seen[1] - edt);
     v.overT = max(0, (v.overT || 0) - edt);
     if (S.time - v.lastHurt > 12 && v.hp < v.maxhp) v.hp = min(v.maxhp, v.hp + 4 * edt);
-    const inp = isMe ? tankPlayerInput(v, edt) : tankInput(v, edt);
+    const inp = v.vk ? (isMe ? V2.playerInput(v, edt) : V2.aiInput(v, edt)) : isMe ? tankPlayerInput(v, edt) : tankInput(v, edt);
     physStep(v, inp, edt, false);
     if (isMe && v.justTeleported){ S.flashT = 0.25; emit('portal', {}); }
     if (!isMe && len(inp.wish) > 0) v.fwd = tangent(turnToward(v.fwd, norm(inp.wish), 1.4 * edt), v.up);
     v.cd -= edt; v.mgCd -= edt;
-    vehicleAimAndFire(v, edt, isMe, inp);
+    if (v.vk) V2.aimFire(v, edt, isMe, inp); else vehicleAimAndFire(v, edt, isMe, inp);
     if (v.overT > 0 && random() < edt * 10) S.sparks.push({ pos: sub(add(v.pos, mul(v.up, 0.8)), mul(v.fwd, 2.4)), vel: add(mul(v.fwd, -5), mul(randUnit(), 2)), life: 0.3 });
     if (v.hp < v.maxhp * 0.4 && random() < edt * 1.5) fxSmoke(add(v.pos, mul(v.up, 1)), 0.7, 0.12);
   }
@@ -167,6 +167,7 @@ function update(rdt){
   strikesStep(dt);
   suppStep(dt);
   for (let i = SCREENS.length - 1; i >= 0; i--){ SCREENS[i].t += dt; if (SCREENS[i].t > SCREENS[i].life) SCREENS.splice(i, 1); }
+  V2.projStep(dt);   // наведение ракет РСЗО, кассеты, «люстры» (vehicles2.js)
 
   // ---- снаряды
   for (let i = S.proj.length - 1; i >= 0; i--){
@@ -212,9 +213,9 @@ function update(rdt){
     }
     if (hitP){
       if (p.splash){
-        splash(hitP, p.team, p.dmg, p.splash, p.from, p.type === 'r' ? 'r' : p.type === 'g' ? 'g' : p.type === 'a' ? 'a' : 's');
-        if (hitE && (p.type === 's' || p.type === 'r') && hitE.alive !== false) damage(hitE, p.dmg * 0.35, p.from, p.type);
-        fxExplosion(hitP, p.type === 's' ? 2.2 : p.type === 'a' ? 2.6 : p.type === 'g' ? 1.8 : 1.4);
+        splash(hitP, p.team, p.dmg, p.splash, p.from, p.ptype || (p.type === 'r' ? 'r' : p.type === 'g' ? 'g' : p.type === 'a' ? 'a' : 's'));
+        if (hitE && (p.type === 's' || p.type === 'r') && hitE.alive !== false) damage(hitE, p.dmg * 0.35, p.from, p.ptype || p.type);
+        fxExplosion(hitP, p.boom || (p.type === 's' ? 2.2 : p.type === 'a' ? 2.6 : p.type === 'g' ? 1.8 : 1.4));
       } else {
         let dmg = p.dmg;
         if (p.type === 'b') dmg *= rangeFactor(dist(hitP, p.org || hitP));

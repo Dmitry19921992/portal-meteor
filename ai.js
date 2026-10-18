@@ -27,7 +27,7 @@ function launchSpot(team, from){
 function entName(e){
   if (!e) return '';
   if (e.cls === 'inf') return groupLabel(e.squad) + (e.team ? tr(' Роя', ' (Swarm)', ' (Bầy Đàn)') : '');
-  if (e.cls === 'tank') return e.team ? tr('танк Роя', 'Swarm tank', 'xe tăng Bầy Đàn') : groupLabel(e);
+  if (e.cls === 'tank') return e.team ? (e.vk ? V2.name(e) + tr(' Роя', ' (Swarm)', ' (Bầy Đàn)') : tr('танк Роя', 'Swarm tank', 'xe tăng Bầy Đàn')) : groupLabel(e);
   if (e.cls === 'drone') return e.team ? tr('дрон Роя', 'Swarm drone', 'drone Bầy Đàn') : groupLabel(e);
   if (e.cls === 'bld') return bname(e.type) + (e.team ? tr(' Роя', ' (Swarm)', ' (Bầy Đàn)') : '');
   if (e.cls === 'hq') return e.team ? tr('штаб Роя', 'Swarm HQ', 'sở chỉ huy Bầy Đàn') : tr('наш штаб', 'our HQ', 'sở chỉ huy của ta');
@@ -715,6 +715,7 @@ function economy(t){
   if (squads < GAME.MAX_SQUADS) plan.push(['p', 'squad']);
   if (T.ore > 600 * GAME.INC_MUL) plan.push(['p', 'pod']);
   if (tanks < GAME.MAX_TANKS) plan.push(['p', 'tank']);
+  V2.plan(t, plan, n('factory'));   // рейдеры, миномёты/катапульты, РСЗО (vehicles2.js)
   for (const [kind, key] of plan){
     if (kind === 'p'){
       // ИИ нашей команды оставляет в очередях место для заказов игрока
@@ -832,7 +833,7 @@ function army(t){
     const has = mine.some(g => g.escort === pg && groupAlive(g));
     if (PL && !has){
       let best = null, bd = 380;
-      for (const g of free){ if (g.cls !== 'tank' || g.order === 'attack' && S.time < (g.waveUntil || 0)) continue; const d = surfDist(g.pos, PL.pos); if (d < bd){ bd = d; best = g; } }
+      for (const g of free){ if (g.cls !== 'tank' || g.vk || g.order === 'attack' && S.time < (g.waveUntil || 0)) continue; const d = surfDist(g.pos, PL.pos); if (d < bd){ bd = d; best = g; } }
       const drones = free.filter(g => g.cls === 'drone' && surfDist(g.pos, PL.pos) < 300).slice(0, 2);
       if (best || drones.length){
         if (best) setOrder(best, 'escort', PL.pos, { escort: pg });

@@ -356,7 +356,7 @@ const CARD = { sig: '' };
 function updateCard(){
   const el = $('card');
   const sel = selGroups();
-  const icon = g => isSquad(g) ? (g.elite ? '✦' : '◆') : g.cls === 'tank' ? '■' : '▲';
+  const icon = g => isSquad(g) ? (g.elite ? '✦' : '◆') : g.cls === 'tank' ? (g.vk ? VK[g.vk].icon : '■') : '▲';
   let h = '';
   if (sel.length){
     h += '<div class="ports">' + sel.slice(0, 14).map(g => {
@@ -431,7 +431,7 @@ function drawRTSOverlay(dt){
     const far = S.rts.h > 120;
     if (far || u.cls === 'builder'){
       octx.fillStyle = u.cls === 'builder' ? '#7fd4ff' : col;
-      if (u.cls === 'tank') octx.fillRect(s[0] - 5, s[1] - 4, 10, 8);
+      if (u.cls === 'tank'){ if (u.vk) V2.icon(s[0], s[1], u, col, 1.2); else octx.fillRect(s[0] - 5, s[1] - 4, 10, 8); }
       else if (u.cls === 'drone'){ octx.beginPath(); octx.moveTo(s[0], s[1] - 5); octx.lineTo(s[0] + 4, s[1] + 3); octx.lineTo(s[0] - 4, s[1] + 3); octx.fill(); }
       else { octx.beginPath(); octx.arc(s[0], s[1], u.leader ? 3.6 : 2.6, 0, PI * 2); octx.fill(); }
     }
@@ -454,6 +454,7 @@ function drawRTSOverlay(dt){
     if (a && facing(L.pos) && S.rts.h < 200) octx.fillText(groupLabel(g), a[0], a[1] - 18);
   }
   octx.setLineDash([]);
+  V2.rtsOverlay(sel);   // дальность и цель огня артиллерии (vehicles2.js)
   // точка сбора
   const B = S.selB;
   if (B && B.rally){ const a = project(B.cls === 'hq' ? B.pos : B.pos), b = project(B.rally); if (b){ octx.strokeStyle = '#9cf'; octx.setLineDash([3, 4]); if (a){ octx.beginPath(); octx.moveTo(a[0], a[1]); octx.lineTo(b[0], b[1]); octx.stroke(); } octx.setLineDash([]); octx.fillStyle = '#9cf'; octx.fillRect(b[0], b[1] - 14, 10, 7); octx.fillRect(b[0], b[1] - 14, 1.5, 14); } }
@@ -541,8 +542,8 @@ function drawRTSMinimap(){
   for (const b of S.buildings) if (b.alive && (b.team === 0 || b.known0 || !SET.fog)) pt(b.pos, TEAM[b.team].dim, 2.5, true);
   for (const h of S.hq) pt(h.pos, h.alive ? TEAM[h.team].css : '#555', 4, true);
   for (const cp of S.cps){ if (cp.core) continue; const m = mmProject(cp.pos); drawDiamond(m[0], m[1], 4, teamCss(cp.owner), 'rgba(0,0,0,.6)'); }
-  for (const g of groupsOf(0)){ const L = leaderOf(g); if (L) pt(L.pos, S.sel.has(g) ? '#fff' : TEAM[0].css, g.cls === 'tank' ? 2.4 : 1.8); }
-  for (const g of groupsOf(1)){ for (const u of groupUnits(g)) if (u.alive && (u.seen[0] > 0 || !SET.fog)){ pt(u.pos, TEAM[1].css, u.cls === 'tank' ? 2.4 : 1.6); } }
+  for (const g of groupsOf(0)){ const L = leaderOf(g); if (!L) continue; if (g.vk){ const m = mmProject(L.pos); V2.icon(m[0], m[1], g, S.sel.has(g) ? '#fff' : TEAM[0].css, 0.6); } else pt(L.pos, S.sel.has(g) ? '#fff' : TEAM[0].css, g.cls === 'tank' ? 2.4 : 1.8); }
+  for (const g of groupsOf(1)){ for (const u of groupUnits(g)) if (u.alive && (u.seen[0] > 0 || !SET.fog)){ if (u.vk){ const m = mmProject(u.pos); V2.icon(m[0], m[1], u, TEAM[1].css, 0.6); } else pt(u.pos, TEAM[1].css, u.cls === 'tank' ? 2.4 : 1.6); } }
   for (const a of S.alerts){ const k = S.rtime - a.t; if (k > 6) continue; const m = mmProject(a.pos); octx.strokeStyle = `rgba(255,80,60,${(1 - k / 6).toFixed(2)})`; octx.beginPath(); octx.arc(m[0], m[1], 4 + (k * 8) % 8, 0, PI * 2); octx.stroke(); }
   for (const s of S.strikes){ const m = mmProject(s.pos); octx.strokeStyle = s.team ? '#ff5040' : '#ffb070'; octx.beginPath(); octx.arc(m[0], m[1], 4, 0, PI * 2); octx.stroke(); }
   // камера

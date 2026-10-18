@@ -65,7 +65,7 @@ function lookBy(mx, my){
     const right = norm(cross(p.fwd, p.up));
     const nf = norm(rotAxis(p.fwd, right, -my * s * (SET.invertY ? -1 : 1)));
     if (abs(dot(nf, p.up)) < 0.995) p.fwd = nf;
-  } else if (c.cls === 'tank') aimRotate(c, mx, my, -0.2, 0.6);
+  } else if (c.cls === 'tank') aimRotate(c, mx, my, c.vk ? -0.35 : -0.2, c.vk ? 0.8 : 0.6);
   else if (c.cls === 'drone') aimRotate(c, mx, my, -1.2, 0.5);
   else if (c.type === 'aa') aimRotate(c, mx, my, -0.05, 1.5);
   else aimRotate(c, mx, my, -0.35, 0.9);
@@ -167,6 +167,7 @@ function dronePlayerInput(d){
 function turretPlayerInput(b){ S.aiming = false; return { fire: SET.swapMouse ? mouseR : mouseL }; }
 function vehAbility(k){
   const c = ctrlEntity(); if (!c) return;
+  if (c.vk){ const kk = abilList(c).find(a => ABIL[a].key === ABIL[k].key); if (!kk) return; k = kk; }   // новая техника: та же клавиша
   let pt = null;
   if (ABIL[k].target === 'point'){ const r = rayCast(S.cam.pos, S.cam.fwd, ABIL[k].range + 40, c.team, false); pt = r.pos; }
   const why = useAbility(c, k, pt);
@@ -325,7 +326,8 @@ function updateModeUI(){
 function helpFPS(c){
   const L = [];
   const row = (k, t) => L.push(`<b>${k}</b> ${t}`);
-  if (c && c.cls === 'tank'){
+  if (c && c.cls === 'tank' && c.vk) V2.help(c, row);
+  else if (c && c.cls === 'tank'){
     row(`${bk('fwd')}/${bk('back')}`, tr('ход', 'drive', 'lái')); row(`${bk('left')}/${bk('right')}`, tr('поворот корпуса', 'turn hull', 'xoay thân'));
     row(tr('мышь', 'mouse', 'chuột'), tr('башня', 'turret', 'tháp súng')); row(tr('ЛКМ', 'LMB', 'Chuột trái'), tr('пушка', 'cannon', 'pháo')); row(tr('ПКМ', 'RMB', 'Chuột phải'), tr('пулемёт', 'machine gun', 'súng máy'));
     row(bk('reload'), tr('залп', 'barrage', 'loạt pháo')); row(bk('reflex'), tr('дым', 'smoke', 'khói')); row(bk('grenade'), tr('форсаж', 'overdrive', 'tăng tốc'));
@@ -452,7 +454,7 @@ function drawMinimap(){
   const dot2 = (p, col, r) => { const m = toMap(p); if (!m) return; octx.fillStyle = col; octx.beginPath(); octx.arc(m[0], m[1], r, 0, PI * 2); octx.fill(); };
   const myG = playerGroup();
   for (const u of S.units){ if (!u.alive || u === S.me) continue; if (u.team === 1 && u.seen[0] <= 0) continue; dot2(u.pos, u.team ? TEAM[1].css : TEAM[0].css, u.squad === myG ? 2.8 : 2.2); }
-  for (const v of S.vehicles){ if (!v.alive || v === c || (v.team === 1 && v.seen[0] <= 0)) continue; const m = toMap(v.pos); if (m){ octx.fillStyle = v.team ? TEAM[1].css : TEAM[0].css; octx.fillRect(m[0] - 4, m[1] - 3, 8, 6); } }
+  for (const v of S.vehicles){ if (!v.alive || v === c || (v.team === 1 && v.seen[0] <= 0)) continue; const m = toMap(v.pos); if (m){ if (v.vk){ V2.icon(m[0], m[1], v, v.team ? TEAM[1].css : TEAM[0].css); continue; } octx.fillStyle = v.team ? TEAM[1].css : TEAM[0].css; octx.fillRect(m[0] - 4, m[1] - 3, 8, 6); } }
   for (const d of S.drones){ if (!d.alive || d === c || (d.team === 1 && d.seen[0] <= 0)) continue; const m = toMap(d.pos); if (m){ octx.fillStyle = d.team ? TEAM[1].css : TEAM[0].css; octx.beginPath(); octx.moveTo(m[0], m[1] - 4); octx.lineTo(m[0] + 3.5, m[1] + 3); octx.lineTo(m[0] - 3.5, m[1] + 3); octx.fill(); } }
   for (const s of S.strikes){ const m = toMap(s.pos); if (m){ octx.strokeStyle = s.team ? '#ff5040' : '#ffb070'; octx.lineWidth = 1.5; octx.beginPath(); octx.arc(m[0], m[1], 6 + 2 * sin(S.rtime * 10), 0, PI * 2); octx.stroke(); } }
   octx.restore();
@@ -576,6 +578,7 @@ function drawOverlay(dt){
     }
   }
   drawWorldMarkers(false);
+  if (c && c.vk) V2.overlay(c);
   TUT.overlay();
   SIDEQ.overlay();
   // юниты
@@ -685,7 +688,7 @@ function updateHUD(){
     const hpE = $('hpFill'), jE = $('jetFill'), jL = $('jetLbl'), hL = $('hpLbl'), rk = $('rocket');
     hpE.style.width = (max(0, c.hp) / c.maxhp * 100).toFixed(1) + '%';
     const g = c.cls === 'bld' ? null : groupOf(c);
-    hL.textContent = c.cls === 'tank' ? `${groupLabel(c)} ${tankName(c.team)}` : c.cls === 'drone' ? groupLabel(c) : c.cls === 'bld' ? bname(c.type).toUpperCase()
+    hL.textContent = c.cls === 'tank' ? `${groupLabel(c)} ${c.vk ? V2.name(c) : tankName(c.team)}` : c.cls === 'drone' ? groupLabel(c) : c.cls === 'bld' ? bname(c.type).toUpperCase()
       : (N2(roleOf(c).n).toUpperCase() + (c.elite ? ' ✦' : '') + (c.leader ? ' · ' + tr('ЛИДЕР', 'LEADER', 'TRƯỞNG ĐỘI') : '')) + (g ? ` · ${groupLabel(g).toUpperCase()}${g.vet ? ' ' + '★'.repeat(g.vet) : ''}` : '');
     rk.textContent = `${Math.round(max(0, c.hp))}/${c.maxhp}`; rk.className = '';
     if (c.cls === 'inf'){
@@ -695,7 +698,8 @@ function updateHUD(){
       jL.textContent = S.freecam ? tr('свободная камера', 'free camera', 'camera tự do') : c.locked ? tr('ранец перезаряжается…', 'jetpack recharging…', 'ba lô đang nạp…') : c.lifting ? tr('гравилифт', 'grav lift', 'thang trọng lực') :
         r < CORE_R + 3 ? tr('ядро — невесомость', 'core — zero-g', 'lõi — không trọng lực') : `${N2(c.jet.n).toUpperCase()} · ${tr('высота', 'alt', 'độ cao')} ${Math.round(altitude(c.pos))} ${tr('м', 'm', 'm')}`;
       $('jetBar').style.display = 'block';
-    } else if (c.cls === 'tank'){
+    } else if (c.cls === 'tank' && c.vk) V2.hudBar(c, jE, jL);
+    else if (c.cls === 'tank'){
       jE.style.width = (clamp(1 - c.cd / 2.6, 0, 1) * 100).toFixed(1) + '%';
       jE.style.background = c.cd > 0 ? '#887' : '#e8dcb8';
       jL.textContent = c.cd > 0 ? tr('пушка перезаряжается', 'cannon reloading', 'pháo đang nạp') : tr('ПУШКА ГОТОВА · ЛКМ', 'CANNON READY · LMB', 'PHÁO SẴN SÀNG · CHUỘT TRÁI');
@@ -759,7 +763,7 @@ function updateKit(c){
   } else if (c.cls === 'tank' || c.cls === 'drone'){
     const keysFor = { barrage: bk('reload'), smoke: bk('reflex'), overdrive: bk('grenade'), kamikaze: bk('reload') };
     h += '<div class="slots">';
-    for (const k of abilList(c)){ const left = abilLeft(c, k), A = ABIL[k]; h += slot(keysFor[k], N2(A.n), left > 0 ? 'cd' : 'ok', left > 0 && A.cd ? 1 - left / A.cd : null, left > 0 ? Math.ceil(left) : ''); }
+    for (const k of abilList(c)){ const left = abilLeft(c, k), A = ABIL[k]; h += slot(keysFor[k] || (A.key === 'KeyR' ? bk('reload') : A.key === 'KeyF' ? bk('reflex') : bk('grenade')), N2(A.n), left > 0 ? 'cd' : 'ok', left > 0 && A.cd ? 1 - left / A.cd : null, left > 0 ? Math.ceil(left) : ''); }
     h += '</div>';
   }
   if (PROG.has('reflex') && (c.cls === 'drone' || c.cls === 'bld')) h += `<div class="slots">${slot(bk('reflex'), tr('Рефлекс', 'Reflex', 'Phản xạ'), K.reflexOn ? 'on' : 'ok', K.reflex, '')}</div>`;

@@ -169,6 +169,8 @@ function setupCamera(dt){
       const want = add(add(head, mul(c.fwd, -3.4)), add(mul(c.up, 0.5), mul(right, 0.7)));
       const pos = pullCam(head, want);
       cam = Object.assign({ pos }, camBasis(c.fwd, c.up));
+    } else if (c.cls === 'tank' && c.vk){
+      cam = V2.camera(c, dt);
     } else if (c.cls === 'tank'){
       const center = add(c.pos, mul(c.up, 1.2));
       const af = tangent(c.aim, c.up);
@@ -216,7 +218,7 @@ function objInfo(e){
       return { type: 1, origin: o, bc: add(o, mul(e.up, 0.9)), br: 1.2, variant: (e.leader ? 1 : 0) + (e.elite ? 2 : 0) + 4 * roleOf(e).i,
                sc: add(o, mul(e.up, 0.9)), sr: 0.33, thrust: e.thrusting ? 1 : 0 };
     }
-    case 'tank': { const o = sub(e.pos, mul(e.up, 1.5)); return { type: 5, origin: o, bc: add(o, mul(e.up, 1.6)), br: 4.3, sc: add(o, mul(e.up, 1.3)), sr: 1.6, thrust: e.overT > 0 ? 1 : 0 }; }
+    case 'tank': { if (e.vk) return V2.objInfo(e); const o = sub(e.pos, mul(e.up, 1.5)); return { type: 5, origin: o, bc: add(o, mul(e.up, 1.6)), br: 4.3, sc: add(o, mul(e.up, 1.3)), sr: 1.6, thrust: e.overT > 0 ? 1 : 0 }; }
     case 'drone': return { type: 4, origin: e.pos, bc: e.pos, br: 1.5, sc: e.pos, sr: 0.5, thrust: 1 };
     case 'builder': return { type: 3, origin: e.pos, bc: e.pos, br: 0.75, sc: e.pos, sr: 0.25 };
     case 'bld': {
