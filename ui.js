@@ -190,10 +190,12 @@ function takeControl(u){
   CAMFX.onSwitch(u);
 }
 function enterRTS(){
+  const fromCam = S.mode === 'fps' && S.cam ? { pos: S.cam.pos, fwd: S.cam.fwd, up: S.cam.up } : null;
   S.mode = 'rts';
   unlockMouse();
   const c = ctrlEntity();
   if (c){ S.rts.dir = norm(c.pos); S.rts.fwd = tangent(c.fwd || c.aim || anyTangent(S.rts.dir), S.rts.dir); S.rts.h = min(S.rts.h, 60); }
+  rtsCamReset(c ? fromCam : null);
   S.sel.clear();
   const g = c ? (c.cls === 'bld' ? null : groupOf(c)) : null;
   if (g) S.sel.add(g);
@@ -204,15 +206,18 @@ function releasePlayerUnits(){
   for (const g of groupsOf(0)) if (g.byPlayer){ g.byPlayer = false; if (g.manualUntil > S.time + 60) g.manualUntil = S.time + 20; n++; }
   if (n) feed(tr(`Стратег принял командование твоими группами (${n})`, `The strategist takes over your groups (${n})`, `Chiến lược gia tiếp quản các nhóm của bạn (${n})`), '#9cf');
 }
-function enterFPS(){
+function enterFPS(want){
   releasePlayerUnits();
-  let u = null;
-  if (S.selB && S.selB.alive && S.selB.team === 0 && (S.selB.type === 'turret' || S.selB.type === 'aa') && S.selB.done) u = S.selB;
+  let u = want && want.team === 0 && (want.alive || (want.cls === 'bld' && want.done)) ? want : null;
+  if (!u && S.selB && S.selB.alive && S.selB.team === 0 && (S.selB.type === 'turret' || S.selB.type === 'aa') && S.selB.done) u = S.selB;
   if (!u) for (const g of S.sel){ if (g.team !== 0 || !groupAlive(g)) continue; u = isSquad(g) ? g.units.find(x => x.alive) : g; if (u) break; }
   if (!u && S.me && (S.me.alive || S.me.cls === 'bld')) u = S.me;
   if (!u) u = nearestToAction(0);
-  if (!u){ feed(tr('Нет живых роботов — закажи отряд', 'No robots alive — order a squad', 'Không còn robot nào — hãy gọi một đội'), '#f88'); return; }
+  if (!u){ feed(tr('Нет живых роботов — закажи отряд', 'No robots alive — order a squad', 'Không còn robot nào — hãy gọi một đội'), '#f88'); if (typeof uiExplainShow === 'function') uiExplainShow('possess'); return; }
+  // плавный «нырок» камеры из стратегии к бойцу (тот же пролёт, что при переключении)
+  if (S.mode === 'rts' && S.cam && !S.attract) CAMFX.last = { pos: S.cam.pos, fwd: S.cam.fwd };
   takeControl(u);
+  if (CAMFX.fly) CAMFX.fly.dur = min(CAMFX.fly.dur, 1.0);
   lockMouse();
 }
 function actionDist(e, team){

@@ -225,6 +225,148 @@
   #screen .mmove i{position:absolute;left:20px;top:20px;width:6px;height:6px;border-radius:50%;background:var(--sand);transition:transform .08s}
   #screen .stats{background:rgba(12,13,14,.7);border:1px solid var(--line);padding:10px 14px;margin:6px 0 10px;font-size:14px}
 </style>
+<style id="uixcss">
+  /* ===== v6 rtsui: крупная панель стратегии, причины серых кнопок, очередь, уведомления ===== */
+  :root{ --sideW:clamp(244px,19vw,300px); --ok:#8fffaa; --bad:#ff8a78; --ore:#ffd27a }
+  body.touch{ --sideW:204px }
+  i.ore{display:inline-block;width:8px;height:8px;margin-right:3px;background:var(--ore);transform:rotate(45deg);box-shadow:0 0 4px rgba(255,210,122,.6);vertical-align:1px}
+  #side .item i.ore,#card i.ore,#uxpop i.ore,#uxtip i.ore{display:inline-block;position:static;font-size:0;width:8px;height:8px;margin-right:4px}
+  body.rtsm #feed{right:calc(var(--sideW) + 14px);top:84px;bottom:auto} body.rtsm #help{right:calc(var(--sideW) + 14px)}
+  #card .ab i{margin-top:9px}
+  body.rtsm #hint{bottom:auto;top:118px}
+  #side{width:var(--sideW);top:64px}
+  #side .tabs{display:flex;border-bottom:1px solid var(--line)}
+  #side .tabs button{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;background:none;border:none;border-bottom:3px solid transparent;color:#a59d84;font:600 11px "Exo 2";padding:6px 2px 4px;cursor:pointer}
+  #side .tabs button i{font-style:normal;font-size:17px;line-height:1}
+  #side .tabs button:hover{color:#fff;background:rgba(214,198,154,.08)}
+  #side .tabs button.cur{color:#fff;border-bottom-color:var(--sand);background:rgba(214,198,154,.1)}
+  #side .tabs button em{position:absolute;right:4px;top:3px;font-style:normal;font-size:10px;min-width:15px;height:15px;line-height:15px;border-radius:8px;background:var(--ok);color:#111;font-weight:700}
+  #side .tabs button em:empty{display:none}
+  #side .items{padding:6px 8px 6px 6px;gap:6px;scrollbar-width:thin;scrollbar-color:rgba(214,198,154,.35) transparent}
+  #side .item{height:86px;padding:0;background:linear-gradient(180deg,rgba(52,49,38,.82),rgba(30,29,24,.86));border:1px solid rgba(214,198,154,.42);border-radius:3px;transition:border-color .12s,background .12s}
+  #side .item:hover{border-color:var(--sand);background:linear-gradient(180deg,rgba(80,73,50,.9),rgba(40,38,30,.9))}
+  #side .item:active{transform:translateY(1px)}
+  #side .item > i{position:absolute;left:7px;top:5px;font-size:25px;line-height:1.1;color:var(--sand)}
+  #side .item > kbd{position:absolute;right:4px;top:4px;font-size:10px}
+  #side .item b{position:absolute;left:7px;right:5px;top:35px;font-size:12px;line-height:1.15;max-height:28px;overflow:hidden}
+  #side .item .cost{left:7px;right:auto;top:auto;bottom:17px;font-size:12px;font-weight:700;color:var(--ore)}
+  #side .item .tm{position:absolute;right:6px;bottom:17px;font-size:10.5px;color:#9a937e}
+  #side .item .q{right:6px;top:22px;bottom:auto;font-size:13px;color:#fff;text-shadow:0 0 4px #000}
+  #side .item .st{position:absolute;left:0;right:0;bottom:3px;padding:0 6px;font-size:10.5px;line-height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  #side .item .st.bad{color:var(--bad)} #side .item .st.run{color:var(--ok)} #side .item .st.wait{color:var(--amber)}
+  #side .item .bar{height:3px}
+  #side .item.off{opacity:1;background:rgba(22,22,20,.86);border-style:dashed;border-color:rgba(214,198,154,.25)}
+  #side .item.off > i,#side .item.off b,#side .item.off .cost,#side .item.off .tm{opacity:.42}
+  #side .item.off:hover{border-color:var(--bad)}
+  #side .item.soft .st{color:#9a937e}
+  #side .shint{grid-column:1/-1;font-size:10.5px;color:#8f8664;text-align:center;padding:2px 4px}
+  #side .sfoot button b.on{color:var(--ok)}
+  /* нижняя карточка */
+  #card{left:calc(4 * var(--mmR,62px) + 50px);right:calc(var(--sideW) + 10px);bottom:8px;flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:6px}
+  #card .inf{display:flex;gap:9px;align-items:center;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--sand);padding:6px 10px 6px 6px;min-width:220px;max-width:380px;min-height:70px;box-sizing:border-box}
+  #card .pt img,#card .glyph{width:60px;height:60px;display:block;border:1px solid rgba(214,198,154,.5);box-sizing:border-box}
+  #card .glyph{display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--sand);background:radial-gradient(circle,rgba(214,198,154,.15),rgba(0,0,0,.4))}
+  #card .glyph.enemy{color:var(--red);border-color:rgba(255,74,58,.6)}
+  #card .tx{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+  #card .tx b{font:400 15px "Russo One","Exo 2",sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #card .tx b .vet{color:var(--ore);font-size:12px}
+  #card .tx small{font-size:12px;color:#cfc6ad} #card .tx small span{color:var(--sand);margin-right:2px}
+  #card .tx small.help{color:#a59d84;line-height:1.4;max-width:420px}
+  #card .hp{position:relative;height:12px;background:rgba(0,0,0,.6);border:1px solid var(--line);margin-top:2px}
+  #card .hp s{position:absolute;left:0;top:0;bottom:0;background:#9c9}
+  #card .hp em{position:absolute;inset:0;font-style:normal;font-size:10px;line-height:12px;text-align:center;color:#fff;text-shadow:0 0 2px #000}
+  #card .ord{font-style:normal;font-size:11px;color:#a59d84;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #card .ports{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+  #card .port{position:relative;width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;background:rgba(40,38,30,.8);border:1px solid var(--line);cursor:pointer;overflow:hidden}
+  #card .port i{margin:0;font-size:15px} #card .port s{left:0;right:0;bottom:0;height:3px} #card .port.more{font-size:11px;color:#ccc}
+  #card .port:hover{border-color:var(--sand)}
+  #card .cmds{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
+  #card .cmds:empty{display:none}
+  #card .ab{width:70px;height:70px;border-radius:3px;background:linear-gradient(180deg,rgba(52,49,38,.85),rgba(28,27,22,.88));border:1px solid rgba(214,198,154,.45);padding:3px 2px 0}
+  #card .ab i{font-size:24px;line-height:1.15}
+  #card .ab b{font-size:10.5px;line-height:1.1;max-height:24px;overflow:hidden}
+  #card .ab kbd{font-size:9.5px}
+  #card .ab em{left:0;right:0;top:20px;text-align:center;font:400 20px "Russo One";text-shadow:0 0 4px #000}
+  #card .ab s{background:rgba(0,0,0,.55);pointer-events:none}
+  #card .ab.off{opacity:1;border-style:dashed;border-color:rgba(214,198,154,.25)} #card .ab.off i,#card .ab.off b{opacity:.45}
+  #card .ab.prod kbd{left:2px;right:2px;top:auto;bottom:2px;border:none;background:none;color:var(--ore);font-size:11px}
+  #card .ab.prod b{margin-bottom:12px}
+  #card .queue{display:flex;gap:3px;margin-top:3px}
+  #card .queue button{width:30px;height:28px;padding:0;font-size:15px;display:flex;align-items:center;justify-content:center}
+  #card .queue button i{font-style:normal;color:var(--ore)} #card .queue button s{height:3px}
+  #card .queue button:hover{border-color:var(--bad)}
+  #card .poss{position:relative;width:150px;height:70px;border-radius:4px;cursor:pointer;border:1px solid rgba(143,255,170,.85);background:linear-gradient(180deg,rgba(40,120,64,.92),rgba(18,66,34,.94));color:#eafff0;text-align:left;padding:6px 10px 6px 40px;box-shadow:0 0 14px rgba(143,255,170,.25);font-family:"Exo 2"}
+  #card .poss:hover{background:linear-gradient(180deg,rgba(52,150,80,.95),rgba(24,86,44,.95));box-shadow:0 0 20px rgba(143,255,170,.45)}
+  #card .poss i{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-style:normal;font-size:24px;color:#fff}
+  #card .poss b{display:block;font:400 17px "Russo One",sans-serif;letter-spacing:.02em}
+  #card .poss small{display:block;font-size:11px;color:#bfe9cb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #card .poss kbd{position:absolute;right:5px;top:5px;font-size:10px;border-color:rgba(143,255,170,.6)}
+  #card .poss.back{border-color:rgba(214,198,154,.7);background:linear-gradient(180deg,rgba(70,64,44,.92),rgba(36,33,24,.94));box-shadow:none;color:#fff3df}
+  #card .poss.back small{color:#cfc6ad}
+  #card .poss.off{filter:grayscale(1);opacity:.6}
+  #card .note{width:100%;text-align:center;font-style:normal;font-size:11px;color:#9a937e;order:5}
+  @media (max-width:1500px){ #card .cmds{order:-1;width:100%} }
+  /* полоса «в работе» */
+  #pstrip{position:fixed;left:12px;top:62px;display:none;gap:4px;align-items:center;max-width:calc(100vw - var(--sideW) - 40px);flex-wrap:wrap;pointer-events:auto;z-index:4}
+  #pstrip small{font-size:9.5px;letter-spacing:.16em;color:var(--sand2);text-shadow:0 0 3px #000;writing-mode:vertical-rl;transform:rotate(180deg);height:44px;text-align:center}
+  #pstrip .pc{position:relative;width:46px;height:46px;padding:0;background:var(--panel);border:1px solid rgba(143,255,170,.5);color:#fff;cursor:pointer;font-family:"Exo 2";overflow:hidden}
+  #pstrip .pc i{display:block;font-style:normal;font-size:19px;line-height:26px;color:var(--ore)}
+  #pstrip .pc em{display:block;font-style:normal;font-size:10.5px;font-weight:700;line-height:12px;color:#eafff0}
+  #pstrip .pc s{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.1)} #pstrip .pc s u{display:block;height:100%;width:0;background:var(--ok)}
+  #pstrip .pc.wait{border-color:var(--line);opacity:.75} #pstrip .pc.wait em{color:#a59d84}
+  #pstrip .pc.bld{border-color:rgba(127,212,255,.6)} #pstrip .pc.bld i{color:#9cf} #pstrip .pc.bld s u{background:#9cf}
+  #pstrip .pc.want{border-style:dashed;border-color:var(--amber)} #pstrip .pc.want s u{background:var(--amber)}
+  #pstrip .pc:hover{border-color:#fff}
+  #pstrip .more{font-size:12px;color:#ccc;text-shadow:0 0 3px #000}
+  /* уведомления */
+  #uxtoasts{position:fixed;left:12px;bottom:calc(4 * var(--mmR,62px) / 2 + 48px);display:none;flex-direction:column;gap:4px;pointer-events:auto;z-index:4;max-width:320px}
+  #uxtoasts .tst{display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,rgba(14,40,22,.94),rgba(12,14,14,.86));border:1px solid rgba(143,255,170,.4);border-left:3px solid var(--ok);padding:5px 10px;font-size:13px;color:#eafff0;cursor:pointer;animation:uxin .3s ease-out;transition:opacity .9s}
+  #uxtoasts .tst i{font-style:normal;font-size:18px} #uxtoasts .tst em{margin-left:auto;font-style:normal;color:var(--ok)}
+  #uxtoasts .tst:hover{border-color:var(--ok)} #uxtoasts .tst.out{opacity:0}
+  @keyframes uxin{from{transform:translateX(-30px);opacity:0}to{transform:none;opacity:1}}
+  /* объяснение «почему нельзя» */
+  #uxpop{position:fixed;display:none;width:310px;z-index:30;background:linear-gradient(180deg,rgba(26,16,14,.97),rgba(12,12,13,.97));border:1px solid rgba(255,138,120,.55);border-top:3px solid var(--bad);box-shadow:0 8px 30px rgba(0,0,0,.6);padding:8px 10px 10px;font-size:13px;pointer-events:auto;animation:uxpop .18s ease-out}
+  @keyframes uxpop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+  #uxpop .uh{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  #uxpop .uh i{font-style:normal;font-size:22px;color:var(--sand)} #uxpop .uh b{font:400 15px "Russo One";flex:1}
+  #uxpop .uh span{font-size:12px;font-weight:700;color:var(--ore)}
+  #uxpop .ux{background:none;border:none;color:#aaa;font-size:16px;cursor:pointer;padding:0 2px}
+  #uxpop p{margin:3px 0;line-height:1.35} #uxpop .why{font-size:14px;font-weight:600;color:var(--bad)} #uxpop .dt{color:#b9b19a;font-size:12px} #uxpop .okk{color:var(--ok);font-weight:700}
+  #uxpop .pb{position:relative;height:14px;background:rgba(0,0,0,.6);border:1px solid var(--line);margin:6px 0} #uxpop .pb s{display:block;height:100%;background:linear-gradient(90deg,#9b8f66,var(--ore))}
+  #uxpop .pb em{position:absolute;inset:0;text-align:center;font-style:normal;font-size:10.5px;line-height:14px;color:#fff;text-shadow:0 0 2px #000}
+  #uxpop .fx{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  #uxpop .fx button{flex:1 1 auto;min-height:32px;background:rgba(214,198,154,.1);border:1px solid var(--line);color:var(--ink);font:600 12.5px "Exo 2";padding:4px 9px;cursor:pointer;border-radius:3px}
+  #uxpop .fx button:hover{border-color:var(--sand);background:rgba(214,198,154,.22)}
+  #uxpop .fx button.pri{background:linear-gradient(180deg,rgba(40,120,64,.92),rgba(18,66,34,.94));border-color:rgba(143,255,170,.75);color:#fff}
+  /* подсказка при наведении */
+  #uxtip{position:fixed;display:none;max-width:290px;z-index:31;pointer-events:none;background:rgba(10,11,12,.95);border:1px solid var(--line);border-left:3px solid var(--sand);padding:6px 10px;font-size:12px;line-height:1.4;color:#d8cfb4;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+  #uxtip b{display:block;color:#fff;font-size:13px} #uxtip .m{display:block;margin:2px 0;color:var(--ore);font-weight:700}
+  #uxtip p{margin:2px 0} #uxtip .why{color:var(--bad);font-weight:600} #uxtip .dt{color:#8f8664;font-size:11px}
+  /* кнопка «Стратегия» в шутере */
+  #uxmode{position:fixed;left:12px;top:64px;display:none;gap:8px;align-items:center;pointer-events:none}
+  #uxmode button{pointer-events:none;background:rgba(12,13,14,.7);border:1px solid rgba(214,198,154,.55);color:#fff3df;font:600 13px "Exo 2";padding:4px 10px;border-radius:3px;cursor:pointer}
+  #uxmode.live button{pointer-events:auto} #uxmode.live button:hover{border-color:var(--sand);background:rgba(70,64,44,.85)}
+  #uxmode span{font-size:12px;color:#cfc6ad;text-shadow:0 0 3px #000}
+  /* телефон */
+  body.touch #side .item{height:70px}
+  body.touch #side .item > i{font-size:20px;top:3px}
+  body.touch #side .item > kbd,body.touch #card kbd{display:none}
+  body.touch #side .item b{top:27px;font-size:11px;max-height:13px;white-space:nowrap;text-overflow:ellipsis}
+  body.touch #side .item .cost,body.touch #side .item .tm{bottom:15px;font-size:10.5px}
+  body.touch #side .item .st{font-size:9.5px}
+  body.touch #side .tabs button{padding:4px 1px 3px;font-size:10px}
+  body.touch #side .shint{display:none}
+  body.touch #card{left:244px;right:calc(var(--sideW) + 6px);bottom:4px;gap:4px}
+  body.touch #card .cmds{order:-1;width:100%}
+  body.touch #card .ab{width:56px;height:56px} body.touch #card .ab i{font-size:20px} body.touch #card .ab b{font-size:9.5px}
+  body.touch #card .inf{min-width:0;max-width:300px;min-height:60px;padding:4px 8px 4px 4px} body.touch #card .pt img,body.touch #card .glyph{width:46px;height:46px;font-size:28px}
+  body.touch #card .tx b{font-size:13px} body.touch #card .tx small{font-size:11px}
+  body.touch #card .poss{width:124px;height:60px;padding-left:34px} body.touch #card .poss b{font-size:15px}
+  body.touch #card .note{display:none}
+  body.touch #pstrip{top:44px;max-width:calc(100vw - 500px)} body.touch #pstrip .pc{width:38px;height:38px} body.touch #pstrip .pc i{font-size:15px;line-height:20px} body.touch #pstrip small{display:none}
+  body.touch #uxtoasts{bottom:136px;max-width:240px} body.touch #uxtoasts .tst{font-size:11.5px;padding:3px 8px}
+  body.touch #uxpop{width:290px} body.touch #uxpop .fx button{min-height:40px}
+</style>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -253,6 +395,11 @@
 <div id="sq"></div>
 <div id="side"></div>
 <div id="card"></div>
+<div id="pstrip"></div>
+<div id="uxtoasts"></div>
+<div id="uxmode"></div>
+<div id="uxpop"></div>
+<div id="uxtip"></div>
 <div id="clicklock" onclick="lockMouse()"></div>
 <div id="screen"></div>
 <div id="boot">

@@ -26,6 +26,7 @@ function frame(now){
   SAVE.auto();
   CAMFX.frame(dt);
   TOUCH.frame();
+  uixFrame(dt);
   hudTimer -= dt; if (hudTimer <= 0){ hudTimer = 0.1; updateHUD(); SQUADUI.render(); TUT.render(); }
   if (!S.paused){ SQUADUI.step(dt); TUT.step(dt); SIDEQ.step(dt); }
   panelTimer -= dt; if (panelTimer <= 0 && S.mode === 'rts' && !S.attract){ panelTimer = 0.25; updateSidebar(); updateCard(); }
