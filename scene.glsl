@@ -708,7 +708,7 @@ vec2 objMap(vec3 q){
   switch (ty){
     case 1: r = sdInf(q); break;
     case 2: r = sdWreck(q); break;
-    case 3: r = sdBuilder(q); break;
+    case 3: r = sdBuilder(q / 1.5); r.x *= 1.5; break;   // v6: инженер крупнее (заметен с высоты стратегии)
     case 4: r = sdDrone(q); break;
     case 5: r = sdTank(q); break;
     case 6: r = sdTurret(q); break;

@@ -16,7 +16,7 @@ const ECO = {
   HQ: 1.3,          // руда/с — переработка в штабе (или в форпосте, если штаба нет)
   PT: 1.6,          // руда/с — за каждую захваченную точку
   CORE: 5,          // руда/с — за Ядро
-  EXT: 1.1,         // руда/с — экстрактор на жиле
+  EXT: 1.0,         // руда/с — экстрактор на жиле (×«Масштаб боёв»: обычный 60/мин, крупный 108/мин)
   DRILL: 0.35,      // +35% к экстракторам за уровень исследования «Глубокое бурение»
   TICK: 5,          // раз в сколько секунд показывать «+N» над источниками
   POWER: [0, 1, 1.7, 2.2, 2.5],   // скорость стройки: 1 инженер 100%, 2 — 170%, 3 — 220%, 4+ — 250% (потолок, как Build Power в BAR)
@@ -106,7 +106,9 @@ function builderSpawn(team){
   return op ? surfacePoint(norm(siteExit(op, 3)), ECO.HOVER) : null;
 }
 function builderTarget(j){ return j.cls === 'hq' ? mul(BASES[j.team], RM + 2) : j.pos; }
-function builderTargetR(j){ return j.cls === 'hq' ? 17 : j.cls === 'tank' ? 2.6 : j.cls === 'bld' ? j.rad : 1.5; }
+// радиус, на котором инженер работает у объекта (по габаритам модели — чтобы не залезать на стройку)
+const WORK_R = { turret: 1.6, aa: 2.2, outpost: 6.8, factory: 11.6, hub: 7.2, airdock: 8.8, extractor: 2.6 };
+function builderTargetR(j){ return j.cls === 'hq' ? 17 : j.cls === 'tank' ? 2.6 : j.cls === 'bld' ? (WORK_R[j.type] || j.rad) : 1.5; }
 function builderIdle(b){ return !b.order || b.order === 'idle' || b.order === 'hold'; }
 function builderBusy(b){ return (b.order === 'build' || b.order === 'repair') && b.site; }
 function repairable(e){
@@ -252,8 +254,8 @@ function builderMove(b, goal, dt, face){
         if (dx * dx + dy * dy + dz * dz < r * r){ const dm = sqrt(dx * dx + dy * dy + dz * dz); w = add(w, mul(tangent([dx, dy, dz], Up), (r - dm) / r * 1.6)); }
       }
       for (const x of S.buildings){
-        if (!x.alive || x === b.site) continue;
-        const r = x.rad + 2.5, dm = dist(b.pos, x.pos);
+        if (!x.alive) continue;
+        const r = builderTargetR(x) + (x === b.site ? 0.4 : 1.8), dm = dist(b.pos, x.pos);
         if (dm < r) w = add(w, mul(tangent(sub(b.pos, x.pos), Up), (r - dm) / r * 1.6));
       }
       w = norm(w);
@@ -667,10 +669,11 @@ function drawEcoWorld(rts){
   octx.globalAlpha = 1;
   if (rts){
     // подписи выбранных инженеров: что делают
+    const said = new Set();
     for (const b of selBuilders()){
       const s = project(add(b.pos, mul(b.up, 1.8))); if (!s || !facing(b.pos)) continue;
-      octx.font = '600 10px "Exo 2", sans-serif'; octx.fillStyle = '#9fdcff';
-      octx.fillText(builderDoing(b), s[0], s[1] - 6);
+      const key = builderBusy(b) ? b.site : b;
+      if (!said.has(key) && S.rts.h < 90){ said.add(key); octx.font = '600 10px "Exo 2", sans-serif'; octx.fillStyle = '#9fdcff'; octx.fillText(builderDoing(b), s[0], s[1] - 6); }
       if (builderBusy(b)){ const q = project(builderTarget(b.site)); if (q){ octx.strokeStyle = 'rgba(127,212,255,.5)'; octx.setLineDash([3, 4]); octx.beginPath(); octx.moveTo(s[0], s[1]); octx.lineTo(q[0], q[1]); octx.stroke(); octx.setLineDash([]); } }
     }
     if (S.place) drawPlaceGhost();

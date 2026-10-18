@@ -218,7 +218,7 @@ function objInfo(e){
     }
     case 'tank': { const o = sub(e.pos, mul(e.up, 1.5)); return { type: 5, origin: o, bc: add(o, mul(e.up, 1.6)), br: 4.3, sc: add(o, mul(e.up, 1.3)), sr: 1.6, thrust: e.overT > 0 ? 1 : 0 }; }
     case 'drone': return { type: 4, origin: e.pos, bc: e.pos, br: 1.5, sc: e.pos, sr: 0.5, thrust: 1 };
-    case 'builder': { const o = sub(e.pos, mul(e.up, ECO.HOVER)); return { type: 3, origin: o, bc: add(o, mul(e.up, 0.62)), br: 1.3, sc: add(o, mul(e.up, 0.55)), sr: 0.4, thrust: e.work || 0 }; }
+    case 'builder': { const o = sub(e.pos, mul(e.up, ECO.HOVER)); return { type: 3, origin: o, bc: add(o, mul(e.up, 0.9)), br: 1.9, sc: add(o, mul(e.up, 0.8)), sr: 0.6, thrust: e.work || 0 }; }
     case 'bld': {
       const T = BTYPES[e.type];
       return { type: T.code, origin: e.pos, bc: add(e.pos, mul(e.up, BLD_BC[e.type])), br: BLD_BR[e.type],

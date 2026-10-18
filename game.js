@@ -84,7 +84,7 @@ const BTYPES = {
              d: ['Небесный десант и «Ранцы II».', 'Sky troopers and "Jetpacks II".', 'Lính đổ bộ và “Ba lô phản lực II”.'] },
   // v6: рудный экстрактор — ставится инженером только на рудную жилу (rts_build.js)
   extractor: { n: ['Экстрактор', 'Extractor', 'Máy khai thác'], cost: 80, time: 14, hp: 900, rad: 2.4, bound: 4.6, H: 4.9, code: 12, vein: true,
-             d: ['Добывает руду на жиле: +66 руды/мин. Только на светящихся кристаллах жилы.', 'Mines ore on a vein: +66 ore/min. Only on the glowing crystals of a vein.', 'Khai thác quặng trên mạch: +66 quặng/phút.'] },
+             d: ['Добывает руду на рудной жиле (светящиеся кристаллы): +60 руды/мин × масштаб боёв.', 'Mines ore on a vein (glowing crystals): +60 ore/min × battle scale.', 'Khai thác quặng trên mạch: +60 quặng/phút × quy mô.'] },
 };
 const PRODUCTS = {
   squad: { n: ['Штурмовой отряд', 'Assault squad', 'Đội xung kích'], cost: 100, time: 9,  at: ['hq', 'outpost'], icon: '◆' },
@@ -432,7 +432,7 @@ function hitRadius(e){
   if (e.cls === 'inf') return e.crouch ? 0.6 : 0.8;
   if (e.cls === 'tank') return 2.4;
   if (e.cls === 'drone') return 1.1;
-  if (e.cls === 'builder') return 0.7;
+  if (e.cls === 'builder') return 0.9;
   if (e.cls === 'hq') return 14;
   return e.rad;
 }
