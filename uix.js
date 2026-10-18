@@ -27,6 +27,8 @@ function uixInfo(id){
   if (k === 'prod' && PRODUCTS[v]){ const P = PRODUCTS[v]; return { title: pname(v), icon: P.icon, desc: uixProdDesc(v), cost: pCost(0, v), time: pTime(0, v) }; }
   if (k === 'power' && POWERS[v]){ const P = POWERS[v]; return { title: N2(P.n), icon: P.icon, desc: N2(P.d), cmd: P.cost, time: null }; }
   if (k === 'abil'){ const a = Object.values(ABIL).find(A => A.key === v); return { title: a ? N2(a.n) : v, icon: a ? a.icon : '?', desc: a ? N2(a.d) : '', key: v }; }
+  if (id === 'cmd:move') return { title: tr('Идти с боем', 'Attack-move'), icon: '➤', desc: tr('Потом кликни (тапни) по земле: идут и отстреливаются по пути. По врагу — атаковать его. То же самое — ПКМ.', 'Then click (tap) the ground: they move and fight on the way. On an enemy — attack it. Same as RMB.'), key: tr('ПКМ', 'RMB') };
+  if (id === 'cmd:rush') return { title: tr('Бегом', 'Run'), icon: '»', desc: tr('Потом кликни (тапни) по земле: бегут, не ввязываясь в бой. То же — двойной ПКМ.', 'Then click (tap) the ground: they run without engaging. Same as double RMB.'), key: tr('2×ПКМ', '2×RMB') };
   if (id === 'cmd:hold') return { title: tr('Удерживать позицию', 'Hold position'), icon: '⛊', desc: tr('Выделенные стоят на месте и отстреливаются.', 'Selected groups stay put and return fire.'), key: 'KeyH' };
   if (id === 'cmd:retreat') return { title: tr('Отступить', 'Retreat'), icon: '↩', desc: tr('Бегом назад к штабу (или ближайшему форпосту), не ввязываясь в бой.', 'Run back to the HQ (or nearest outpost) without engaging.'), key: 'Shift+H' };
   if (id === 'cmd:sky') return { title: tr('Десант через купол', 'Sky assault'), icon: '⇑', desc: tr('Отряды взлетают на ранцах, проходят портал купола и высаживаются у врага.', 'Squads jet up through the dome portal and land at the enemy.'), key: 'KeyY' };
@@ -147,7 +149,7 @@ function uixReasonDefault(id){
     if (!sq.some(s => s.elite || T.jet2)) return { ok: false, reason: tr('Нужен «Небесный десант» или исследование «Ранцы II»', 'Needs Sky troopers or the "Jetpacks II" research'), fix: ['prod:jet2', 'prod:elite'] };
     return { ok: true };
   }
-  if (id === 'cmd:hold' || id === 'cmd:retreat') return selGroups().length ? { ok: true } : { ok: false, reason: tr('Сначала выдели войска', 'Select troops first') };
+  if (id === 'cmd:hold' || id === 'cmd:retreat' || id === 'cmd:move' || id === 'cmd:rush') return selGroups().length ? { ok: true } : { ok: false, reason: tr('Сначала выдели войска', 'Select troops first') };
   if (id === 'possess'){
     const any = S.units.some(u => u.alive && u.team === 0) || S.vehicles.some(v2 => v2.alive && v2.team === 0) || S.drones.some(d => d.alive && d.team === 0);
     return any ? { ok: true } : { ok: false, reason: tr('Нет живых роботов', 'No robots alive'), fix: 'prod:squad' };
@@ -195,6 +197,7 @@ function uixRun(id, el){
   else if (id === 'cmd:hold') orderHold();
   else if (id === 'cmd:retreat') orderRetreat();
   else if (id === 'cmd:sky') orderSkySel();
+  else if (id === 'cmd:move' || id === 'cmd:rush') startOrderCast(id === 'cmd:rush');
   else if (id === 'possess') enterFPS();
   return true;
 }
@@ -279,7 +282,7 @@ function uixTipRender(){
   if (!T || !T.el.isConnected || S.attract || MENU.isOpen() || (UIX.pop && T.el === UIX.pop.anchor)){ el.style.display = 'none'; return; }
   let h;
   if (T.el.dataset.ux){
-    const x = uiExplain(T.el.dataset.ux);
+    const x = Object.assign({}, uiExplain(T.el.dataset.ux)); if (!x.key && T.el.dataset.hk) x.key = T.el.dataset.hk;
     const meta = [x.cost ? `${ORE_I}${x.cost}` : '', x.cmd ? `${x.cmd} ${tr('КО', 'CP')}` : '', x.time ? `⏱ ${fmtDur(x.time)}` : '', x.key ? `<kbd>${x.key.startsWith('Shift') ? x.key : keyLabel(x.key)}</kbd>` : ''].filter(Boolean).join(' ');
     h = `<b>${x.icon} ${uixEsc(x.title)}</b>${meta ? `<span class="m">${meta}</span>` : ''}<p>${uixEsc(x.desc || '')}</p>` +
       (x.ok ? '' : `<p class="why">⛔ ${uixEsc(x.reason)}${x.eta ? ` · ${fmtDur(x.eta)}` : ''}</p><p class="dt">${tr('Клик — подробнее и как исправить', 'Click — details and how to fix')}</p>`);

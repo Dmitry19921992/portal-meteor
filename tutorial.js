@@ -24,12 +24,13 @@ const TUT = {
         check: () => { const c = me(); return c && S.cps.some(cp => !cp.core && cp.owner === 0 && dist(cp.pos, c.pos) < 40); } },
       { text: tr('Твой отряд прикрывает тебя: слева их портреты и здоровье. Если отряд отстаёт — бойцы попросят подождать.', 'Your squad has your back: their portraits and health are on the left. If they fall behind, they will ask you to wait.', 'Đội của bạn yểm trợ bạn: chân dung và máu của họ ở bên trái. Nếu bị tụt lại, họ sẽ nhờ bạn chờ.'),
         kbd: [], time: 7 },
-      { text: tr('X — мгновенно вселиться в другой отряд или танк, ближе всего к бою. Попробуй.', 'X — instantly jump into another squad or tank, closest to the fight. Try it.', 'X — nhập ngay vào đội hoặc xe tăng khác, gần trận đánh nhất. Thử đi.'),
+      { text: tr(`${bk('switch')} — быстрая смена бойца, не выходя из боя: прыжок в отряд или танк ближе всего к схватке. Попробуй.`, `${bk('switch')} — quick unit switch without leaving the battle: jump into the squad or tank closest to the fight. Try it.`, `${bk('switch')} — đổi nhanh mà không rời trận: nhập vào đội hoặc xe tăng gần trận đánh nhất. Thử đi.`),
         kbd: [bk('switch')], check: () => used('switch') },
       { text: tr('Рядом с танком или турелью нажми E, чтобы управлять ими. Или просто иди дальше.', 'Next to a tank or turret press E to take control. Or just carry on.', 'Cạnh xe tăng hoặc tháp súng, nhấn E để điều khiển. Hoặc cứ tiếp tục.'),
         kbd: [bk('interact')], time: 8 },
-      { text: tr('Теперь стратегия. Нажми Tab — вид сверху на поле боя.', 'Now strategy. Press Tab — a top view of the battlefield.', 'Giờ là chiến thuật. Nhấn Tab — nhìn chiến trường từ trên cao.'),
-        kbd: [bk('rts')], check: () => S.mode === 'rts' },
+      { text: TOUCH.on ? tr('Теперь стратегия. Нажми «◩ Стратегия» справа вверху — вид сверху на поле боя.', 'Now strategy. Tap "◩ Strategy" at the top right — a top view of the battlefield.', 'Giờ là chiến thuật. Nhấn “◩ Chiến thuật” góc trên — nhìn chiến trường từ trên cao.')
+          : tr(`Теперь стратегия. Нажми ${bk('rts')} (или «◩ Стратегия» слева вверху) — вид сверху на поле боя.`, `Now strategy. Press ${bk('rts')} (or "◩ Strategy" at the top left) — a top view of the battlefield.`, `Giờ là chiến thuật. Nhấn ${bk('rts')} — nhìn chiến trường từ trên cao.`),
+        kbd: TOUCH.on ? [] : [bk('rts')], check: () => S.mode === 'rts' },
       { text: tr('Камера: WASD или края экрана, колесо — высота, Q/E — поворот. Отлети в сторону.', 'Camera: WASD or screen edges, wheel — height, Q/E — rotate. Move away a bit.', 'Camera: WASD hoặc mép màn hình, con lăn — độ cao, Q/E — xoay. Di chuyển ra xa một chút.'),
         kbd: ['W', 'A', 'S', 'D'], init: () => { this.ref = S.rts.dir.slice(); }, check: () => S.mode === 'rts' && surfDist(S.rts.dir, this.ref) > 40 },
       { text: tr('ЛКМ — выделить отряд (или рамкой — несколько). Выдели кого-нибудь из своих.', 'LMB — select a squad (or drag a box for several). Select some of your troops.', 'Chuột trái — chọn đội (hoặc kéo khung để chọn nhiều). Chọn vài đơn vị của bạn.'),
@@ -40,8 +41,9 @@ const TUT = {
         kbd: [], init: () => { this.ref = S.buildings.filter(b => b.team === 0 && b.type === 'turret').length; }, check: () => S.buildings.filter(b => b.team === 0 && b.type === 'turret').length > this.ref, skipAfter: 90 },
       { text: tr('Вкладка «Войска» — закажи штурмовой отряд. Новые войска слушаются тебя, пока ты в стратегии.', '"Units" tab — order an assault squad. New troops obey you while you are in strategy.', 'Thẻ “Quân” — gọi một đội xung kích. Quân mới nghe lệnh bạn khi bạn ở chế độ chiến thuật.'),
         kbd: [], check: () => used('produce'), skipAfter: 60 },
-      { text: tr('Enter или Tab — обратно в бой. Пока ты стреляешь, ИИ-стратег командует армией сам.', 'Enter or Tab — back to battle. While you shoot, the AI strategist runs the army.', 'Enter hoặc Tab — trở lại trận. Khi bạn bắn, chiến lược gia AI tự chỉ huy quân đội.'),
-        kbd: ['Enter'], check: () => S.mode === 'fps' },
+      { text: TOUCH.on ? tr('Выдели отряд и нажми зелёную кнопку «▶ Вселиться» — снова в бой за этого бойца. Пока ты стреляешь, ИИ-стратег командует армией сам.', 'Select a squad and tap the green "▶ Possess" button — back into battle as that trooper. While you shoot, the AI strategist runs the army.', 'Chọn một đội và nhấn nút xanh “▶ Nhập vai” — trở lại trận. Khi bạn bắn, chiến lược gia AI tự chỉ huy quân đội.')
+          : tr(`Выдели отряд и нажми ${bk('rts')} или зелёную «▶ Вселиться» — снова в бой за этого бойца (без выделения — к своему). Пока ты стреляешь, ИИ-стратег командует армией сам.`, `Select a squad and press ${bk('rts')} or the green "▶ Possess" — back into battle as that trooper (nothing selected — your own). While you shoot, the AI strategist runs the army.`, `Chọn một đội và nhấn ${bk('rts')} hoặc “▶ Nhập vai” — trở lại trận. Khi bạn bắn, chiến lược gia AI tự chỉ huy quân đội.`),
+        kbd: TOUCH.on ? [] : [bk('rts')], check: () => S.mode === 'fps' },
       { text: tr('Обучение пройдено! Рой начинает наступление. Удачи, боец!', 'Training complete! The Swarm is launching its offensive. Good luck, trooper!', 'Hoàn thành huấn luyện! Bầy Đàn bắt đầu tấn công. Chúc may mắn, chiến binh!'),
         kbd: [], time: 6, final: true },
     ];

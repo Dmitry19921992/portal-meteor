@@ -344,8 +344,8 @@ function helpFPS(c){
     row(bk('rocket'), tr('ракета', 'rocket', 'tên lửa')); row(bk('grenade'), tr('граната', 'grenade', 'lựu đạn')); row(bk('reflex'), tr('рефлекс', 'reflex', 'phản xạ')); row(bk('strike'), tr('артудар', 'strike', 'pháo kích'));
     row(`${bk('w1')} ${bk('w2')} ${bk('w3')}`, tr('оружие', 'weapons', 'vũ khí')); row(bk('interact'), tr('танк / турель', 'tank / turret', 'xe tăng / tháp súng'));
   }
-  row(bk('switch'), tr('другой отряд или техника (Shift — назад)', 'another squad or vehicle (Shift — back)', 'đội hoặc xe khác (Shift — lùi lại)'));
-  row(bk('rts'), tr('стратегия', 'strategy', 'chiến thuật')); row(bk('third'), tr('3-е лицо', '3rd person', 'góc nhìn 3')); row(bk('follow'), tr('ведомый', 'follower', 'đi theo')); row(bk('ai'), tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI'));
+  row(bk('switch'), tr('быстрая смена бойца, не выходя из боя (Shift — назад)', 'quick unit switch, staying in battle (Shift — back)', 'đổi nhanh đơn vị (Shift — lùi lại)'));
+  row(bk('rts'), tr('стратегия (там та же клавиша — вселиться в выделенного)', 'strategy (the same key there possesses the selection)', 'chiến thuật')); row(bk('third'), tr('3-е лицо', '3rd person', 'góc nhìn 3')); row(bk('follow'), tr('ведомый', 'follower', 'đi theo')); row(bk('ai'), tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI'));
   row('M', tr('звук', 'sound', 'âm thanh')); row('O', tr('качество', 'quality', 'chất lượng')); row('Esc', tr('меню', 'menu', 'menu'));
   return L.join('<br>');
 }

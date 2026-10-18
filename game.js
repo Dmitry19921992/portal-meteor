@@ -874,8 +874,8 @@ function newMatch(opts){
     takeControl(first);
     if (S.endless) feed(tr('Бесконечный бой: снеси штаб Роя и все его ключевые здания.', 'Endless war: destroy the Swarm HQ and all its key buildings.', 'Chiến tranh bất tận: phá sở chỉ huy Bầy Đàn và mọi công trình then chốt.'));
     else feed(tr('Матч: 60 минут. Снеси штаб Роя и все его ключевые здания — или держи больше точек к концу.', 'Match: 60 minutes. Destroy the Swarm HQ and all its key buildings — or hold more points at the end.', 'Trận đấu: 60 phút. Phá sở chỉ huy Bầy Đàn và mọi công trình then chốt — hoặc giữ nhiều điểm hơn khi hết giờ.'));
-    if (typeof TOUCH !== 'undefined' && TOUCH.on) feed(tr('«Карта» — стратегия. X — другой отряд или техника.', '"Map" — strategy. X — another squad or vehicle.', '“Bản đồ” — chiến thuật. X — đội hoặc xe khác.'), '#9cf');
-    else feed(tr('Tab — стратегия. X — переключиться на другой отряд или технику.', 'Tab — strategy. X — switch to another squad or vehicle.', 'Tab — chiến thuật. X — chuyển sang đội hoặc xe khác.'), '#9cf');
+    if (typeof TOUCH !== 'undefined' && TOUCH.on) feed(tr('«◩ Стратегия» — вид сверху, там «▶ Вселиться» — обратно в бой. X — быстро сменить бойца.', '"◩ Strategy" — top view; "▶ Possess" there — back to battle. X — quick unit switch.', '“◩ Chiến thuật” — nhìn từ trên; “▶ Nhập vai” — trở lại trận. X — đổi nhanh.'), '#9cf');
+    else feed(tr('Tab — стратегия, в стратегии Tab — вселиться в выделенного. X — быстро сменить бойца.', 'Tab — strategy; in strategy Tab possesses the selected unit. X — quick unit switch.', 'Tab — chiến thuật; trong chiến thuật Tab — nhập vai đơn vị đã chọn. X — đổi nhanh.'), '#9cf');
   } else {
     S.mode = 'fps'; S.me = null;
   }

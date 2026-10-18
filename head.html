@@ -232,8 +232,10 @@
   i.ore{display:inline-block;width:8px;height:8px;margin-right:3px;background:var(--ore);transform:rotate(45deg);box-shadow:0 0 4px rgba(255,210,122,.6);vertical-align:1px}
   #side .item i.ore,#card i.ore,#uxpop i.ore,#uxtip i.ore{display:inline-block;position:static;font-size:0;width:8px;height:8px;margin-right:4px}
   body.rtsm #feed{right:calc(var(--sideW) + 14px);top:84px;bottom:auto} body.rtsm #help{right:calc(var(--sideW) + 14px)}
-  #card .ab i{margin-top:9px}
-  body.rtsm #hint{bottom:auto;top:118px}
+  #card .ab > i{margin-top:9px}
+  body.rtsm #hint{top:auto;bottom:176px}
+  body.rtsm #feed > *:nth-last-child(n+5){display:none}
+  #card .ab.prod > i{margin-top:3px} #card .ab.prod b{font-size:10px;line-height:1.05;max-height:22px;margin:0}
   #side{width:var(--sideW);top:64px}
   #side .tabs{display:flex;border-bottom:1px solid var(--line)}
   #side .tabs button{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;background:none;border:none;border-bottom:3px solid transparent;color:#a59d84;font:600 11px "Exo 2";padding:6px 2px 4px;cursor:pointer}
@@ -243,14 +245,14 @@
   #side .tabs button em{position:absolute;right:4px;top:3px;font-style:normal;font-size:10px;min-width:15px;height:15px;line-height:15px;border-radius:8px;background:var(--ok);color:#111;font-weight:700}
   #side .tabs button em:empty{display:none}
   #side .items{padding:6px 8px 6px 6px;gap:6px;scrollbar-width:thin;scrollbar-color:rgba(214,198,154,.35) transparent}
-  #side .item{height:86px;padding:0;background:linear-gradient(180deg,rgba(52,49,38,.82),rgba(30,29,24,.86));border:1px solid rgba(214,198,154,.42);border-radius:3px;transition:border-color .12s,background .12s}
+  #side .item{height:96px;padding:0;background:linear-gradient(180deg,rgba(52,49,38,.82),rgba(30,29,24,.86));border:1px solid rgba(214,198,154,.42);border-radius:3px;transition:border-color .12s,background .12s}
   #side .item:hover{border-color:var(--sand);background:linear-gradient(180deg,rgba(80,73,50,.9),rgba(40,38,30,.9))}
   #side .item:active{transform:translateY(1px)}
   #side .item > i{position:absolute;left:7px;top:5px;font-size:25px;line-height:1.1;color:var(--sand)}
   #side .item > kbd{position:absolute;right:4px;top:4px;font-size:10px}
-  #side .item b{position:absolute;left:7px;right:5px;top:35px;font-size:12px;line-height:1.15;max-height:28px;overflow:hidden}
-  #side .item .cost{left:7px;right:auto;top:auto;bottom:17px;font-size:12px;font-weight:700;color:var(--ore)}
-  #side .item .tm{position:absolute;right:6px;bottom:17px;font-size:10.5px;color:#9a937e}
+  #side .item b{position:absolute;left:7px;right:5px;top:34px;font-size:12px;line-height:14px;max-height:28px;overflow:hidden}
+  #side .item .cost{left:7px;right:auto;top:auto;bottom:19px;font-size:12px;font-weight:700;color:var(--ore)}
+  #side .item .tm{position:absolute;right:6px;bottom:19px;font-size:10.5px;color:#9a937e}
   #side .item .q{right:6px;top:22px;bottom:auto;font-size:13px;color:#fff;text-shadow:0 0 4px #000}
   #side .item .st{position:absolute;left:0;right:0;bottom:3px;padding:0 6px;font-size:10.5px;line-height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
   #side .item .st.bad{color:var(--bad)} #side .item .st.run{color:var(--ok)} #side .item .st.wait{color:var(--amber)}
@@ -283,7 +285,7 @@
   #card .cmds{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
   #card .cmds:empty{display:none}
   #card .ab{width:70px;height:70px;border-radius:3px;background:linear-gradient(180deg,rgba(52,49,38,.85),rgba(28,27,22,.88));border:1px solid rgba(214,198,154,.45);padding:3px 2px 0}
-  #card .ab i{font-size:24px;line-height:1.15}
+  #card .ab > i{font-size:24px;line-height:1.15}
   #card .ab b{font-size:10.5px;line-height:1.1;max-height:24px;overflow:hidden}
   #card .ab kbd{font-size:9.5px}
   #card .ab em{left:0;right:0;top:20px;text-align:center;font:400 20px "Russo One";text-shadow:0 0 4px #000}
@@ -306,6 +308,12 @@
   #card .poss.off{filter:grayscale(1);opacity:.6}
   #card .note{width:100%;text-align:center;font-style:normal;font-size:11px;color:#9a937e;order:5}
   @media (max-width:1500px){ #card .cmds{order:-1;width:100%} }
+  @media (max-width:1400px){ #card .ab{width:60px;height:60px} #card .ab > i{font-size:21px;margin-top:7px} #card .ab b{font-size:9.5px} }
+  @media (max-width:1100px){ :root{--sideW:224px} #card{gap:4px} #card .ab{width:48px;height:54px;padding:2px 1px 0} #card .ab > i{font-size:18px;margin-top:5px} #card .ab b{font-size:9px} #card .ab:not(.prod) kbd{display:none} #card .inf{min-width:0;max-width:250px} #card .poss{width:122px;padding-left:34px} #card .poss b{font-size:15px} }
+  #side .sfoot{flex-direction:row} #side .sfoot #aiBtn{flex:1} #side .sfoot #helpBtn{width:46px}
+  body.rtsm #help:not(.open){display:none !important} body.rtsm #help.open{top:84px;z-index:5}
+  @media (max-width:1100px){ #card .ab.prod b{display:none} #card .ab.prod > i{margin-top:9px;font-size:20px} }
+  body.touch #card .ab.prod b{display:none} body.touch #card .ab.prod > i{margin-top:8px}
   /* полоса «в работе» */
   #pstrip{position:fixed;left:12px;top:62px;display:none;gap:4px;align-items:center;max-width:calc(100vw - var(--sideW) - 40px);flex-wrap:wrap;pointer-events:auto;z-index:4}
   #pstrip small{font-size:9.5px;letter-spacing:.16em;color:var(--sand2);text-shadow:0 0 3px #000;writing-mode:vertical-rl;transform:rotate(180deg);height:44px;text-align:center}
@@ -358,13 +366,20 @@
   body.touch #side .shint{display:none}
   body.touch #card{left:244px;right:calc(var(--sideW) + 6px);bottom:4px;gap:4px}
   body.touch #card .cmds{order:-1;width:100%}
-  body.touch #card .ab{width:56px;height:56px} body.touch #card .ab i{font-size:20px} body.touch #card .ab b{font-size:9.5px}
+  body.touch #side kbd{display:none} body.touch #card .cmds{gap:3px}
+  body.touch.rtsm #hint{top:auto;bottom:128px;max-width:46vw;font-size:11px;padding:4px 10px}
+  body.touch #card .ab{width:47px;height:52px;padding:2px 1px 0} body.touch #card .ab > i{font-size:18px;margin-top:4px} body.touch #card .ab b{font-size:9px}
   body.touch #card .inf{min-width:0;max-width:300px;min-height:60px;padding:4px 8px 4px 4px} body.touch #card .pt img,body.touch #card .glyph{width:46px;height:46px;font-size:28px}
   body.touch #card .tx b{font-size:13px} body.touch #card .tx small{font-size:11px}
   body.touch #card .poss{width:124px;height:60px;padding-left:34px} body.touch #card .poss b{font-size:15px}
   body.touch #card .note{display:none}
   body.touch #pstrip{top:44px;max-width:calc(100vw - 500px)} body.touch #pstrip .pc{width:38px;height:38px} body.touch #pstrip .pc i{font-size:15px;line-height:20px} body.touch #pstrip small{display:none}
   body.touch #uxtoasts{bottom:136px;max-width:240px} body.touch #uxtoasts .tst{font-size:11.5px;padding:3px 8px}
+  body.touch.rtsm #feed{top:88px;bottom:auto;left:10px;right:auto;transform:none;text-align:left;max-width:34vw}
+  body.touch.rtsm #feed > *:nth-last-child(n+3){display:none}
+  body.touch #card .ab.prod kbd{display:block}
+  #touch .tf.rts [data-t="order"]{display:none}
+  #card .ab.on{border-color:var(--amber);box-shadow:0 0 10px rgba(255,190,90,.55)}
   body.touch #uxpop{width:290px} body.touch #uxpop .fx button{min-height:40px}
 </style>
 </head>

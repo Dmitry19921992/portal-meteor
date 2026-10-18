@@ -320,8 +320,16 @@ function startPower(k){
   S.cast = { kind: 'power', key: k }; S.place = null;
   feed(tr(`${N2(POWERS[k].n)}: ЛКМ — цель, ПКМ — отмена`, `${N2(POWERS[k].n)}: LMB — target, RMB — cancel`, `${N2(POWERS[k].n)}: chuột trái — mục tiêu, chuột phải — hủy`), '#9cf');
 }
+// кнопки «Идти» / «Бегом» в карточке: следующий клик (тап) по земле или врагу — приказ
+function startOrderCast(rush){
+  if (!selGroups().length){ uiExplainShow(rush ? 'cmd:rush' : 'cmd:move'); return; }
+  if (S.cast && S.cast.kind === 'order' && !!S.cast.rush === !!rush){ S.cast = null; return; }
+  S.cast = { kind: 'order', rush: !!rush }; S.place = null;
+  feed(TOUCH.on ? tr('Тапни по земле или врагу', 'Tap the ground or an enemy') : tr('Кликни по земле или врагу (ПКМ — отмена)', 'Click the ground or an enemy (RMB — cancel)'), '#9cf');
+}
 function tryCast(x, y, keep){
   if (!S.cast) return;
+  if (S.cast.kind === 'order'){ const r = S.cast.rush; S.cast = null; orderAt(x, y, false, r); return; }
   const p = pickGround(x, y); if (!p) return;
   const C = S.cast;
   if (C.kind === 'power'){
@@ -340,7 +348,7 @@ function tryCast(x, y, keep){
   else { feed(tr('Способность не готова', 'Ability not ready', 'Kỹ năng chưa sẵn sàng'), '#f88'); emit('ui', { kind: 'deny' }); }
   if (!keep) S.cast = null;
 }
-function orderAt(x, y, queue){
+function orderAt(x, y, queue, forceRush){
   const sel = selGroups();
   const p = pickGround(x, y);
   if (!sel.length){
@@ -360,7 +368,7 @@ function orderAt(x, y, queue){
   if (!p) return;
   // двойной ПКМ — бегом, не ввязываясь в бой; одиночный — движение с атакой по пути
   const now = performance.now();
-  const rush = S.lastRmb && now - S.lastRmb.t < 380 && hypot(S.lastRmb.x - x, S.lastRmb.y - y) < 30;
+  const rush = forceRush || S.lastRmb && now - S.lastRmb.t < 380 && hypot(S.lastRmb.x - x, S.lastRmb.y - y) < 30;
   S.lastRmb = { t: now, x, y };
   let target = p, order = 'move', cp = null;
   for (const c of S.cps) if (!c.core && dist(c.pos, p) < 25){ target = c.pos; order = 'cap'; cp = c; }
@@ -448,7 +456,7 @@ function buildSidebar(){
   const ore = c => `<i class="ore"></i>${c}`;
   const mk = (id, icon, name, cost, time, fn, extra) => {
     const b = document.createElement('button'); b.className = 'item'; b.dataset.ux = id;
-    const hk = SLOT_KEYS[SIDE.btns.length];
+    const hk = SLOT_KEYS[SIDE.btns.length]; if (hk) b.dataset.hk = hk;
     b.innerHTML = `<i>${icon}</i>${hk ? `<kbd>${keyLabel(hk)}</kbd>` : ''}<b>${name}</b><span class="cost">${cost}</span>${time ? `<span class="tm">${time}</span>` : ''}<span class="q"></span><span class="st"></span><span class="bar"><s></s></span>`;
     b.onclick = e => { e.stopPropagation(); AU.init(); fn(); };
     b.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); if (extra && extra.cancel) extra.cancel(); };
@@ -471,8 +479,9 @@ function buildSidebar(){
   hint.innerHTML = SIDE.tab === 'units' || SIDE.tab === 'tech' ? tr('ПКМ по кнопке — отменить последний заказ', 'RMB on a button — cancel the last order') : SIDE.tab === 'build' ? tr('Выбери здание и кликни место на своей базе', 'Pick a building, then click a spot on your base') : tr('Выбери удар и кликни цель на карте', 'Pick a power, then click the target');
   list.appendChild(hint);
   const foot = document.createElement('div'); foot.className = 'sfoot';
-  foot.innerHTML = `<button id="aiBtn"></button>`;
+  foot.innerHTML = `<button id="aiBtn"></button><button id="helpBtn" data-tip="${uixEsc(`<b>${tr('Управление', 'Controls')}</b><p>${tr('Все клавиши стратегии', 'All strategy keys')}</p>`)}">?${TOUCH.on ? '' : ' <kbd>/</kbd>'}</button>`;
   el.appendChild(foot);
+  $('helpBtn').onclick = e => { e.stopPropagation(); S.showHelp = !S.showHelp; updateModeUI(); };
   $('aiBtn').onclick = e => { e.stopPropagation(); toggleAI(); updateSidebar(); };
   $('aiBtn').dataset.tip = `<b>${tr('ИИ-стратег', 'AI strategist')}</b><p>${tr('Включён — сам строит базу, заказывает войска и раздаёт приказы (твои приказы важнее). Выключен — всё делаешь ты.', 'On — builds the base, orders troops and gives orders by itself (your orders take priority). Off — you do everything.')}</p>`;
   updateSidebar();
@@ -555,6 +564,8 @@ function updateCard(){
     }
     h += '</div><div class="cmds">';
     if (sel.length){
+      h += `<button class="ab" data-ux="cmd:move" data-act="move"><i>➤</i><b>${tr('Идти', 'Move')}</b><kbd>${tr('ПКМ', 'RMB')}</kbd></button>`;
+      h += `<button class="ab" data-ux="cmd:rush" data-act="rush"><i>»</i><b>${tr('Бегом', 'Run')}</b><kbd>2×${tr('ПКМ', 'RMB')}</kbd></button>`;
       for (const code of ['KeyR', 'KeyF', 'KeyG', 'KeyT']){ const k = abil[code]; if (!k) continue; const A = ABIL[k]; h += `<button class="ab" data-ux="abil:${code}" data-key="${code}"><i>${A.icon}</i><b>${N2(A.n)}</b><kbd>${keyLabel(code)}</kbd><em></em><s></s></button>`; }
       h += `<button class="ab" data-ux="cmd:hold" data-act="hold"><i>⛊</i><b>${tr('Стоять', 'Hold', 'Giữ')}</b><kbd>H</kbd></button>`;
       h += `<button class="ab" data-ux="cmd:retreat" data-act="retreat"><i>↩</i><b>${tr('Отступить', 'Retreat')}</b><kbd>⇧H</kbd></button>`;
@@ -564,10 +575,10 @@ function updateCard(){
     }
     h += '</div>';
     const rally = B && B.team === 0 && prods.length ? `<em class="note">${TOUCH.on ? tr('Долгий тап по земле — точка сбора', 'Long tap on the ground — rally point') : tr('ПКМ по земле — точка сбора', 'RMB on the ground — rally point')}</em>` : '';
-    h += `<button class="poss ${pt ? '' : 'back'}" data-ux="possess"><i>▶</i><b>${pt ? tr('Вселиться', 'Possess', 'Nhập vai') : tr('В бой', 'To battle', 'Vào trận')}</b><small>${pt ? uixEsc(pt.label) : tr('к своему бойцу', 'back to your unit')}</small>${TOUCH.on ? '' : `<kbd>${bk('rts')}</kbd>`}</button>` + rally;
+    h += `<button class="poss ${pt ? '' : 'back'}" data-ux="possess"><i>▶</i><b>${pt ? tr('Вселиться', 'Possess', 'Nhập vai') : tr('В бой', 'To battle', 'Vào trận')}</b><small>${pt ? uixEsc(pt.label) : tr('к своему бойцу', 'your unit')}</small>${TOUCH.on ? '' : `<kbd>${bk('rts')}</kbd>`}</button>` + rally;
     el.innerHTML = h;
     el.querySelectorAll('[data-key]').forEach(b => b.onclick = e => { e.stopPropagation(); abilityKey(b.dataset.key); });
-    el.querySelectorAll('[data-act]').forEach(b => b.onclick = e => { e.stopPropagation(); const a = b.dataset.act; if (a === 'hold') orderHold(); else if (a === 'retreat') orderRetreat(); else if (a === 'sky') orderSkySel(); });
+    el.querySelectorAll('[data-act]').forEach(b => b.onclick = e => { e.stopPropagation(); const a = b.dataset.act; if (a === 'hold') orderHold(); else if (a === 'retreat') orderRetreat(); else if (a === 'sky') orderSkySel(); else if (a === 'move' || a === 'rush') startOrderCast(a === 'rush'); });
     el.querySelectorAll('[data-prod]').forEach(b => b.onclick = e => { e.stopPropagation(); uiProduce(b.dataset.prod); });
     el.querySelectorAll('[data-q]').forEach(b => b.onclick = e => { e.stopPropagation(); if (S.selB && S.selB.queue){ cancelProduct(S.selB, +b.dataset.q); emit('ui', { kind: 'ok' }); } });
     el.querySelector('.poss').onclick = e => { e.stopPropagation(); AU.init(); const t = cardPossessTarget(); enterFPS(t ? t.e : undefined); HINTS.used('possess'); };
@@ -597,6 +608,7 @@ function cardLive(el, sel, B){
     if (s) s.style.height = cd && x.progress !== undefined ? ((1 - clamp(x.progress, 0, 1)) * 100).toFixed(0) + '%' : '0%';
     if (b.dataset.key) b.classList.toggle('cast', !!(S.cast && S.cast.code === b.dataset.key));
   });
+  el.querySelectorAll('[data-act="move"],[data-act="rush"]').forEach(b => b.classList.toggle('on', !!(S.cast && S.cast.kind === 'order' && S.cast.rush === (b.dataset.act === 'rush'))));
   const pb = el.querySelector('.poss'); if (pb) pb.classList.toggle('off', !uiExplain('possess').ok);
 }
 function updateRTSHUD(){ $('sel').textContent = ''; }
@@ -608,7 +620,9 @@ function helpRTS(){
   row(tr('ПКМ', 'RMB', 'Chuột phải'), tr('идти / захват / атаковать цель', 'move / capture / attack target', 'đi / chiếm / tấn công mục tiêu'));
   row(tr('двойной клик', 'double-click', 'nhấp đúp'), tr('вселиться', 'possess', 'nhập vai')); row('R F G T', tr('способности', 'abilities', 'kỹ năng'));
   row('H', tr('удерживать', 'hold', 'giữ')); row('Y', tr('десант через купол', 'sky assault', 'đổ bộ')); row('Ctrl+1…9 / 1…9', tr('группы', 'groups', 'nhóm')); row('Ctrl+A', tr('вся армия', 'whole army', 'toàn quân'));
-  row(tr('Пробел', 'Space', 'Space'), tr('к последней тревоге', 'jump to last alert', 'tới cảnh báo gần nhất')); row('Home', tr('к базе', 'to base', 'về căn cứ')); row('Enter / Tab', tr('в бой', 'to battle', 'vào trận')); row('I', tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI'));
+  row(tr('Пробел', 'Space', 'Space'), tr('к последней тревоге', 'jump to last alert', 'tới cảnh báo gần nhất')); row('Home', tr('к базе', 'to base', 'về căn cứ')); row(bk('rts'), tr('вселиться в выделенного (ничего не выделено — в бой)', 'possess the selection (nothing selected — to battle)', 'nhập vai đơn vị đã chọn')); row('I', tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI'));
+  row('Shift+H', tr('отступить к базе', 'retreat to base', 'rút về căn cứ')); row('Z C V B N J K L', tr('кнопки панели справа', 'right panel buttons', 'nút bảng bên phải')); row('F1…F4', tr('вкладки панели', 'panel tabs', 'thẻ bảng'));
+  row(tr('миникарта', 'minimap', 'bản đồ nhỏ'), tr('клик/перетаскивание — камера, ПКМ — приказ', 'click/drag — camera, RMB — order', 'nhấp/kéo — camera, chuột phải — lệnh'));
   return L.join('<br>');
 }
 
@@ -707,7 +721,7 @@ function drawRTSOverlay(dt){
 }
 // ---------- миникарта: два полушария (север — наша база, юг — Рой)
 const MM = { R: 62 };
-function mmCenters(){ MM.R = innerHeight < 500 ? 50 : innerHeight > 900 ? 72 : 62; const R = MM.R, y = innerHeight - 22 - R; return [[20 + R, y], [20 + R * 3 + 14, y]]; }
+function mmCenters(){ MM.R = innerHeight < 500 || innerWidth < 1100 ? 50 : innerHeight > 900 ? 72 : 62; const R = MM.R, y = innerHeight - 22 - R; return [[20 + R, y], [20 + R * 3 + 14, y]]; }
 function mmProject(p){
   const d = norm(p), C = mmCenters(), R = MM.R;
   if (d[1] >= 0) return [C[0][0] + d[0] * R, C[0][1] + d[2] * R, 0];
