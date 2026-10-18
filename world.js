@@ -290,6 +290,7 @@ function bldSDF(b, x, y, z){
     case 'hub':     d = min(sdCylY(qx, qy + 1, qz, 6.5, 1.4), hypot(qx, qy - 0.4, qz) - 3.2); break;
     case 'airdock': d = min(sdBox3(qx, qy + 1, qz, 6, 1.6, 6), sdBox3(abs(qx) - 3.2, qy - 7, qz + 3.5, 0.45, 6.5, 0.45)); break;
     case 'outpost': d = min(sdBox3(qx, qy + 0.5, qz, 4.6, 1.5, 4.6), sdBox3(qx, qy - 2.4, qz - 0.6, 3.2, 1.6, 2.8), sdCapsule(qx, qy, qz, 2.2, 3, -2, 2.2, 8.5, -2, 0.18)); break;
+    case 'extractor': d = min(sdCylY(qx, qy + 0.3, qz, 2.3, 0.5), sdCylY(qx, qy - 2.3, qz, 0.95, 2.3), sdBox3(qx - 1.55, qy - 0.55, qz, 0.55, 0.45, 0.65)); break;
     default: d = 1e9;
   }
   return max(d, qy - H);

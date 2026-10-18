@@ -68,6 +68,7 @@ function pickEntity(x, y, wantEnemy){
   for (const u of S.units) if (u.alive && (u.team === 0 || (wantEnemy && u.seen[0] > 0))) test(u, u.pos, 0.6);
   for (const v of S.vehicles) if (v.alive && (v.team === 0 || (wantEnemy && v.seen[0] > 0))) test(v, v.pos, 2.5);
   for (const d of S.drones) if (d.alive && (d.team === 0 || (wantEnemy && d.seen[0] > 0))) test(d, d.pos, 1.2);
+  for (const b of S.builders) if (b.alive && (b.team === 0 || (wantEnemy && b.seen[0] > 0))) test(b, b.pos, 0.9);
   for (const b of S.buildings) if (b.alive && (b.team === 0 || (wantEnemy && (b.known0 || b.seen[0] > 0)))) test(b, bldCenter(b), b.rad * 0.8);
   for (const h of S.hq) if (h.alive && (h.team === 0 || wantEnemy)) test(h, add(h.pos, mul(BASES[h.team], 4)), 10);
   return best;
@@ -111,8 +112,9 @@ addEventListener('mouseup', e => {
       return;
     }
     const g = groupOf(ent);
-    if (d.ctrl){ for (const o of groupsOf(0)) if (groupKind(o) === groupKind(g) && onScreen(leaderPos(o))) S.sel.add(o); return; }
+    if (d.ctrl){ for (const o of g.cls === 'builder' ? teamBuilders(0) : groupsOf(0)) if (groupKind(o) === groupKind(g) && onScreen(leaderPos(o))) S.sel.add(o); return; }
     S.sel.add(g);
+    if (dbl && g.cls === 'builder'){ for (const o of teamBuilders(0)) if (onScreen(o.pos)) S.sel.add(o); return; }   // двойной клик по инженеру — все инженеры на экране
     if (dbl){ takeControl(ent); lockMouse(); HINTS.used('possess'); }
   } else {
     const x0 = min(d.x0, d.x1), x1 = max(d.x0, d.x1), y0 = min(d.y0, d.y1), y1 = max(d.y0, d.y1);
@@ -120,6 +122,8 @@ addEventListener('mouseup', e => {
     for (const u of S.units) if (u.alive && u.team === 0 && inBox(u.pos)) S.sel.add(u.squad);
     for (const v of S.vehicles) if (v.alive && v.team === 0 && inBox(v.pos)) S.sel.add(v);
     for (const dr of S.drones) if (dr.alive && dr.team === 0 && inBox(dr.pos)) S.sel.add(dr);
+    // инженеры попадают в рамку, только если в ней нет боевых групп (как рабочие в StarCraft II)
+    if (![...S.sel].some(g => g.cls !== 'builder')) for (const b of S.builders) if (b.alive && b.team === 0 && inBox(b.pos)) S.sel.add(b);
   }
   if (S.sel.size) HINTS.used('select');
 });
@@ -135,6 +139,7 @@ function selGroups(){ return [...S.sel].filter(g => g.team === 0 && groupAlive(g
 const GTAP = { n: -1, t: 0 };
 function rtsKey(e){
   const c = e.code;
+  if (builderKey(e)) return;   // v6: стройка инженерами (rts_build.js)
   if (c.startsWith('Digit')){
     const n = +c.slice(5);
     if (e.ctrlKey){ S.groupsCtl[n] = selGroups(); feed(tr(`Группа ${n}: ${S.groupsCtl[n].length}`, `Group ${n}: ${S.groupsCtl[n].length}`, `Nhóm ${n}: ${S.groupsCtl[n].length}`), '#9cf'); HINTS.used('ctlgroup'); return; }
@@ -204,7 +209,10 @@ function tryCast(x, y, keep){
   if (!keep) S.cast = null;
 }
 function orderAt(x, y, queue){
-  const sel = selGroups();
+  let sel = selGroups();
+  // v6: инженеры — свои приказы (стройка/ремонт/идти), остальным — как обычно
+  const bsel = sel.filter(g => g.cls === 'builder');
+  if (bsel.length){ builderOrderAt(bsel, x, y, queue); sel = sel.filter(g => g.cls !== 'builder'); if (!sel.length) return; }
   const p = pickGround(x, y);
   if (!sel.length){
     // точка сбора для производящего здания
@@ -254,24 +262,24 @@ function orderSkySel(){
   if (!n){ feed(tr('Для десанта нужен «Небесный десант» или исследование «Ранцы II» (Аэродок)', 'Sky assault needs Sky troopers or the "Jetpacks II" research (Airdock)', 'Đổ bộ cần Lính đổ bộ hoặc nghiên cứu “Ba lô phản lực II” (Bến bay)'), '#f88'); emit('ui', { kind: 'deny' }); }
   else { feed(tr(`Десант через купол: ${n} отр. — сбор у штаба и взлёт`, `Sky assault: ${n} squad(s) — gathering at HQ and launching`, `Đổ bộ: ${n} đội — tập trung ở sở chỉ huy và cất cánh`), TEAM[0].css); emit('ui', { kind: 'ok' }); }
 }
-function startPlace(type){
-  const why = canBuild(0, type);
-  if (why){ feed(`${bname(type)}: ${why}`, '#f88'); emit('ui', { kind: 'deny' }); return; }
-  S.place = type; S.cast = null;
-  feed(tr(`${bname(type)}: ЛКМ — поставить, ПКМ/Esc — отмена`, `${bname(type)}: LMB — place, RMB/Esc — cancel`, `${bname(type)}: chuột trái — đặt, chuột phải/Esc — hủy`), '#9cf');
-}
+function startPlace(type){ startBuild(type); }   // v6: стройка через инженеров (rts_build.js)
 function tryPlace(x, y, keep){
   const p = pickGround(x, y); if (!p) return;
+  if (TOUCH.on){ S.placeAt = p; return; }   // телефон: тап — место, подтверждение кнопкой «Строить»
   const type = S.place;
-  const why = placeBuilding(0, type, norm(p));
+  const why = playerPlace(type, norm(p), keep);
   if (why){ feed(why, '#f88'); emit('ui', { kind: 'deny' }); return; }
-  feed(tr(`Стройка: ${bname(type)} — дроны-строители летят`, `Construction: ${bname(type)} — builder drones on the way`, `Xây dựng: ${bname(type)} — drone thợ xây đang tới`), TEAM[0].css); emit('ui', { kind: 'ok' });
+  feed(tr(`Стройка: ${bname(type)} — инженер в пути`, `Construction: ${bname(type)} — builder on the way`, `Xây dựng: ${bname(type)} — kỹ sư đang tới`), TEAM[0].css); emit('ui', { kind: 'ok' });
   HINTS.used('build');
   if (!keep || canBuild(0, type)) S.place = null;
 }
 function uiProduce(key){
   const why = produce(0, key);
-  if (why){ feed(`${pname(key)}: ${why}`, '#f88'); emit('ui', { kind: 'deny' }); }
+  if (why){
+    const r = rtsReason('produce:' + key);   // v6: причина + как исправить; «Нужно: здание» — сразу ставим его чертёж
+    feed(`${pname(key)}: ${r.reason || why}${r.fix ? ' — ' + r.fix : ''}`, '#f88'); emit('ui', { kind: 'deny' });
+    if (r.act && r.act.startsWith('build:')) startBuild(r.act.slice(6));
+  }
   else { feed(tr(`В очереди: ${pname(key)}`, `Queued: ${pname(key)}`, `Đã xếp hàng: ${pname(key)}`), TEAM[0].css); emit('ui', { kind: 'ok' }); HINTS.used('produce'); S.pOrder = S.pOrder || {}; S.pOrder[key] = (S.pOrder[key] || 0) + 1; }
 }
 function pushAlert(pos){ if (!pos) return; S.alerts.push({ pos, t: S.rtime }); if (S.alerts.length > 6) S.alerts.shift(); }
@@ -310,8 +318,7 @@ function buildSidebar(){
     SIDE.btns.push({ el: b, check, desc, extra: extra || {} });
   };
   if (SIDE.tab === 'build'){
-    const ic = { turret: '⌖', aa: '⇡', outpost: '⛫', factory: '⚙', hub: '◎', airdock: '✈' };
-    for (const k in BTYPES){ const B = BTYPES[k]; mk(ic[k], bname(k), B.cost, N2(B.d), () => startPlace(k), () => canBuild(0, k)); }
+    sidebarBuildTab(list, mk);   // v6: стройка инженерами + очередь работ (rts_build.js)
   } else if (SIDE.tab === 'units' || SIDE.tab === 'tech'){
     for (const k in PRODUCTS){
       const P = PRODUCTS[k];
@@ -324,9 +331,10 @@ function buildSidebar(){
     for (const k in POWERS){ const P = POWERS[k]; mk(P.icon, N2(P.n), P.cost + ' ' + tr('КО', 'CP', 'ĐCH'), N2(P.d), () => startPower(k), () => S.teams[0].cmd < P.cost ? tr('Мало командных очков', 'Not enough command points', 'Không đủ điểm chỉ huy') : powerLeft(0, k) > 0 ? tr(`Перезарядка ${Math.ceil(powerLeft(0, k))} с`, `Cooldown ${Math.ceil(powerLeft(0, k))} s`, `Hồi chiêu ${Math.ceil(powerLeft(0, k))} giây`) : null, { power: k }); }
   }
   const foot = document.createElement('div'); foot.className = 'sfoot';
-  foot.innerHTML = `<button id="aiBtn"></button><button id="fpsBtn">${tr('В бой', 'To battle', 'Vào trận')} <kbd>Enter</kbd></button>`;
+  foot.innerHTML = `<button id="aiBtn"></button><button id="abBtn"></button><button id="fpsBtn">${tr('В бой', 'To battle', 'Vào trận')} <kbd>Enter</kbd></button>`;
   el.appendChild(foot);
   $('aiBtn').onclick = e => { e.stopPropagation(); toggleAI(); updateSidebar(); };
+  $('abBtn').onclick = e => { e.stopPropagation(); const T = S.teams[0]; T.autoBuild = T.autoBuild === false; feed(T.autoBuild ? tr('Автостройка включена: стратег строит базу инженерами', 'Auto-build on: the strategist builds the base with builders', 'Tự xây bật') : tr('Автостройка выключена: здания строишь только ты', 'Auto-build off: only you build', 'Tự xây tắt'), '#9cf'); updateSidebar(); };
   $('fpsBtn').onclick = e => { e.stopPropagation(); enterFPS(); };
   updateSidebar();
 }
@@ -351,12 +359,14 @@ function updateSidebar(){
     }
   }
   const ai = $('aiBtn'); if (ai) ai.innerHTML = `${tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI')}: <b>${S.teams[0].ai ? tr('ВКЛ', 'ON', 'BẬT') : tr('ВЫКЛ', 'OFF', 'TẮT')}</b> <kbd>I</kbd>`;
+  const ab = $('abBtn'); if (ab){ ab.innerHTML = `${tr('Автостройка', 'Auto-build', 'Tự xây')}: <b>${S.teams[0].autoBuild !== false && S.teams[0].ai ? tr('ВКЛ', 'ON', 'BẬT') : tr('ВЫКЛ', 'OFF', 'TẮT')}</b>`; ab.title = tr('Стратег сам строит здания и экстракторы своими инженерами (когда ИИ-стратег включён). Твои приказы инженерам в стратегии — главнее.', 'The strategist builds buildings and extractors with its builders (when the AI strategist is on). Your orders to builders take priority.', 'Chiến lược gia tự xây'); }
+  updateBuildQueue();
 }
 const CARD = { sig: '' };
 function updateCard(){
   const el = $('card');
   const sel = selGroups();
-  const icon = g => isSquad(g) ? (g.elite ? '✦' : '◆') : g.cls === 'tank' ? '■' : '▲';
+  const icon = g => isSquad(g) ? (g.elite ? '✦' : '◆') : g.cls === 'tank' ? '■' : g.cls === 'builder' ? '⚒' : '▲';
   let h = '';
   if (sel.length){
     h += '<div class="ports">' + sel.slice(0, 14).map(g => {
@@ -373,15 +383,17 @@ function updateCard(){
     }
     h += `<button class="ab" data-act="hold"><i>⛊</i><b>${tr('Удерживать', 'Hold', 'Giữ')}</b><kbd>H</kbd></button>`;
     if (sel.some(g => isSquad(g) && (g.elite || S.teams[0].jet2))) h += `<button class="ab" data-act="sky"><i>⇑</i><b>${tr('Десант', 'Sky assault', 'Đổ bộ')}</b><kbd>Y</kbd></button>`;
-    h += `<button class="ab" data-act="fps"><i>◉</i><b>${tr('Вселиться', 'Possess', 'Nhập vai')}</b><kbd>Enter</kbd></button>`;
+    if (sel.some(g => g.cls !== 'builder')) h += `<button class="ab" data-act="fps"><i>◉</i><b>${tr('Вселиться', 'Possess', 'Nhập vai')}</b><kbd>Enter</kbd></button>`;
     h += '</div>';
+    h += builderCardHTML(sel);   // v6: меню стройки для выбранных инженеров
   } else if (S.selB && (S.selB.alive || S.selB.cls === 'hq')){
     const b = S.selB;
     const nm = b.cls === 'hq' ? tr('Штаб', 'HQ', 'Sở chỉ huy') : bname(b.type);
     h += `<div class="binfo"><b>${nm}</b><span>${Math.round(max(0, b.hp))}/${b.maxhp}${b.cls === 'bld' && !b.done ? ' · ' + tr('стройка', 'building', 'công trình') + ' ' + Math.floor(b.built * 100) + '%' : ''}</span>`;
+    h += siteCardHTML(b);   // v6: кто строит, сколько осталось, отмена с возвратом руды
     if (b.queue && b.queue.length) h += '<div class="queue">' + b.queue.map((k, i) => `<button data-q="${i}" title="${tr('Отменить', 'Cancel', 'Hủy')}">${PRODUCTS[k].icon} ${pname(k)}${i === 0 ? ` <s style="width:${(b.prodT / pTime(0, k) * 100).toFixed(0)}%"></s>` : ''}</button>`).join('') + '</div>';
     const prods = Object.keys(PRODUCTS).filter(k => PRODUCTS[k].at.includes(b.cls === 'hq' ? 'hq' : b.type));
-    if (prods.length && (b.cls === 'hq' || b.done)) h += '<div class="abils">' + prods.map(k => `<button class="ab ${canProduce(0, k) ? 'cd' : ''}" data-prod="${k}" title="${canProduce(0, k) || ''}"><i>${PRODUCTS[k].icon}</i><b>${pname(k)}</b><kbd>${pCost(0, k)}</kbd></button>`).join('') + '</div>';
+    if (prods.length && (b.cls === 'hq' || b.done)) h += '<div class="abils">' + prods.map(k => { const r = rtsReason('produce:' + k); return `<button class="ab ${r.ok ? '' : 'cd'}" data-prod="${k}" title="${(r.reason + (r.fix ? ' — ' + r.fix : '')).replace(/"/g, '&quot;')}"><i>${PRODUCTS[k].icon}</i><b>${pname(k)}</b><kbd>${pCost(0, k)}</kbd></button>`; }).join('') + '</div>';
     if (prods.length) h += `<em>${tr('ПКМ по земле — точка сбора', 'RMB on the ground — rally point', 'Chuột phải xuống đất — điểm tập kết')}</em>`;
     if (b.cls === 'bld' && (b.type === 'turret' || b.type === 'aa') && b.done) h += `<em>${tr('Двойной клик — занять', 'Double-click — man it', 'Nhấp đúp — điều khiển')}</em>`;
     h += '</div>';
@@ -390,6 +402,7 @@ function updateCard(){
   }
   if (h === CARD.sig) return;
   CARD.sig = h; el.innerHTML = h;
+  bindBuilderCard(el);
   el.querySelectorAll('[data-key]').forEach(b => b.onclick = e => { e.stopPropagation(); abilityKey(b.dataset.key); });
   el.querySelectorAll('[data-act]').forEach(b => b.onclick = e => { e.stopPropagation(); const a = b.dataset.act; if (a === 'hold') orderHold(); else if (a === 'sky') orderSkySel(); else enterFPS(); });
   el.querySelectorAll('[data-prod]').forEach(b => b.onclick = e => { e.stopPropagation(); uiProduce(b.dataset.prod); });
@@ -404,6 +417,8 @@ function helpRTS(){
   row(tr('ЛКМ', 'LMB', 'Chuột trái'), tr('выделить, рамка — несколько', 'select, drag — many', 'chọn, kéo khung — nhiều')); row('Ctrl+' + tr('клик', 'click', 'nhấp'), tr('все такие на экране', 'all of that type on screen', 'mọi đơn vị cùng loại trên màn hình'));
   row(tr('ПКМ', 'RMB', 'Chuột phải'), tr('идти / захват / атаковать цель', 'move / capture / attack target', 'đi / chiếm / tấn công mục tiêu'));
   row(tr('двойной клик', 'double-click', 'nhấp đúp'), tr('вселиться', 'possess', 'nhập vai')); row('R F G T', tr('способности', 'abilities', 'kỹ năng'));
+  row('Z X C V B N K', tr('стройка (выбраны инженеры): турель, ПВО, экстрактор, форпост, мехзавод, дрон-хаб, аэродок', 'build (builders selected): turret, AA, extractor, outpost, factory, hub, airdock', 'xây (đã chọn kỹ sư)'));
+  row('.', tr('свободный инженер', 'idle builder', 'kỹ sư rảnh')); row('Del', tr('отменить стройку (+руда)', 'cancel construction (refund)', 'hủy xây (hoàn quặng)'));
   row('H', tr('удерживать', 'hold', 'giữ')); row('Y', tr('десант через купол', 'sky assault', 'đổ bộ')); row('Ctrl+1…9 / 1…9', tr('группы', 'groups', 'nhóm')); row('Ctrl+A', tr('вся армия', 'whole army', 'toàn quân'));
   row(tr('Пробел', 'Space', 'Space'), tr('к последней тревоге', 'jump to last alert', 'tới cảnh báo gần nhất')); row('Home', tr('к базе', 'to base', 'về căn cứ')); row('Enter / Tab', tr('в бой', 'to battle', 'vào trận')); row('I', tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI'));
   return L.join('<br>');
@@ -430,13 +445,13 @@ function drawRTSOverlay(dt){
     }
     const far = S.rts.h > 120;
     if (far || u.cls === 'builder'){
-      octx.fillStyle = u.cls === 'builder' ? '#7fd4ff' : col;
+      octx.fillStyle = u.cls === 'builder' && u.team === 0 ? '#7fd4ff' : col;
       if (u.cls === 'tank') octx.fillRect(s[0] - 5, s[1] - 4, 10, 8);
       else if (u.cls === 'drone'){ octx.beginPath(); octx.moveTo(s[0], s[1] - 5); octx.lineTo(s[0] + 4, s[1] + 3); octx.lineTo(s[0] - 4, s[1] + 3); octx.fill(); }
       else { octx.beginPath(); octx.arc(s[0], s[1], u.leader ? 3.6 : 2.6, 0, PI * 2); octx.fill(); }
     }
-    if ((isSel || u.hp < u.maxhp * 0.95) && u.cls !== 'builder'){
-      const hp = add(u.pos, mul(u.up, u.cls === 'tank' ? 4 : 2.2));
+    if (isSel || u.hp < u.maxhp * 0.95){
+      const hp = add(u.pos, mul(u.up, u.cls === 'tank' ? 4 : u.cls === 'builder' ? 1.4 : 2.2));
       const q = project(hp);
       if (q){ const w = u.cls === 'tank' ? 30 : 16; octx.fillStyle = 'rgba(0,0,0,.6)'; octx.fillRect(q[0] - w / 2, q[1], w, 3); octx.fillStyle = u.hp / u.maxhp > 0.5 ? '#9c9' : u.hp / u.maxhp > 0.25 ? '#dc6' : '#e66'; octx.fillRect(q[0] - w / 2, q[1], w * max(0, u.hp) / u.maxhp, 3); }
     }
@@ -481,22 +496,7 @@ function drawRTSOverlay(dt){
       }
     }
   }
-  // призрак стройки
-  if (S.place && S.mouse){
-    const p = pickGround(S.mouse[0], S.mouse[1]);
-    if (p){
-      const dir = norm(p), T = BTYPES[S.place];
-      const why = siteProblem(0, S.place, dir);
-      octx.strokeStyle = why ? '#ff6050' : '#8fffaa'; octx.lineWidth = 2;
-      groundRing(mul(dir, len(p) + 0.3), T.rad, 32);
-      const s = project(p);
-      if (s){ octx.fillStyle = why ? '#ff6050' : '#8fffaa'; octx.textAlign = 'center'; octx.font = '600 12px "Exo 2", sans-serif'; octx.fillText(why || bname(S.place), s[0], s[1] - 14); }
-    }
-    octx.setLineDash([6, 6]); octx.strokeStyle = 'rgba(214,198,154,.35)'; octx.lineWidth = 1.5;
-    if (S.hq[0].alive) groundRing(mul(BASES[0], RM + 1), GAME.BASE_R, 64);
-    for (const cp of S.cps) if (!cp.core && cp.owner === 0 && facing(cp.pos)) groundRing(cp.pos, GAME.CP_BUILD_R, 40);
-    octx.setLineDash([]);
-  }
+  // призрак-чертёж стройки рисует drawEcoWorld → drawPlaceGhost (rts_build.js)
   // тревоги
   for (const a of S.alerts){ const k = (S.rtime - a.t); if (k > 6 || !facing(a.pos)) continue; const s = project(a.pos); if (!s) continue; octx.strokeStyle = `rgba(255,80,60,${(1 - k / 6).toFixed(2)})`; octx.lineWidth = 2; octx.beginPath(); octx.arc(s[0], s[1], 10 + (k * 30) % 30, 0, PI * 2); octx.stroke(); }
   drawRTSMinimap();
@@ -539,6 +539,7 @@ function drawRTSMinimap(){
   drawFogMinimap(C, R, mmProject);
   const pt = (p, col, r, sq) => { const m = mmProject(p); octx.fillStyle = col; if (sq) octx.fillRect(m[0] - r, m[1] - r, r * 2, r * 2); else { octx.beginPath(); octx.arc(m[0], m[1], r, 0, PI * 2); octx.fill(); } };
   for (const b of S.buildings) if (b.alive && (b.team === 0 || b.known0 || !SET.fog)) pt(b.pos, TEAM[b.team].dim, 2.5, true);
+  ecoMinimap(mmProject);   // v6: рудные жилы и инженеры
   for (const h of S.hq) pt(h.pos, h.alive ? TEAM[h.team].css : '#555', 4, true);
   for (const cp of S.cps){ if (cp.core) continue; const m = mmProject(cp.pos); drawDiamond(m[0], m[1], 4, teamCss(cp.owner), 'rgba(0,0,0,.6)'); }
   for (const g of groupsOf(0)){ const L = leaderOf(g); if (L) pt(L.pos, S.sel.has(g) ? '#fff' : TEAM[0].css, g.cls === 'tank' ? 2.4 : 1.8); }

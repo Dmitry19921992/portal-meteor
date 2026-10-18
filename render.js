@@ -204,10 +204,10 @@ function setupCamera(dt){
 }
 
 // ---- сбор объектов
-const BLD_BC = { turret: 1.0, aa: 1.2, factory: 4, hub: 1, airdock: 5, outpost: 2.5 };
-const BLD_SC = { turret: 1.2, aa: 1.3, factory: 4, hub: 1.5, airdock: 7, outpost: 2.2 };
-const BLD_SR = { turret: 0.7, aa: 1.0, factory: 6, hub: 3, airdock: 3, outpost: 4 };
-const BLD_BR = { turret: 2.7, aa: 3.7, factory: 14, hub: 8, airdock: 12, outpost: 10 };
+const BLD_BC = { turret: 1.0, aa: 1.2, factory: 4, hub: 1, airdock: 5, outpost: 2.5, extractor: 2.1 };
+const BLD_SC = { turret: 1.2, aa: 1.3, factory: 4, hub: 1.5, airdock: 7, outpost: 2.2, extractor: 2.0 };
+const BLD_SR = { turret: 0.7, aa: 1.0, factory: 6, hub: 3, airdock: 3, outpost: 4, extractor: 1.2 };
+const BLD_BR = { turret: 2.7, aa: 3.7, factory: 14, hub: 8, airdock: 12, outpost: 10, extractor: 4.2 };
 function objInfo(e){
   switch (e.cls){
     case 'inf': {
@@ -218,7 +218,7 @@ function objInfo(e){
     }
     case 'tank': { const o = sub(e.pos, mul(e.up, 1.5)); return { type: 5, origin: o, bc: add(o, mul(e.up, 1.6)), br: 4.3, sc: add(o, mul(e.up, 1.3)), sr: 1.6, thrust: e.overT > 0 ? 1 : 0 }; }
     case 'drone': return { type: 4, origin: e.pos, bc: e.pos, br: 1.5, sc: e.pos, sr: 0.5, thrust: 1 };
-    case 'builder': return { type: 3, origin: e.pos, bc: e.pos, br: 0.75, sc: e.pos, sr: 0.25 };
+    case 'builder': { const o = sub(e.pos, mul(e.up, ECO.HOVER)); return { type: 3, origin: o, bc: add(o, mul(e.up, 0.62)), br: 1.3, sc: add(o, mul(e.up, 0.55)), sr: 0.4, thrust: e.work || 0 }; }
     case 'bld': {
       const T = BTYPES[e.type];
       return { type: T.code, origin: e.pos, bc: add(e.pos, mul(e.up, BLD_BC[e.type])), br: BLD_BR[e.type],
@@ -351,6 +351,7 @@ function gatherLights(){
     else if (b.type === 'airdock') add2(add(b.pos, mul(b.up, 2)), E, 16, 0.003);
     else if (b.type === 'hub') add2(add(b.pos, mul(b.up, 1.5)), E, 14, 0.002);
     else if (b.type === 'outpost') add2(add(b.pos, mul(b.up, 4.5)), E, 14, 0.003);
+    else if (b.type === 'extractor') add2(add(add(b.pos, mul(b.up, 1.2)), mul(b.R, 1.5)), [2.2, 1.3, 0.4], 9, 0.002);
   }
   for (const p of PROPS){
     if (p.alive && p.kind === 1) add2(add(p.pos, mul(p.up, 3)), [1.6, 0.8, 0.2].map(x => x * (0.5 + 0.5 * (sin(S.time * 2 + p.id) > 0.6 ? 1 : 0))), 9, 0.002);

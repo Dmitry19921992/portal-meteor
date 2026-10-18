@@ -346,14 +346,63 @@ vec2 sdWreck(vec3 q){
   return r;
 }
 
+// v6: инженер-строитель. Консорциум — парящий тягач на двух полозьях с кабиной, краном-манипулятором и сваркой;
+// Рой — «сборщик-паук» на четырёх лапах с клешнями. gM — работа (манипулятор качается), gTh — свечение сварки
 vec2 sdBuilder(vec3 q){
   vec2 r = vec2(1e5, 0.0);
-  U(r, sdRBox(q, vec3(0.22, 0.08, 0.22), 0.05), 2.0);
-  U(r, length(q - vec3(0.0, -0.1, 0.0)) - 0.1, 3.0);
+  q.y -= 0.03 * sin(gPh * 1.7);
+  vec3 a = vec3(abs(q.x), q.y, q.z);
+  float sw = sin(gPh * 5.0) * 0.12 * gM;
+  if (gTeam < 0.5){
+    U(r, sdRBox(a - vec3(0.4, 0.2, 0.0), vec3(0.11, 0.12, 0.5), 0.07), 8.0);
+    U(r, sdCylX(vec3(a.x - 0.4, q.y - 0.2, abs(q.z) - 0.36), 0.1, 0.13), 3.0);
+    U(r, sdRBox(q - vec3(0.0, 0.47, -0.05), vec3(0.34, 0.16, 0.44), 0.06), 1.0);
+    U(r, sdRBox(q - vec3(0.0, 0.62, -0.1), vec3(0.28, 0.035, 0.34), 0.02), 2.0);
+    U(r, sdRBox(q - vec3(0.0, 0.76, 0.17), vec3(0.2, 0.13, 0.14), 0.05), 1.0);
+    U(r, sdRBox(q - vec3(0.0, 0.79, 0.31), vec3(0.15, 0.045, 0.02), 0.01), 4.0);
+    U(r, sdRBox(q - vec3(-0.13, 0.71, -0.36), vec3(0.13, 0.08, 0.09), 0.02), 2.0);
+    U(r, length(q - vec3(-0.12, 0.93, 0.12)) - 0.045, 16.0);
+    vec3 k = q - vec3(0.17, 0.64, -0.22);
+    U(r, sdCapsule(k, vec3(0.0), vec3(0.0, 0.5, 0.05), 0.04), 3.0);
+    U(r, sdCapsule(k, vec3(0.0, 0.5, 0.05), vec3(sw, 0.42 + sw, 0.78), 0.032), 3.0);
+    U(r, length(k - vec3(sw, 0.38 + sw, 0.82)) - 0.055, 7.0);
+  } else {
+    U(r, sdRBox(q - vec3(0.0, 0.58, -0.05), vec3(0.26, 0.15, 0.42), 0.13), 1.0);
+    U(r, sdRBox(q - vec3(0.0, 0.72, -0.15), vec3(0.16, 0.06, 0.26), 0.05), 2.0);
+    for (int k = 0; k < 4; k++){
+      float s = (k & 1) == 0 ? -1.0 : 1.0, zz = k < 2 ? 0.22 : -0.28;
+      float ph = gPh * 1.6 + float(k) * 1.57, lift = max(0.0, sin(ph)) * 0.08;
+      vec3 hip = vec3(s * 0.22, 0.58, zz), knee = vec3(s * 0.55, 0.82 + lift, zz * 1.3), foot = vec3(s * 0.72, lift, zz * 1.55);
+      U(r, sdCapsule(q, hip, knee, 0.045), 3.0);
+      U(r, sdCapsule(q, knee, foot, 0.03), 1.0);
+    }
+    vec3 c = a - vec3(0.12, 0.5 + sw, 0.42);
+    U(r, sdCapsule(c, vec3(0.0), vec3(0.06, -0.05, 0.3), 0.035), 3.0);
+    U(r, sdCapsule(c, vec3(0.06, -0.05, 0.3), vec3(-0.02, -0.1, 0.42), 0.022), 1.0);
+    U(r, length(a - vec3(0.08, 0.66, 0.38)) - 0.04, 4.0);
+    U(r, length(q - vec3(0.0, 0.48, 0.5)) - 0.05, 7.0);
+  }
+  return r;
+}
+// v6: рудный экстрактор — фундамент, вышка, вращающийся шнек, бункер со светящейся рудой
+vec2 sdExtractor(vec3 q){
+  vec2 r = vec2(1e5, 0.0);
+  U(r, sdCylY(q - vec3(0.0, -0.3, 0.0), 2.3, 0.5), 9.0);
   vec3 a = vec3(abs(q.x), q.y, abs(q.z));
-  U(r, sdCapsule(a, vec3(0.1, 0.0, 0.1), vec3(0.38, 0.03, 0.38), 0.03), 3.0);
-  U(r, sdTorusY(a - vec3(0.38, 0.05, 0.38), 0.15, 0.022), 1.0);
-  U(r, length(q - vec3(0.0, 0.0, 0.24)) - 0.045, 4.0);
+  U(r, sdCapsule(a, vec3(1.25, 0.1, 1.25), vec3(0.38, 4.1, 0.38), 0.09), 3.0);
+  U(r, max(sdBox(q - vec3(0.0, 2.1, 0.0), vec3(0.85, 0.06, 0.85)), -sdBox(q - vec3(0.0, 2.1, 0.0), vec3(0.72, 0.2, 0.72))), 2.0);
+  U(r, sdRBox(q - vec3(0.0, 4.25, 0.0), vec3(0.48, 0.3, 0.48), 0.06), 1.0);
+  U(r, sdBox(q - vec3(0.0, 4.25, 0.49), vec3(0.3, 0.06, 0.01)), 10.0);
+  vec3 d = q - vec3(0.0, 1.9, 0.0);
+  d.xz = r2(d.xz, uTime * 2.5 * step(0.999, gProg) + d.y * 3.5);
+  U(r, 0.6 * sdBox(d, vec3(0.38, 1.85, 0.05)), 5.0);
+  U(r, sdCylY(q - vec3(0.0, 1.9, 0.0), 0.1, 2.0), 3.0);
+  vec3 h = q - vec3(1.55, 0.55, 0.0);
+  U(r, max(sdRBox(h, vec3(0.55, 0.45, 0.65), 0.05), -sdBox(h - vec3(0.0, 0.4, 0.0), vec3(0.45, 0.4, 0.55))), 2.0);
+  U(r, length(h - vec3(0.1, 0.22, 0.15)) - 0.3, 30.0);
+  U(r, length(h - vec3(-0.18, 0.2, -0.22)) - 0.25, 30.0);
+  U(r, sdCapsule(q, vec3(0.35, 0.9, 0.0), vec3(1.25, 1.25, 0.0), 0.12), 3.0);
+  U(r, length(q - vec3(0.0, 4.72, 0.0)) - 0.13, 4.0);
   return r;
 }
 
@@ -668,6 +717,7 @@ vec2 objMap(vec3 q){
     case 9: r = sdHub(q); break;
     case 10: r = sdAirdock(q); break;
     case 11: r = sdOutpost(q); break;
+    case 12: r = sdExtractor(q); break;
     case 13: r = sdSat(q); break;
     case 14: r = sdModule(q); break;
     case 15: r = sdSonar(q); break;
@@ -679,9 +729,16 @@ vec2 objMap(vec3 q){
   }
   if (ty >= 13){ r.x *= sq; return r; }
   if (gT > 5.5 && gProg < 0.999){
-    float bh = gT < 6.5 ? 2.4 : gT < 7.5 ? 3.3 : gT < 8.5 ? 12.5 : gT < 9.5 ? 5.6 : gT < 10.5 ? 14.2 : 8.6;
+    float bh = gT < 6.5 ? 2.4 : gT < 7.5 ? 3.3 : gT < 8.5 ? 12.5 : gT < 9.5 ? 5.6 : gT < 10.5 ? 14.2 : gT < 11.5 ? 8.6 : 4.9;
     float H = -1.0 + (bh + 1.0) * gProg;
     if (q.y - H > r.x){ r.x = q.y - H; r.y = 12.0; }
+    // v6: строительные леса — угловые стойки на полную высоту и светящаяся рамка на уровне стройки
+    float hs = gT < 6.5 ? 1.25 : gT < 7.5 ? 1.8 : gT < 8.5 ? 7.4 : gT < 9.5 ? 5.4 : gT < 10.5 ? 6.3 : gT < 11.5 ? 4.9 : 2.25;
+    vec3 sq2 = vec3(abs(q.x) - hs, q.y, abs(q.z) - hs);
+    float th = 0.05 + hs * 0.012;
+    U(r, sdCapsule(sq2, vec3(0.0, -0.5, 0.0), vec3(0.0, bh + 0.3, 0.0), th), 3.0);
+    vec3 fr = vec3(abs(q.x), q.y - H, abs(q.z));
+    U(r, min(sdBox(fr - vec3(hs, 0.0, 0.0), vec3(th, th, hs)), sdBox(fr - vec3(0.0, 0.0, hs), vec3(hs, th, th))), 12.0);
   }
   return r;
 }

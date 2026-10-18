@@ -200,6 +200,7 @@ function enterRTS(){
   updateModeUI();
 }
 function releasePlayerUnits(){
+  releaseBuilders();   // v6
   let n = 0;
   for (const g of groupsOf(0)) if (g.byPlayer){ g.byPlayer = false; if (g.manualUntil > S.time + 60) g.manualUntil = S.time + 20; n++; }
   if (n) feed(tr(`Стратег принял командование твоими группами (${n})`, `The strategist takes over your groups (${n})`, `Chiến lược gia tiếp quản các nhóm của bạn (${n})`), '#9cf');
@@ -208,7 +209,7 @@ function enterFPS(){
   releasePlayerUnits();
   let u = null;
   if (S.selB && S.selB.alive && S.selB.team === 0 && (S.selB.type === 'turret' || S.selB.type === 'aa') && S.selB.done) u = S.selB;
-  if (!u) for (const g of S.sel){ if (g.team !== 0 || !groupAlive(g)) continue; u = isSquad(g) ? g.units.find(x => x.alive) : g; if (u) break; }
+  if (!u) for (const g of S.sel){ if (g.team !== 0 || !groupAlive(g) || g.cls === 'builder') continue; u = isSquad(g) ? g.units.find(x => x.alive) : g; if (u) break; }
   if (!u && S.me && (S.me.alive || S.me.cls === 'bld')) u = S.me;
   if (!u) u = nearestToAction(0);
   if (!u){ feed(tr('Нет живых роботов — закажи отряд', 'No robots alive — order a squad', 'Không còn robot nào — hãy gọi một đội'), '#f88'); return; }
@@ -532,6 +533,7 @@ function drawWorldMarkers(rts){
     octx.fillStyle = col; octx.fillRect(s[0] - 18, s[1] - 3, 36 * max(0, b.hp) / b.maxhp, 4);
     if (rts && S.selB === b){ octx.strokeStyle = '#fff'; octx.lineWidth = 1.5; octx.strokeRect(s[0] - 21, s[1] - 20, 42, 26); }
   }
+  drawEcoWorld(rts);   // v6: жилы, стройки, «+N», чертёж (rts_build.js)
   // удары, сканы, метки
   for (const st of S.strikes){
     if (!vis(st.pos)) continue;
@@ -661,7 +663,7 @@ function updateHUD(){
   const left = GAME.MATCH - S.time;
   const hqTxt = h => h.alive ? Math.round(max(0, h.hp) / h.maxhp * 100) + '%' : '✖' + keyBuildings(h.team).length;
   hudEl.innerHTML =
-    hb(tr('РУДА', 'ORE', 'QUẶNG'), Math.floor(T.ore), `+${T.income.toFixed(1)}/${tr('с', 's', 'giây')}`) +
+    ecoHB(T) +   // v6: руда, доход в минуту, клик — «Откуда руда» (rts_build.js)
     hb(tr('КО', 'CP', 'ĐCH'), `${T.cmd}`, tr('командные очки', 'command points', 'điểm chỉ huy')) +
     (S.endless ? hb(tr('БОЙ ИДЁТ', 'BATTLE', 'TRẬN ĐẤU'), fmtTime(S.time), `${N2(SCALES[clamp(SET.battle | 0, 0, 2)].n).toLowerCase()} · ∞`) : hb(tr('ВРЕМЯ', 'TIME', 'THỜI GIAN'), fmtTime(left), tr('из 60:00', 'of 60:00', 'trên 60:00'))) +
     hb(tr('ТОЧКИ', 'POINTS', 'ĐIỂM'), `<span style="color:${TEAM[0].css}">${pts[0]}</span> : <span style="color:${TEAM[1].css}">${pts[1]}</span>`, tr('из 7', 'of 7', 'trên 7')) +

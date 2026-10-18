@@ -36,6 +36,7 @@ function entName(e){
 }
 function orderText(g){
   if (!g) return '';
+  if (g.cls === 'builder') return builderDoing(g);
   switch (g.order){
     case 'cap': return g.cp ? (g.cp.core ? tr('Захватить Ядро', 'Capture the Core', 'Chiếm Lõi') : tr(`Захватить точку ${g.cp.name}`, `Capture point ${g.cp.name}`, `Chiếm điểm ${g.cp.name}`)) : tr('Захват', 'Capture', 'Chiếm');
     case 'attack': return S.hq[1 - g.team].alive ? (g.team === 0 ? tr('Атаковать штаб Роя', 'Assault the Swarm HQ', 'Tấn công sở chỉ huy Bầy Đàn') : tr('Атаковать наш штаб', 'Assault our HQ', 'Tấn công sở chỉ huy của ta')) : tr('Уничтожить ключевые здания', 'Destroy key buildings', 'Phá các công trình then chốt');
@@ -447,7 +448,8 @@ function droneStep(d, dt){
   } else d.aim = d.fwd;
   flyTo(d, goal, d.alt, 13, dt);
 }
-function builderStep(b, dt){
+// v5: летающие дроны-строители (больше не используется; v6 — инженеры, rts_build.js: builderStep)
+function builderStepV5(b, dt){
   if (!b.job || !b.job.alive || (b.job.done && b.job.hp >= b.job.maxhp)){
     b.job = null;
     let best = null, bd = 1e9;
@@ -691,8 +693,15 @@ function economy(t){
                    S.buildings.some(b => b.team !== t && b.type === 'airdock' && b.alive);
   const ownedCP = S.cps.filter(c => !c.core && c.owner === t).length;
   const plan = [];
+  // v6: инженеры и добыча — те же правила, что у игрока
+  aiBuilderJobs(t);
+  const nB = countProduct(t, 'builder'), wantB = aiWantBuilders(t), nExt = n('extractor');
+  if (nB < 2) plan.push(['p', 'builder']);
   if (!S.hq[t].alive && ownedCP && n('outpost') < 2) plan.push(['b', 'outpost']);
+  if (nExt < 2) plan.push(['b', 'extractor']);
   if (squads < 4) plan.push(['p', 'squad']);
+  if (nB < wantB) plan.push(['p', 'builder']);
+  if (nExt < 3 + ownedCP) plan.push(['b', 'extractor']);
   if (n('turret') < 1) plan.push(['b', 'turret']);
   if (time > 60 && n('factory') < 1) plan.push(['b', 'factory']);
   if (n('factory') && tanks < 2) plan.push(['p', 'tank']);
@@ -709,6 +718,7 @@ function economy(t){
   if (enemyAir && n('aa') < 2 + (time > 900 ? 1 : 0)) plan.push(['b', 'aa']);
   if (n('turret') < 2 + floor(time / 500)) plan.push(['b', 'turret']);
   if (tanks < 4) plan.push(['p', 'tank']);
+  if (nExt >= 3 && (time > 240 || T.ore > 400)) plan.push(['p', 'drill']);
   if (time > 300 || T.ore > 500){ plan.push(['p', 'weapons']); plan.push(['p', 'armor']); }
   if (n('factory') < 2 && time > 900) plan.push(['b', 'factory']);
   if (drones < GAME.MAX_DRONES) plan.push(['p', 'drone']);
@@ -724,10 +734,11 @@ function economy(t){
       if (why === tr('Мало руды', 'Not enough ore', 'Không đủ quặng')) return;
     } else {
       if (unfinished >= 2) continue;
+      if (t === 0 && T.autoBuild === false && !S.attract) continue;   // «Автостройка» выключена игроком
       const why = canBuild(t, key);
       if (!why){
-        const dir = findSite(t, key);
-        if (dir && !placeBuilding(t, key, dir)) return;
+        const dir = aiSiteFor(t, key);
+        if (dir && !aiPlace(t, key, dir)) return;
       } else if (why === tr('Мало руды', 'Not enough ore', 'Không đủ quặng')) return;
     }
   }
@@ -851,6 +862,7 @@ function army(t){
     for (const s of S.squads){ if (s.team !== t || (s.order !== 'attack' && s.order !== 'cap')) continue; const L = leaderOf(s); if (!L) continue; const dd = dist(L.pos, d.pos) + 60 * S.drones.filter(o => o.escort === s).length; if (dd < bd){ bd = dd; best = s; } }
     d.escort = best; d.order = best ? 'escort' : 'idle';
   }
+  aiRaid(t, free);   // v6: набеги на вражеские экстракторы
   // способности
   for (const g of mine) aiAbilities(g);
 }
