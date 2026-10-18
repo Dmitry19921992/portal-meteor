@@ -5,10 +5,46 @@
 const SAVE = {
   KEY: 'pm_save_v5',
   lastAuto: 0,
-  has(){ try { return !!localStorage.getItem(this.KEY); } catch (e){ return false; } },
-  info(){
-    try { const o = JSON.parse(localStorage.getItem(this.KEY)); return `${fmtTime(o.time)} · ${new Date(o.at).toLocaleString(LANG.cur === 'en' ? 'en-GB' : LANG.cur === 'vi' ? 'vi-VN' : 'ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`; }
-    catch (e){ return ''; }
+  // v6: слоты. «auto» — автосохранение (старый ключ, так что сохранения v5 видны), m1..m3 — ручные.
+  // Всё хранится в localStorage ЭТОГО браузера на ЭТОМ устройстве; перенос — экспорт/импорт файла.
+  SLOTS: ['auto', 'm1', 'm2', 'm3'], META: 'pm_saves_meta',
+  keyOf(slot){ return slot === 'auto' || !slot ? this.KEY : this.KEY + ':' + slot; },
+  metaAll(){ try { return JSON.parse(localStorage.getItem(this.META)) || {}; } catch (e){ return {}; } },
+  meta(slot){
+    let m = this.metaAll()[slot];
+    if (!m){ try { const raw = localStorage.getItem(this.keyOf(slot)); if (!raw) return null; const o = JSON.parse(raw); m = { at: o.at, time: o.time, endless: o.endless, diff: o.diff, battle: o.battle, rank: o.prog && o.prog.rank, size: raw.length }; } catch (e){ return null; } }
+    return Object.assign({ slot }, m);
+  },
+  list(){ return this.SLOTS.map(s => { try { return localStorage.getItem(this.keyOf(s)) ? this.meta(s) : null; } catch (e){ return null; } }).filter(Boolean).sort((a, b) => (b.at || 0) - (a.at || 0)); },
+  newest(){ const L = this.list(); return L.length ? L[0].slot : null; },
+  freeSlot(){ const L = this.list(); for (const s of ['m1', 'm2', 'm3']) if (!L.some(x => x.slot === s)) return s; return L.filter(x => x.slot !== 'auto').sort((a, b) => (a.at || 0) - (b.at || 0))[0].slot; },
+  del(slot){ try { localStorage.removeItem(this.keyOf(slot)); const M = this.metaAll(); delete M[slot]; localStorage.setItem(this.META, JSON.stringify(M)); } catch (e){} },
+  slotName(slot){ return slot === 'auto' ? tr('Автосохранение', 'Autosave', 'Tự động lưu') : tr('Сохранение ', 'Save ', 'Bản lưu ') + slot.slice(1); },
+  fmtAt(at){ return at ? new Date(at).toLocaleString(LANG.cur === 'en' ? 'en-GB' : LANG.cur === 'vi' ? 'vi-VN' : 'ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; },
+  has(){ try { return this.list().length > 0; } catch (e){ return false; } },
+  info(slot){
+    const m = this.meta(slot || this.newest()); if (!m) return '';
+    return `${fmtTime(m.time)} · ${this.fmtAt(m.at)}`;
+  },
+  // экспорт: текст JSON с подписью игры; импорт принимает и «голое» сохранение
+  exportText(slot){ const raw = localStorage.getItem(this.keyOf(slot)); if (!raw) return null; return '{"app":"portal-meteor","kind":"save","v":5,"slot":"' + slot + '","exported":' + Date.now() + ',"data":' + raw + '}'; },
+  importText(text){
+    let o; try { o = JSON.parse(String(text).trim()); } catch (e){ return { err: tr('Это не похоже на файл сохранения (ошибка JSON)', 'This does not look like a save file (JSON error)', 'Đây không phải tệp lưu (lỗi JSON)') }; }
+    const data = o && o.app === 'portal-meteor' ? o.data : o;
+    if (!data || data.v !== 5 || !Array.isArray(data.units) || !Array.isArray(data.squads)) return { err: tr('Файл не от Portal Meteor или устаревшей версии', 'Not a Portal Meteor save or an unsupported version', 'Không phải bản lưu Portal Meteor hoặc phiên bản không hỗ trợ') };
+    const slot = this.freeSlot();
+    if (!this.write(slot, JSON.stringify(data), data)) return { err: tr('Не хватило места в хранилище браузера', 'Browser storage is full', 'Bộ nhớ trình duyệt đã đầy') };
+    return { slot };
+  },
+  write(slot, json, data){
+    const put = () => { localStorage.setItem(this.keyOf(slot), json); const M = this.metaAll(); M[slot] = { at: data.at, time: data.time, endless: data.endless, diff: data.diff, battle: data.battle, rank: data.prog && data.prog.rank, size: json.length }; localStorage.setItem(this.META, JSON.stringify(M)); };
+    try { put(); return true; }
+    catch (e){
+      // места не хватило — убираем самый старый ручной слот (кроме этого) и пробуем ещё раз
+      const old = this.list().filter(x => x.slot !== slot && x.slot !== 'auto').sort((a, b) => (a.at || 0) - (b.at || 0))[0];
+      if (old){ this.del(old.slot); try { put(); return true; } catch (e2){} }
+      console.warn('save failed', e); return false;
+    }
   },
   // реестр: объект -> токен
   registry(){
@@ -44,7 +80,8 @@ const SAVE = {
     }
     return undefined;
   },
-  save(){
+  save(slot){
+    slot = slot || 'auto';
     if (S.attract || S.over) return false;
     try {
       const R = this.registry();
@@ -63,13 +100,12 @@ const SAVE = {
         prog: { xp: PROG.xp, rank: PROG.rank, unl: [...PROG.unl], mk: PROG.matchKills, mt: PROG.matchTasks, mx: PROG.matchXP },
         kit: S.kit ? this.pack(S.kit, R, null, 0) : null, mode: S.mode,
       };
-      localStorage.setItem(this.KEY, JSON.stringify(data));
-      return true;
+      return this.write(slot, JSON.stringify(data), data);
     } catch (e){ console.warn('save failed', e); return false; }
   },
-  load(){
+  load(slot){
     let data;
-    try { data = JSON.parse(localStorage.getItem(this.KEY)); } catch (e){ return false; }
+    try { data = JSON.parse(localStorage.getItem(this.keyOf(slot || this.newest()))); } catch (e){ return false; }
     if (!data || data.v !== 5) return false;
     SET.battle = data.battle; SET.endless = data.endless;
     newMatch({ attract: false });   // чистое поле, затем заменяем содержимое

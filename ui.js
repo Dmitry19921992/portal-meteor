@@ -25,9 +25,9 @@ function bk(act){ return keyLabel(SET.bind[act]); }
 document.addEventListener('pointerlockchange', () => {
   if (!isLocked()){
     mouseL = mouseR = false;
-    if (!wantUnlock && S.mode === 'fps' && !S.attract && !S.over && !MENU.isOpen()) MENU.pause();
+    if (!wantUnlock && S.mode === 'fps' && !S.attract && !S.over && !MENU.isOpen()){ if (MENU.waitLock){ MENU.waitLock = false; } MENU.pause(); }
     wantUnlock = false;
-  }
+  } else if (MENU.waitLock){ MENU.waitLock = false; S.paused = false; AU.duck(false); }   // мышь снова захвачена — продолжаем
   updateModeUI();
 });
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -76,7 +76,7 @@ addEventListener('keydown', e => {
   if (['Space', 'Tab', 'Slash', 'Quote', 'Backquote', 'F1'].includes(e.code) || (e.ctrlKey && /Digit|KeyA|KeyS|KeyD/.test(e.code))) e.preventDefault();
   if (e.repeat) return;
   AU.init();
-  if (MENU.isOpen()){ if (e.code === 'Escape') MENU.back(); return; }
+  if (MENU.isOpen()){ if (e.code === 'Escape' && !(MENU.cur === 'pause' && performance.now() - (MENU.openedAt || 0) < 350)) MENU.back(); return; }
   if (OPER.on){
     if (e.code === 'Escape'){ OPER.end(); MENU.show('main'); }
     else if (e.code === 'KeyR'){ if (REC.active) REC.stop(); else REC.start(0); }
@@ -86,6 +86,9 @@ addEventListener('keydown', e => {
     return;
   }
   if (S.attract) return;
+  // Esc без захвата мыши (оверлей «кликни», телефон) — меню паузы
+  if (e.code === 'Escape' && S.mode === 'fps' && !isLocked()){ MENU.waitLock = false; MENU.pause(); return; }
+  if (typeof MISSION !== 'undefined' && MISSION.key(e)) return;
   // общие
   switch (e.code){
     case 'KeyM': AU.toggle(); feed(tr('Звук: ', 'Sound: ', 'Âm thanh: ') + (AU.on ? tr('вкл', 'on', 'bật') : tr('выкл', 'off', 'tắt'))); return;
@@ -346,13 +349,22 @@ function helpFPS(c){
 }
 function fmtTime(s){ s = max(0, floor(s)); return `${floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 let navPts = [];
-function objectivePos(){ return TACT.navPos(); }
+function objectivePos(){ return typeof MISSION !== 'undefined' ? MISSION.navPos() : TACT.navPos(); }
+// точка для маркера: дальняя цель скрыта за горизонтом метеорита (R = 500 м, горизонт ~40 м),
+// поэтому маркер ставим на поверхности по пути к ней, над землёй — стрелка показывает, куда идти
+function navAnchor(p){
+  const c = ctrlEntity(); if (!c || len(p) < 80) return p;
+  const sd = surfDist(c.pos, p); if (sd < 70) return p;
+  const dir = stepToward(norm(c.pos), norm(p), 46 / RM);
+  return mul(dir, groundR(dir) + 6);
+}
 function navTargetFor(p, from){
   if (len(p) < 80){ return mul(bestAxis(norm(from)), RM); }   // в ядро — через ближайшую шахту
   return p;
 }
 function computeNav(){
   navPts = [];
+  if (typeof MISSION !== 'undefined') MISSION.updateNav();
   const c = ctrlEntity(); const p = objectivePos();
   if (!c || !p || c.cls === 'bld' || underground(c.pos)) return;
   const tgt = navTargetFor(p, c.pos);
@@ -375,6 +387,7 @@ function project(p){
   return [innerWidth / 2 + dot(v, c.right) / z / c.fov * H, H / 2 - dot(v, c.up) / z / c.fov * H, z];
 }
 function edgeMarker(p, color, label, subt){
+  p = navAnchor(p);
   const W = innerWidth, H = innerHeight;
   const c = S.cam, v = sub(p, c.pos);
   const z = dot(v, c.fwd);
@@ -555,10 +568,11 @@ function drawOverlay(dt){
   const me = S.me, c = ctrlEntity();
   // навигационная линия
   const t = TACT.task;
-  if ((S.navLine || S.navT > 0) && navPts.length && t && !t.done){
-    const alpha = S.navLine ? 0.75 : min(0.75, S.navT / 2);
+  const MI = typeof MISSION !== 'undefined';
+  if ((MI ? MISSION.navVisible() : (S.navLine || S.navT > 0) && t && !t.done) && navPts.length){
+    const alpha = S.navLine || (MI && MISSION.nav && MISSION.nav.mode !== 'order') ? 0.75 : min(0.75, S.navT / 2);
     const tt = performance.now() / 600;
-    const col = t.kind === 'strat' || t.kind === 'player' ? '140,255,170' : '255,190,90';
+    const col = MI ? MISSION.navColor() : t.kind === 'strat' || t.kind === 'player' ? '140,255,170' : '255,190,90';
     octx.lineWidth = 2.5;
     for (let i = 0; i < navPts.length - 1; i++){
       const a = project(navPts[i]), b = project(navPts[i + 1]);
@@ -601,8 +615,9 @@ function drawOverlay(dt){
     }
   }
   // маркер задачи
-  const op = objectivePos();
-  if (op && t && !t.done && c){
+  const op = MI ? TACT.navPos() : objectivePos();
+  if (MI && c){ MISSION.drawObjMarker(c); MISSION.overlay(c); }
+  else if (op && t && !t.done && c){
     const tgt = navTargetFor(op, c.pos);
     const tac = t.kind !== 'strat' && t.kind !== 'player';
     edgeMarker(tgt, tac ? '#ffbe5a' : '#8fffaa', len(op) < 80 ? tr('ШАХТА → ЯДРО', 'SHAFT → CORE', 'GIẾNG → LÕI') : (tac ? tr('ТАКТИКА', 'TACTICAL', 'CHIẾN THUẬT') : tr('ЗАДАЧА', 'OBJECTIVE', 'NHIỆM VỤ')), `${Math.round(dist(tgt, c.pos))} ${tr('м', 'm', 'm')}`);
@@ -672,7 +687,7 @@ function updateHUD(){
   const card = fps ? TACT.card() : null;
   if (card && (!card.done || TACT.task && S.time - TACT.task.doneT < 4)){
     objEl.style.display = 'block';
-    objEl.className = (card.done ? (card.ok ? 'done' : 'fail') : '') + (card.tac ? ' tac' : '');
+    objEl.className = (card.done ? (card.ok ? 'done' : 'fail') : '') + (card.free ? ' free' : card.tac ? ' tac' : '');
     objEl.innerHTML = `<small>${card.head}</small><b>${card.title}</b>${card.sub ? `<em>${card.sub}</em>` : ''}` +
       (card.mult ? `<i class="mult ${card.on ? 'on' : ''}">XP ×${card.mult}${card.on ? '' : tr(' · выполняй задачу', ' · stay on task', ' · bám nhiệm vụ')}</i>` : '');
   } else objEl.style.display = 'none';
