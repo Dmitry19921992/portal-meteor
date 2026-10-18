@@ -104,10 +104,10 @@ const V2 = {
     if (v.vk === 'mlrs'){ const f = tangent(v.aim, up); return add(add(add(v.pos, mul(up, 1.6 + v.elev * 1.2)), mul(f, 0.2)), mul(side, (k - 1) * 0.48)); }
     return add(add(v.pos, mul(up, 3.0)), mul(tangent(v.aim, up), 0.6));
   },
-  rocketR(v, aimPt, k){          // рейдер: неуправляемая ракета
+  rocketR(v, aimPt, k, te){      // рейдер: неуправляемая ракета с неконтактным взрывателем
     const m = V2.muzzle(v, k);
     const dir = aimPt ? norm(sub(aimPt, m)) : v.aim;
-    fire(m, dir, v.team, v === ctrlEntity() ? 0.012 : 0.028 * (v.team === 1 ? DK().acc : 1), 55, 78, v, 'r', { splash: 2.8, boom: 1.1 });
+    fire(m, dir, v.team, v === ctrlEntity() ? 0.012 : 0.022 * (v.team === 1 ? DK().acc : 1), 60, 78, v, 'r', { splash: 2.8, boom: 1.1, v2: 'rk', te: te && te.alive && te.cls !== 'hq' ? te : null });
     addLight(m, [8, 5, 2], 10, 0.08, 0.008);
     S.fx.length < 76 && S.fx.push({ type: 'smoke', pos: sub(m, mul(dir, 1.2)), vel: mul(dir, -1.5), r0: 0.4, r1: 1.6, life: 1.6, t: 0, grey: 0.4, dens: 0.9, heat: 0.3 });
     emit('v2', { k: 'rk', pos: m, src: v });
@@ -181,7 +181,10 @@ const V2 = {
     const cam = S.cam ? S.cam.pos : null;
     for (const p of S.proj){
       if (!p.v2 || p.life <= 0) continue;
-      if (p.v2 === 'g' || p.v2 === 'sm'){
+      if (p.v2 === 'rk'){
+        if (p.te && p.te.alive){ const c = p.te.cls === 'bld' ? bldCenter(p.te) : centerOf(p.te), r = hitRadius(p.te) + 1.0; if (dist2(p.pos, c) < r * r) p.fuse = 0.0001; }
+        if (random() < 0.6) S.sparks.push({ pos: p.pos, vel: add(mul(p.vel, -0.12), mul(randUnit(), 1.5)), life: 0.15 });
+      } else if (p.v2 === 'g' || p.v2 === 'sm'){
         const g = V2.guide(p, dt);
         const back = sub(p.pos, mul(norm(p.vel), 0.9));
         if (random() < 0.8) S.sparks.push({ pos: back, vel: add(mul(p.vel, -0.15), mul(randUnit(), 2)), life: 0.18 + random() * 0.1 });
@@ -427,7 +430,7 @@ const V2 = {
       v.salvoT -= dt;
       if (v.salvoT <= 0){
         const k = v.salvoK++;
-        if (v.vk === 'raider'){ V2.rocketR(v, isMe ? v.aimPt : v.salvoAim, k); v.salvoT = 0.14; }
+        if (v.vk === 'raider'){ V2.rocketR(v, isMe ? v.aimPt : v.salvoAim, k, isMe ? v.aimEnt : v.salvoTe); v.salvoT = 0.14; }
         else { V2.rocketG(v, v.salvoTp, v.salvoTe && v.salvoTe.alive ? v.salvoTe : null, k % 3, v.salvoSmoke); v.salvoT = v.team === 1 && !v.salvoSmoke ? 0.16 : 0.27; }
         if (--v.salvoN <= 0) v.salvoSmoke = false;
       }
@@ -446,7 +449,7 @@ const V2 = {
   },
   shootMain(v, tp, te){
     const R = V2.reload(v);
-    if (v.vk === 'raider'){ v.salvoN = 4; v.salvoT = 0; v.salvoK = 0; v.salvoAim = tp; v.cd = R; }
+    if (v.vk === 'raider'){ v.salvoN = 4; v.salvoT = 0; v.salvoK = 0; v.salvoAim = tp; v.salvoTe = te || null; v.cd = R; }
     else if (v.vk === 'mlrs'){ V2.startSalvo(v, tp, te, false); v.cd = R; }
     else { if (v.team === 0) V2.lob(v, tp, false); else { v.lobTp = tp; v.swingT = 0; } v.cd = R; }
   },
@@ -523,7 +526,7 @@ const V2 = {
     S.aiming = false;
     const KK = VK[v.vk];
     // только что вселились в артиллерию: опускаем прицел, чтобы перекрестие легло на землю в ~60 м
-    if (v.vk !== 'raider' && S.rtime - (v.possT || -9) > 0.5){ const f0 = tangent(v.aim, v.up); v.aim = norm(add(f0, mul(v.up, -0.12))); }
+    if (v.vk !== 'raider' && S.rtime - (v.possT || -9) > 0.5){ const f0 = tangent(v.aim, v.up); v.aim = norm(add(f0, mul(v.up, -0.08))); }
     v.possT = S.rtime;
     const f = clamp((K('fwd') ? 1 : 0) - (K('back') ? 1 : 0) + TOUCH.move[1], -1, 1);
     const turn = clamp((K('right') ? 1 : 0) - (K('left') ? 1 : 0) + TOUCH.move[0], -1, 1);
@@ -543,8 +546,13 @@ const V2 = {
     const h = c.hiK, center = add(c.pos, mul(c.up, 1.0)), af = tangent(c.aim, c.up);
     const want = add(add(center, mul(af, -(KK.camB + h * 8))), mul(c.up, KK.camH + h * 42));
     const pos = pullCam(center, want);
-    const ld = h > 0.01 ? norm(add(c.aim, mul(c.up, -0.75 * h))) : c.aim;
-    const look = norm(sub(add(center, mul(ld, 40 + h * 70)), pos));
+    let lp = add(center, mul(c.aim, 40));
+    if (h > 0.01){   // вид сверху: мышь вверх-вниз двигает точку взгляда по земле 15…170 м
+      const el = asin(clamp(dot(c.aim, c.up), -1, 1)), D = clamp(70 + el * 160, 15, 175);
+      const gp = surfacePoint(stepToward(norm(c.pos), norm(add(c.pos, mul(af, 10))), D / RM), 0.3);
+      lp = add(mul(lp, 1 - h), mul(gp, h));
+    }
+    const look = norm(sub(lp, pos));
     return Object.assign({ pos }, camBasis(look, c.up));
   },
   // ---------------- данные для шейдера (render.js objInfo)
@@ -605,6 +613,11 @@ const V2 = {
     else if (c.vk === 'mlrs') jL.textContent = (ready ? tr('ЗАЛП ГОТОВ · ЛКМ', 'SALVO READY · LMB', 'SALVO READY · LMB') : tr('пакет перезаряжается', 'launcher reloading', 'launcher reloading')) + ` · ${d} ${tr('м', 'm', 'm')} · ${tr('ПКМ — вид сверху', 'RMB — high view', 'RMB — high view')}`;
     else jL.textContent = (ready ? (c.team === 0 ? tr('МИНА ГОТОВА · ЛКМ', 'SHELL READY · LMB', 'SHELL READY · LMB') : tr('БОМБА ГОТОВА · ЛКМ', 'BOMB READY · LMB', 'BOMB READY · LMB')) : tr('перезарядка', 'reloading', 'reloading')) + ` · ${d} ${tr('м', 'm', 'm')} · ${tr('ПКМ — вид сверху', 'RMB — high view', 'RMB — high view')}`;
   },
+  hint(c){
+    if (c.vk === 'raider') return tr(`Рейдер: ЛКМ — залп 4 ракет, ПКМ — пулемёт, ${bk('grenade')} — нитро. Быстрый и хрупкий: бей по строителям и с фланга.`, `Raider: LMB — 4-rocket salvo, RMB — MG, ${bk('grenade')} — nitro. Fast and fragile: hit builders and flanks.`);
+    if (c.vk === 'mlrs') return tr(`РСЗО: ЛКМ — залп в точку прицела (35–160 м), ПКМ — вид сверху для дальних целей, ${bk('reflex')} — дымовой залп.`, `MLRS: LMB — salvo at the aim point (35–160 m), RMB — high view for far targets, ${bk('reflex')} — smoke salvo.`);
+    return tr(`${V2.cname('cat', c.team)}: ЛКМ — выстрел навесом в точку прицела, ПКМ — вид сверху, ${bk('reflex')} — осветительная бомба (разведка).`, `${V2.cname('cat', c.team)}: LMB — lob at the aim point, RMB — high view, ${bk('reflex')} — flare bomb (spotting).`);
+  },
   help(c, row){
     row(`${bk('fwd')}/${bk('back')}`, tr('газ / задний ход', 'throttle / reverse', 'throttle / reverse')); row(`${bk('left')}/${bk('right')}`, tr('руль', 'steer', 'steer'));
     row(tr('мышь', 'mouse', 'chuột'), tr('прицел', 'aim', 'aim'));
@@ -643,7 +656,8 @@ const V2 = {
     if (!nFactory) return;
     const time = S.time, swarm = t === 1;
     const n = k => countProduct(t, k);
-    // ранние рейдеры — сразу после первого танка; средняя техника — перед «добором» танков до 4
+    // руды у ИИ всегда впритык: дешёвый рейдер (1–2 шт.) ставим перед танками, среднюю технику
+    // (по одной, со временем по две) — сразу после первого танка, иначе до неё не доходит очередь
     const tk = []; plan.forEach((p, i) => { if (p[1] === 'tank') tk.push(i); });
     const mid = [];
     if (time > 300 && n('cat') < 1) mid.push(['p', 'cat']);
@@ -651,10 +665,10 @@ const V2 = {
     if (time > 360 && n('raider') < (swarm ? 3 : 2)) mid.push(['p', 'raider']);
     if (time > 700 && n('cat') < 2) mid.push(['p', 'cat']);
     if (time > 800 && n('mlrs') < 2) mid.push(['p', 'mlrs']);
-    plan.splice(tk.length > 1 ? tk[1] : plan.length, 0, ...mid);
+    plan.splice(tk.length ? tk[0] + 1 : plan.length, 0, ...mid);
     const early = [];
     if (time > 90 && n('raider') < (swarm ? 2 : 1)) early.push(['p', 'raider']);
-    plan.splice(tk.length ? tk[0] + 1 : plan.length, 0, ...early);
+    plan.splice(tk.length ? tk[0] : plan.length, 0, ...early);
   },
   // ---------------- звук (процедурный, через AU)
   sound(e){
