@@ -777,6 +777,7 @@ function ecoPopHTML(){
 }
 function ecoPopToggle(on){
   ECOPOP.open = on === undefined ? !ECOPOP.open : on;
+  if (S.attract || MENU.isOpen()) ECOPOP.open = false;
   let el = document.getElementById('ecoPop');
   if (!el){ el = document.createElement('div'); el.id = 'ecoPop'; document.body.appendChild(el); el.addEventListener('pointerdown', e => { e.stopPropagation(); if (e.target.dataset.close) ecoPopToggle(false); }); }
   el.style.display = ECOPOP.open ? 'block' : 'none';
@@ -802,6 +803,7 @@ function placeBarUpdate(){
     }
   }
   const show = S.place && S.mode === 'rts' && !S.attract && (TOUCH.on || S.placeAt);
+  if (document.body.classList.contains('placing') !== !!show) document.body.classList.toggle('placing', !!show);
   let el = document.getElementById('placeBar');
   if (!show){ if (el && el.style.display !== 'none') el.style.display = 'none'; return; }
   if (!el){
@@ -847,7 +849,9 @@ function placeBarUpdate(){
   #placeBar{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:17;display:none;gap:8px;align-items:center;background:rgba(12,13,14,.9);border:1px solid var(--line);padding:6px 10px;font:600 13px "Exo 2";color:#e8dcb8}
   #placeBar button{pointer-events:auto;font:700 15px "Exo 2";padding:10px 16px;border-radius:6px;border:1.5px solid rgba(143,255,170,.7);background:rgba(40,90,50,.6);color:#eaffef}
   #placeBar button[data-pb=no]{border-color:rgba(255,120,90,.7);background:rgba(110,40,30,.6);color:#ffe0d8} #placeBar button.off{opacity:.45}
-  body.touch #ecoPop{top:40px;font-size:11px} body.touch #placeBar{bottom:70px}`;
+  body.touch #ecoPop{top:40px;font-size:11px} body.touch #placeBar{bottom:10px}
+  body.touch.placing #card{display:none !important}
+  body.touch #card .ab.bb{width:66px;height:48px} body.touch #card .ab.bb .bc{font-size:9px} body.touch #card .bhead{display:none}`;
   document.head.appendChild(st);
   document.addEventListener('pointerdown', e => { const t = e.target.closest && e.target.closest('.hb.ore'); if (t){ e.stopPropagation(); ecoPopToggle(); } }, true);
 })();
