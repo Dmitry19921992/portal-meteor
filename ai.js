@@ -728,7 +728,7 @@ function economy(t){
   for (const [kind, key] of plan){
     if (kind === 'p'){
       // ИИ нашей команды оставляет в очередях место для заказов игрока
-      if (t === 0 && !S.attract){ const site = productionSite(t, key); if (site && site.queue.length >= 3) continue; }
+      if (t === 0 && !S.attract){ const site = productionSite(t, key); if (site && site.queue.length >= (key === 'builder' ? 4 : 3)) continue; }
       const why = canProduce(t, key);
       if (!why){ produce(t, key); if (T.ore < 150) return; continue; }
       if (why === tr('Мало руды', 'Not enough ore', 'Không đủ quặng')) return;

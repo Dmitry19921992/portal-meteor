@@ -148,7 +148,7 @@ function builderWork(b, j, dt){
     j.built = min(1, j.built + d);
     j.hp = min(j.maxhp, j.hp + j.maxhp * 0.85 * d);
     if (j.built >= 1) finishSite(j);
-  } else if (j.cls === 'bld') j.hp = min(j.maxhp, j.hp + max(8, j.maxhp * 0.012) * dt * share);
+  } else if (j.cls === 'bld') j.hp = min(j.maxhp, j.hp + max(12, j.maxhp * 0.025) * dt * share);
   else if (j.cls === 'hq') j.hp = min(j.maxhp, j.hp + 22 * dt);
   else if (j.cls === 'tank') j.hp = min(j.maxhp, j.hp + 30 * dt);
   const top = j.cls === 'hq' ? add(builderTarget(j), mul(BASES[j.team], 6)) : j.cls === 'bld' ? add(j.pos, mul(j.up, max(0.4, j.H * max(0.15, j.built) * 0.9))) : add(j.pos, mul(j.up, 1));
@@ -213,6 +213,8 @@ function builderStep(b, dt){
   b.work = max(0, (b.work || 0) - dt * 3); b.beam = null;
   if (!b.jobs) b.jobs = [];
   if (!b.abil) b.abil = {};
+  if (!b.order){ b.order = 'idle'; b.manualUntil = b.manualUntil || 0; }   // старые сохранения (v5: летающие дроны)
+  if (!b.serial) b.serial = 1 + S.builders.filter(x => x.team === b.team).reduce((m, x) => max(m, x.serial || 0), 0);
   b.thinkT = (b.thinkT || 0) - dt;
   if (b.thinkT <= 0){ b.thinkT = 0.45 + random() * 0.15; builderThink(b); }
   let goal = null, face = null;
@@ -468,7 +470,7 @@ function aiAssign(t, site, n){
 }
 function aiWantBuilders(t){
   const ops = S.buildings.filter(b => b.alive && b.done && b.team === t && b.type === 'outpost').length;
-  return min(GAME.MAX_BUILDERS, 2 + (S.time > 80 ? 1 : 0) + (S.time > 240 ? 1 : 0) + (S.time > 600 ? 1 : 0) + ops);
+  return min(GAME.MAX_BUILDERS, 3 + (S.time > 150 ? 1 : 0) + (S.time > 360 ? 1 : 0) + (S.time > 700 ? 1 : 0) + ops);
 }
 // лучшая свободная жила для команды t: ближе к своей базе/точкам, без врагов рядом
 function aiVein(t){
@@ -479,8 +481,9 @@ function aiVein(t){
     if (S.buildings.some(b => b.alive && b.team === t && b.type === 'extractor' && !b.done && b.vein === v.i)) continue;
     let s = surfDist(v.dir, home);
     const cp = v.kind === 'cp' ? S.cps[v.ref] : null;
-    if (cp && cp.owner === t) s *= 0.35;                 // своя точка — жила под защитой
-    else if (v.kind === 'cp' || v.kind === 'free') s += 250;
+    const nb = teamBuilders(t).length;
+    if (cp && cp.owner === t){ if (nb < 3) continue; s *= 0.35; }   // своя точка — жила под защитой
+    else if (v.kind === 'cp' || v.kind === 'free'){ if (nb < 4 || S.time < 300) continue; s += 250; }   // спорные — когда инженеров хватает
     let foes = 0; for (const e of TGT[t]) if (e.alive && e.cls !== 'bld' && dist2(e.pos, v.pos) < 3600) foes++;
     s += foes * 400;
     if (s < bs){ bs = s; best = v; }
@@ -786,6 +789,15 @@ function ecoPopUpdate(){
 //  ТЕЛЕФОН: тап — место, затем кнопки «Строить» / «Отмена»
 // ---------------------------------------------------------------------
 function placeBarUpdate(){
+  // кнопка «⚒ Инженер» в сенсорной панели стратегии (выбрать свободного инженера)
+  if (TOUCH.on && !placeBarUpdate.btn){
+    const box = document.querySelector('#touch .tf.rts');
+    if (box){
+      const b = document.createElement('button'); b.className = 'wide'; b.dataset.t = 'builder'; b.textContent = '⚒ ' + tr('Инженер', 'Builder', 'Kỹ sư');
+      b.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); AU.init(); selectIdleBuilder(); }, { passive: false });
+      box.appendChild(b); placeBarUpdate.btn = b;
+    }
+  }
   const show = S.place && S.mode === 'rts' && !S.attract && (TOUCH.on || S.placeAt);
   let el = document.getElementById('placeBar');
   if (!show){ if (el && el.style.display !== 'none') el.style.display = 'none'; return; }

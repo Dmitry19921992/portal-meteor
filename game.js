@@ -778,7 +778,9 @@ function produce(team, key){
   const why = canProduce(team, key);
   if (why) return why;
   S.teams[team].ore -= pCost(team, key);
-  productionSite(team, key).queue.push(key);
+  const q = productionSite(team, key).queue;
+  if (key === 'builder') q.splice(min(1, q.length), 0, key);   // v6: инженер — сразу после текущего заказа
+  else q.push(key);
   return null;
 }
 function cancelProduct(site, idx){
