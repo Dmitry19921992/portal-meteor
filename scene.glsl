@@ -1042,7 +1042,7 @@ vec3 vmOff(){
   float bob = uVM.y, mv = uVM2.w, ads = uVM3.x, low = uVM3.y;
   float rl = sin(clamp(vmReload(), 0.0, 1.0) * 3.14159);
   vec3 hip = vec3(0.19 + sin(bob) * 0.008 * mv, -0.185 - abs(cos(bob)) * 0.01 * mv + uVM.z * 0.012 - rl * 0.09, 0.50 - uVM.z * 0.06);
-  vec3 aim = vec3(0.0, -0.102 + uVM.z * 0.004 - rl * 0.09, 0.42 - uVM.z * 0.045);
+  vec3 aim = vec3(0.0, -0.132 + uVM.z * 0.004 - rl * 0.09, 0.42 - uVM.z * 0.045);
   vec3 o = mix(hip, aim, ads);
   o.y -= low * 0.3; o.x += low * 0.06;
   return o;

@@ -16,7 +16,7 @@ const RULES = { G: 8, WALK: 4, JUMP: 5.3, AIR: 9, DRAG: 0.15, RAD: 0.5, EYE: 0.8
 // джетпаки по уровням технологий (v6: тяга ×2 при g ×2.3, заряд на земле вдвое быстрее)
 const JET = {
   basic: { n: ['прыжковый ранец', 'jump pack', 'ba lô nhảy'], thrust: 16, emax: 2.6, rg: 1.7, ra: 0.2, unlock: 0.8 },
-  jet2:  { n: ['ранец II', 'jetpack II', 'ba lô phản lực II'],       thrust: 24, emax: 6.5, rg: 2.4, ra: 0.35, unlock: 1.0 },
+  jet2:  { n: ['ранец II', 'jetpack II', 'ba lô phản lực II'],       thrust: 24, emax: 7.2, rg: 2.4, ra: 0.35, unlock: 1.0 },
   elite: { n: ['ранец десанта', 'assault pack', 'ba lô đổ bộ'], thrust: 25, emax: 8.5, rg: 2.8, ra: 0.5, unlock: 1.0 },
 };
 const GAME = {

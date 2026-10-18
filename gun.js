@@ -15,7 +15,7 @@
 //  spin — раскрутка (с); charge — заряд перед выстрелом (с); semi — одиночный огонь
 //  bot: burst — длина очереди бота [мин, макс], pause — пауза между очередями [мин, макс] (с)
 //  mods — задел под обвесы (см. ATTACH и gstat)
-Object.assign(WEAPONS.rifle, { rpm: 720, dmg: 14, fall: [32, 95, 0.55], mag: 30, reload: 1.6, spread: 0.016, ads: 0.16, zoom: 1.5,
+Object.assign(WEAPONS.rifle, { rpm: 720, dmg: 15, fall: [35, 100, 0.55], mag: 30, reload: 1.6, spread: 0.016, ads: 0.16, zoom: 1.5,
   bloom: 0.0032, bloomMax: 0.028, rec: 0.11, kick: 0.0042, kickX: 0.0016, head: 1.6, tracer: 2, range: 280, type: 'b', speed: 0,
   bot: { burst: [3, 6], pause: [0.35, 0.75] }, mods: {} });
 WEAPONS.smg = { n: ['Пистолет-пулемёт', 'SMG', 'Súng tiểu liên'], rpm: 900, dmg: 10.5, fall: [18, 65, 0.5], mag: 40, reload: 1.35, spread: 0.019, ads: 0.24, zoom: 1.35,
@@ -368,7 +368,8 @@ function gunBotFire(u, aimDir, supp){
   if (u.mag <= 0){ u.mag = W.mag; u.cd = W.reload * (0.9 + random() * 0.4); u.burst = 0; return; }
   const tg = u.target && u.target.alive ? u.target : null;
   // реакция: новая цель — короткая пауза «прицеливания» (видна вспышка/поворот до выстрела)
-  if (tg && u.lastTgt !== tg){ u.lastTgt = tg; u.cd = 0.22 + random() * 0.25 + (W.charge || 0); u.burst = 0; return; }
+  const vsPlayer = !!tg && tg === ctrlEntity() && !S.attract;
+  if (tg && u.lastTgt !== tg){ u.lastTgt = tg; u.cd = 0.22 + random() * 0.25 + (vsPlayer ? 0.3 : 0) + (W.charge || 0); u.burst = 0; return; }
   const eye = add(u.pos, mul(u.up, RULES.EYE * 0.8));
   let dir = aimDir, td = 60;
   if (tg){
@@ -385,6 +386,7 @@ function gunBotFire(u, aimDir, supp){
   if (u.elite) err *= 0.8;
   const g = u.squad; if (g && g.vet) err *= 1 - 0.07 * g.vet;
   if (R.rail) err *= 0.45;
+  if (vsPlayer) err *= 1.3;   // по игроку боты бьют чуть менее метко: игрок убивает бота за ~0.5 с, боты его — за 2–3 с
   err += (u.burstN || 0) * 0.0025 * (W === WEAPONS.hmg ? 0.5 : 1);   // очередь «уводит» ствол
   dir = spreadDir(dir, err, true);
   const from = add(add(eye, mul(dir, 0.8)), mul(norm(cross(u.fwd, u.up)), 0.22));
@@ -545,9 +547,10 @@ function gunOverlay(dt){
     g.fillStyle = (floor(tt * 6) % 2) ? 'rgba(150,230,255,.95)' : 'rgba(150,230,255,.6)';
     const to = GUNS.xferTo;
     const name = to ? (to.cls === 'inf' ? callsign(to) + ' · ' + N2(roleOf(to).n) : to.cls === 'bld' ? bname(to.type) : groupLabel(to)) : '';
-    g.fillText(tr('ПЕРЕДАЧА СИГНАЛА', 'SIGNAL TRANSFER', 'CHUYỂN TÍN HIỆU') + ' ▸ ' + name.toUpperCase(), cx, cy - 30);
-    g.fillStyle = 'rgba(150,230,255,.25)'; g.fillRect(cx - 120, cy - 18, 240, 4);
-    g.fillStyle = 'rgba(150,230,255,.9)'; g.fillRect(cx - 120, cy - 18, 240 * k, 4);
+    const ty = max(110, H * 0.24);
+    g.fillText(tr('ПЕРЕДАЧА СИГНАЛА', 'SIGNAL TRANSFER', 'CHUYỂN TÍN HIỆU') + ' ▸ ' + name.toUpperCase(), cx, ty);
+    g.fillStyle = 'rgba(150,230,255,.25)'; g.fillRect(cx - 120, ty + 12, 240, 4);
+    g.fillStyle = 'rgba(150,230,255,.9)'; g.fillRect(cx - 120, ty + 12, 240 * k, 4);
     g.restore();
     return;
   }
@@ -637,7 +640,12 @@ S.newMarks = true;
   .weap b em{font-size:16px}
   .weap.low b{color:#ff8a6a} .weap.rl b{color:#ffd27a;font-size:24px}
   .weap .rbar{height:3px;background:rgba(0,0,0,.5);margin-top:2px} .weap .rbar s{display:block;height:100%;background:#ffd27a}
-  body.touch #squadp{transform:none;top:58px;width:232px;gap:3px}
+  @media (max-height: 760px){
+    #squadp{width:250px;bottom:186px;gap:3px} #squadp img{width:36px;height:36px} #squadp b{font-size:13px} #squadp small{font-size:11px;height:13px}
+    #squadp .sm{padding:2px 6px 2px 2px} #squadp i{height:5px;margin-top:2px} #squadp .chat p{font-size:12px}
+  }
+  @media (max-height: 600px){ #squadp .chat p:nth-last-child(n+2){display:none} #squadp h5{display:none} }
+  body.touch #squadp{transform:none;top:58px;width:232px;gap:3px;bottom:auto}
   body.touch #squadp img{width:34px;height:34px}
   body.touch #squadp b{font-size:13px} body.touch #squadp small{font-size:11px;height:13px}
   body.touch #squadp h5, body.touch #squadp .chat{display:none}
@@ -657,5 +665,18 @@ S.newMarks = true;
       if (down > 0) K.kick = max(0, K.kick - down * 0.0022 * SET.sens * (S.aiming ? (S.adsSens || 0.6) : 1));
     }
     return lb(mx, my);
+  };
+}
+// в начале боя — короткая памятка по новому управлению стрельбой и ранцем
+{
+  const nm = newMatch;
+  newMatch = function(opts){
+    const r = nm(opts);
+    GUNS.lastMe = null; GUNS.raise = 0; GUNS.xfer = 0; for (const T of TRACERS) T.on = false;
+    if (!S.attract){
+      if (typeof TOUCH !== 'undefined' && TOUCH.on) feed(tr('◎ — прицел, R — перезарядка, » — рывок ранцем', '◎ — aim, R — reload, » — jet dash', '◎ — ngắm, R — nạp đạn, » — lướt'), '#9cf');
+      else feed(tr(`ПКМ — прицел · ${bk('reload')} — перезарядка · ${bk('down')} стоя — пригнуться · ${bk('dash')} или 2×${bk('run')} в воздухе — рывок`, `RMB — aim · ${bk('reload')} — reload · ${bk('down')} standing — crouch · ${bk('dash')} or 2×${bk('run')} in the air — dash`, `Chuột phải — ngắm · ${bk('reload')} — nạp · ${bk('down')} khi đứng — cúi · ${bk('dash')} hoặc 2×${bk('run')} trên không — lướt`), '#9cf');
+    }
+    return r;
   };
 }
