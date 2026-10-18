@@ -60,7 +60,7 @@ function lookBy(mx, my){
   if (S.mode !== 'fps' || S.attract || !S.me || CAMFX.busy()) return;
   const c = ctrlEntity(); if (!c) return;
   if (c.cls === 'inf'){
-    const p = c, s = 0.0022 * SET.sens / (1 + S.slow * 0.6) * (S.aiming ? 0.6 : 1);
+    const p = c, s = 0.0022 * SET.sens / (1 + S.slow * 0.6) * (S.aiming ? (S.adsSens || 0.6) : 1);
     p.fwd = norm(rotAxis(p.fwd, p.up, -mx * s));
     const right = norm(cross(p.fwd, p.up));
     const nf = norm(rotAxis(p.fwd, right, -my * s * (SET.invertY ? -1 : 1)));
@@ -148,7 +148,8 @@ function playerInput(p){
   // v5.3: C в воздухе — тормоз ранцем (на земле C — подкат)
   const brake = K('down') && !p.grounded;
   if (brake) HINTS.used('airbrake');
-  return { wish, speedMul: run ? (S.onRoute ? 2.35 : 1.8) : 1, jump: K('jump') || hop, thrust: jetBtn, thrustDir: norm(add(F, mul(wish, 0.8))), lift: K('jump'),
+  // v6: ранец всегда немного «поднимает» (держит высоту, даже если смотришь на горизонт); пригнувшись — медленнее
+  return { wish, speedMul: (run ? (S.onRoute ? 2.35 : 1.8) : 1) * (GUNS.crouchK > 0.5 ? 0.45 : 1), jump: K('jump') || hop, thrust: jetBtn, thrustDir: norm(add(add(F, mul(wish, 0.8)), mul(Uu, RULES.JET_LIFT || 0))), lift: K('jump'),
            brake, fire: fireBtn, aim: F, wish3, freeSpeed: run ? 40 : 10, rocket: K('rocket') };
 }
 function tankPlayerInput(v, dt){
@@ -615,7 +616,7 @@ function drawOverlay(dt){
     octx.fillStyle = g; octx.fillRect(0, 0, innerWidth, innerHeight);
   }
   // попадание
-  if (S.hitT > 0){
+  if (S.hitT > 0 && !S.newMarks){   // v6: метки попаданий рисует gun.js
     const cx = innerWidth / 2, cy = innerHeight / 2;
     octx.strokeStyle = '#fff'; octx.lineWidth = 2; octx.beginPath();
     octx.moveTo(cx - 10, cy - 10); octx.lineTo(cx - 4, cy - 4); octx.moveTo(cx + 10, cy - 10); octx.lineTo(cx + 4, cy - 4);
@@ -746,9 +747,10 @@ function updateKit(c){
   let h = '';
   if (c.cls === 'inf'){
     const W = WEAPONS[K.w];
-    const wl = ['rifle', 'rail', 'hmg'].map((w, i) => `<span class="${K.w === w ? 'cur' : weaponAvail(w) ? '' : 'na'}">${i + 1}</span>`).join('');
-    h += `<div class="weap"><small>${N2(W.n).toUpperCase()}${K.incT > 0 ? ' · ' + tr('ЗАЖИГ.', 'INC.', 'ĐẠN CHÁY') + ' ' + Math.ceil(K.incT) : ''}${K.w === 'hmg' ? ' · ' + Math.ceil(K.hmgT) + tr('с', 's', 'giây') : ''}</small>` +
-         `<b>${K.reloadT > 0 ? tr('ПЕРЕЗАРЯДКА', 'RELOADING', 'ĐANG NẠP') : K.mag[K.w]}<em>/${W.mag}</em></b><div class="wl">${wl}</div></div>`;
+    const wl = [roleOf(c).w === 'smg' ? 'smg' : 'rifle', 'rail', 'hmg'].map((w, i) => `<span class="${K.w === w ? 'cur' : weaponAvail(w) ? '' : 'na'}">${i + 1}</span>`).join('');
+    const lowA = K.reloadT <= 0 && K.mag[K.w] <= W.mag * 0.25, rlP = K.reloadT > 0 ? 1 - K.reloadT / (W.reload || 1) : 0;
+    h += `<div class="weap${lowA ? ' low' : ''}${K.reloadT > 0 ? ' rl' : ''}"><small>${N2(W.n).toUpperCase()}${K.incT > 0 ? ' · ' + tr('ЗАЖИГ.', 'INC.', 'ĐẠN CHÁY') + ' ' + Math.ceil(K.incT) : ''}${K.w === 'hmg' ? ' · ' + Math.ceil(K.hmgT) + tr('с', 's', 'giây') : ''}</small>` +
+         `<b>${K.reloadT > 0 ? tr('ПЕРЕЗАРЯДКА', 'RELOADING', 'ĐANG NẠP') : K.mag[K.w]}<em>/${W.mag}</em></b>${K.reloadT > 0 ? `<div class="rbar"><s style="width:${(rlP * 100).toFixed(0)}%"></s></div>` : ''}<div class="wl">${wl}</div></div>`;
     h += '<div class="slots">';
     h += slot(bk('rocket'), tr('Ракета', 'Rocket', 'Tên lửa'), c.rocketCd > 0 ? 'cd' : 'ok', c.rocketCd > 0 ? 1 - c.rocketCd / (roleOf(c).rocket * (c.elite ? 0.65 : 1)) : null, K.freeRockets ? '×' + K.freeRockets : (c.rocketCd > 0 ? Math.ceil(c.rocketCd) : ''));
     h += PROG.has('grenade') ? slot(bk('grenade'), tr('Граната', 'Grenade', 'Lựu đạn'), K.grenCd > 0 ? 'cd' : 'ok', K.grenCd > 0 ? 1 - K.grenCd / 9 : null, K.grenCd > 0 ? Math.ceil(K.grenCd) : '') : lockedSlot(bk('grenade'), tr('Граната', 'Grenade', 'Lựu đạn'), 'grenade');

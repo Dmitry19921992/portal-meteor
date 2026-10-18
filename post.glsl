@@ -14,6 +14,7 @@ uniform vec4  uTrc[8];   // трассеры у камеры: отрезки в 
 uniform int   uNT;
 uniform float uSlow;     // рефлекс (замедление времени)
 uniform float uDist;     // искажения вкл/выкл
+uniform float uXfer;     // v6: «передача сигнала» при перелёте камеры между бойцами
 out vec4 frag;
 
 vec3 aces(vec3 x){
@@ -35,6 +36,12 @@ void main(){
   if (uVhs > 0.5){
     float line = floor(uv.y * uRes.y * 0.5);
     uv.x += (hash(vec2(line, floor(uTime * 24.0))) - 0.5) * 0.0025;
+  }
+  if (uXfer > 0.0){
+    // срыв строк: полосы сдвигаются рывками
+    float band = floor(uv.y * 38.0 + floor(uTime * 15.0) * 7.0);
+    float jit = step(0.72, hash(vec2(band, floor(uTime * 20.0))));
+    uv.x += (hash(vec2(band * 1.7, floor(uTime * 30.0))) - 0.5) * 0.06 * jit * uXfer;
   }
   // ---- искажение пространства (как в F.E.A.R.): ударная волна-линза и марево трассеров
   vec2 asp = vec2(uRes.x / uRes.y, 1.0);
@@ -71,7 +78,7 @@ void main(){
     off = clamp(off, vec2(-0.06), vec2(0.06)) / asp;
   }
   vec2 cc = uv - 0.5;
-  float ca = dot(cc, cc) * (0.012 + uSlow * 0.03) + ring * 0.004;
+  float ca = dot(cc, cc) * (0.012 + uSlow * 0.03) + ring * 0.004 + uXfer * 0.035;
   vec2 u2 = uv + off;
   vec3 col;
   col.r = texture(uTex, u2 - cc * ca + off * 0.35).r;
@@ -107,5 +114,12 @@ void main(){
   float g = hash(gl_FragCoord.xy + fract(uTime * 13.7) * 311.0) - 0.5;
   col += g * (0.035 + uVhs * 0.05 + uSlow * 0.02);
   if (uVhs > 0.5) col *= 0.9 + 0.1 * sin(gl_FragCoord.y * 3.14159);
+  if (uXfer > 0.0){
+    float l2 = dot(col, vec3(0.3, 0.55, 0.15));
+    col = mix(col, vec3(l2 * 0.75, l2 * 1.05, l2 * 1.2), uXfer * 0.55);           // холодный «сигнал»
+    col *= 1.0 - uXfer * 0.3 * (0.5 + 0.5 * sin(gl_FragCoord.y * 1.6 + uTime * 40.0));   // строки развёртки
+    col += (hash(gl_FragCoord.xy * 0.5 + fract(uTime * 7.3) * 97.0) - 0.5) * uXfer * 0.32; // статика
+    col += vec3(0.25, 0.6, 0.8) * uXfer * 0.12 * step(0.985, hash(vec2(floor(uv.y * 90.0), floor(uTime * 25.0))));
+  }
   frag = vec4(clamp(col, 0.0, 1.0), 1.0);
 }

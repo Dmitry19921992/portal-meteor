@@ -19,9 +19,9 @@ function frame(now){
   if (S.me && S.me.cls === 'inf') S.bob = S.me.phase;
   setupCamera(dt);
   render(dt, now);
-  drawOverlay(dt);
+  drawOverlay(dt); gunOverlay(dt);
   navTimer -= dt; if (navTimer <= 0){ navTimer = 0.25; computeNav(); }
-  AU.frame(dt); AU.process(S.events);
+  AU.frame(dt); AU.process(S.events); gunEvents(S.events);
   rtsWatch(dt);
   SAVE.auto();
   CAMFX.frame(dt);

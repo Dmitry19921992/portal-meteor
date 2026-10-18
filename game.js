@@ -1,16 +1,23 @@
 // =====================================================================
 //  ПРАВИЛА
 // =====================================================================
-const RULES = { G: 3.5, WALK: 4, JUMP: 4.5, AIR: 7, DRAG: 0.15, RAD: 0.5, EYE: 0.8,
-  G_TOP: 0.6,       // v5.3: над поверхностью тяжесть растёт к куполу (+60% у купола) — не «висим» вдали от метеорита
-  STEER: 1.8,       // v5.3: тяга ранца гасит снос поперёк направления тяги — резкие повороты в полёте
-  BRAKE: 1.4,       // v5.3: воздушный тормоз (C в воздухе) — доля тяги ранца
+// v6: тяжелее и «плотнее»: g у поверхности 8 (было 3.5) — короткие резкие прыжки, быстрые падения;
+// ранцы мощнее, отзывчивее, быстрее заряжаются на земле; выше над поверхностью тяжесть слабеет (−20% у купола),
+// а «разреженная атмосфера» ограничивает скорость пехоты (~55 м/с) — к куполу долетают, но не метеоритом
+const RULES = { G: 8, WALK: 4, JUMP: 5.3, AIR: 9, DRAG: 0.15, RAD: 0.5, EYE: 0.8,
+  G_TOP: -0.2,      // v6: у купола тяжесть на 20% слабее (v5.3: +60%)
+  STEER: 3.4,       // тяга ранца гасит снос поперёк направления тяги — резкие повороты в полёте (v5.3: 1.8)
+  BRAKE: 1.15,      // воздушный тормоз (C в воздухе) — доля тяги ранца
+  JET_LIFT: 0.5,    // v6: подъёмная добавка к направлению тяги игрока (смотришь на горизонт — всё равно держишь высоту)
+  CATCH: 0.6,       // v6: при падении тяга вверх сильнее — ранец «ловит» мгновенно
+  VMAX: 45, VDRAG: 0.02,   // v6: выше VMAX м/с пехоту тормозит «атмосфера» (предел ~55 м/с)
+  BOOST_K: 1.5,     // v6: рывки способностей (прыжок отряда) — под новую гравитацию
   PORTAL_GRACE: 1.5, PORTAL_PUSH: 6 };   // v5.3: после выхода из портала — толчок внутрь и 1.5 с без тяги наружу
-// джетпаки по уровням технологий
+// джетпаки по уровням технологий (v6: тяга ×2 при g ×2.3, заряд на земле вдвое быстрее)
 const JET = {
-  basic: { n: ['прыжковый ранец', 'jump pack', 'ba lô nhảy'], thrust: 7,  emax: 2.4, rg: 0.8, ra: 0.15, unlock: 0.8 },
-  jet2:  { n: ['ранец II', 'jetpack II', 'ba lô phản lực II'],       thrust: 12, emax: 6, rg: 1.2, ra: 0.30, unlock: 1.0 },
-  elite: { n: ['ранец десанта', 'assault pack', 'ba lô đổ bộ'], thrust: 12.5, emax: 8.0, rg: 1.5, ra: 0.45, unlock: 1.0 },
+  basic: { n: ['прыжковый ранец', 'jump pack', 'ba lô nhảy'], thrust: 16, emax: 2.6, rg: 1.7, ra: 0.2, unlock: 0.8 },
+  jet2:  { n: ['ранец II', 'jetpack II', 'ba lô phản lực II'],       thrust: 24, emax: 6.5, rg: 2.4, ra: 0.35, unlock: 1.0 },
+  elite: { n: ['ранец десанта', 'assault pack', 'ba lô đổ bộ'], thrust: 25, emax: 8.5, rg: 2.8, ra: 0.5, unlock: 1.0 },
 };
 const GAME = {
   HQ_HP: 18000, MATCH: 3600, START_ORE: 450, SCRAP: 8, CAP_RATE: 0.1, RANGE: 90,
@@ -353,12 +360,15 @@ function physStep(e, inp, dt, free){
       const tl = len(td);
       // (гасим только горизонтальный снос — падение по вертикали остаётся честным, без «зависания»)
       if (!e.grounded && tl > 0.2){ const d = mul(td, 1 / tl); let vp = sub(e.vel, mul(d, dot(e.vel, d))); vp = sub(vp, mul(Up, dot(vp, Up))); a = add(a, mul(vp, -RULES.STEER)); }
+      // v6: падаем и жмём ранец вверх — дополнительный толчок, ранец «ловит» без задержки
+      const vr0 = dot(e.vel, Up);
+      if (!e.grounded && vr0 < -1.5 && tl > 0.2 && dot(td, Up) > 0.25) a = add(a, mul(Up, J.thrust * (RULES.CATCH || 0) * min(1, -vr0 / 8)));
     }
     if (brk){
       const sp = len(e.vel);
       if (sp > 0.3) a = add(a, mul(e.vel, -min(sp / dt, J.thrust * RULES.BRAKE) / sp));
     }
-    if (inp.boost) a = add(a, mul(inp.boostDir, inp.boost));
+    if (inp.boost) a = add(a, mul(inp.boostDir, inp.boost * (RULES.BOOST_K || 1)));
     if (inp.lift && inShaft(e.pos)){
       const vr = dot(e.vel, Up);
       a = add(a, mul(Up, gAt(r) + (vr < 12 ? 5 : 0)));
@@ -380,6 +390,8 @@ function physStep(e, inp, dt, free){
       if (!deep && r < RM + 25) e.vel = mul(e.vel, 1 - RULES.DRAG * dt);   // «пыль» у поверхности; выше — вакуум
     }
     e.vel = add(e.vel, mul(a, dt));
+    // v6: предел скорости пехоты — плавное сопротивление выше VMAX
+    if (e.cls === 'inf' && RULES.VMAX){ const sp = len(e.vel); if (sp > RULES.VMAX) e.vel = mul(e.vel, 1 - min(0.5, (sp - RULES.VMAX) * RULES.VDRAG * dt)); }
   }
   const n = max(1, Math.ceil(len(e.vel) * dt / 0.3)), h = dt / n;
   e.justTeleported = false;

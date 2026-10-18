@@ -139,7 +139,8 @@ const SQUADUI = {
       const hp = max(0, u.hp) / u.maxhp;
       const st = u === S.me ? tr('ТЫ', 'YOU', 'BẠN') : u.healTo ? '⚕ ' + tr('чинит', 'repairing', 'đang sửa') : (u.squad.units.some(x => x.healTo === u) ? '✚ ' + tr('ремонт', 'patched', 'được sửa') : u.suppT > 0 ? '⊘ ' + tr('подавлен', 'pinned', 'bị áp chế') : u.target && u.target.alive ? '✸ ' + tr('в бою', 'engaging', 'giao chiến') : '');
       const talk = now - (u.talkT || -99) < 2.5;
-      return `<div class="sm ${u === S.me ? 'me' : ''} ${talk ? 'talk' : ''} ${hp < 0.35 ? 'low' : ''}"><img src="${this.portrait(u)}"><div><b>${callsign(u)} <span class="role">${roleOf(u).icon}</span>${u.elite ? ' ✦' : ''}</b><small>${st || N2(roleOf(u).n).toLowerCase()}</small><i><s style="width:${(hp * 100).toFixed(0)}%"></s></i></div></div>`;
+      // v6: крупнее — класс всегда виден, здоровье числом
+      return `<div class="sm ${u === S.me ? 'me' : ''} ${talk ? 'talk' : ''} ${hp < 0.35 ? 'low' : ''}"><img src="${this.portrait(u)}"><div><b>${callsign(u)} <span class="role">${roleOf(u).icon}</span>${u.elite ? ' ✦' : ''}<span class="hpn">${Math.ceil(max(0, u.hp))}</span></b><small><span class="cls">${N2(roleOf(u).n)}</span>${st ? ' · ' + st : ''}</small><i><s style="width:${(hp * 100).toFixed(0)}%"></s></i></div></div>`;
     }).join('');
     const lines = this.lines.filter(l => now - l.t < 6).map(l => `<p><b>${l.name}:</b> ${l.text}</p>`).join('');
     const h = `<h5>${groupLabel(sq).toUpperCase()}${sq.vet ? ' ' + '★'.repeat(sq.vet) : ''} · ${orderText(sq)}</h5>${rows}<div class="chat">${lines}</div>`;

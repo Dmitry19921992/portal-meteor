@@ -255,7 +255,7 @@ function botInput(u, dt){
     inp.thrustDir = norm(add(mul(Up, 0.55), len(inp.wish) > 0 ? inp.wish : tangent(u.fwd, Up)));
   }
   // мягкая посадка после полёта
-  if (!u.grounded && u.airT > 1.5 && dot(u.vel, Up) < -9 && altitude(u.pos) < 60){
+  if (!u.grounded && u.airT > 1.5 && dot(u.vel, Up) < -9 && altitude(u.pos) < 15 + dot(u.vel, Up) * dot(u.vel, Up) / (2 * max(4, u.jet.thrust - RULES.G))){
     inp.thrust = true; inp.thrustDir = norm(mul(u.vel, -1));
   }
   return withFire(u, inp);
@@ -295,7 +295,7 @@ function skyInput(u, inp, dt){
     const t = tangent(sub(goal, u.pos), Up);
     inp.wish = t;
     const vr = dot(u.vel, Up), alt = altitude(u.pos);
-    if (alt < 90 && vr < -7){ inp.thrust = true; inp.thrustDir = norm(add(mul(u.vel, -1), mul(t, 3))); }
+    if ((alt < 90 || alt < 20 + vr * vr / (2 * max(4, u.jet.thrust - RULES.G))) && vr < -7){ inp.thrust = true; inp.thrustDir = norm(add(mul(u.vel, -1), mul(t, 3))); }
     else if (alt > 90 && u.energy > 1){ inp.thrust = random() < 0.3; inp.thrustDir = norm(add(mul(Up, -0.2), t)); }
     if (u.grounded){ u.skyState = null; if (S.stats.landed && surfDist(u.pos, BASES[1 - u.team]) < 200) S.stats.landed[u.team]++; }
   }
@@ -374,7 +374,7 @@ function fireCannon(v){
 }
 function fireMG(v, spread){
   const m = add(add(v.pos, mul(v.up, 0.5)), mul(v.aim, 2.8));
-  fire(m, v.aim, v.team, spread, 6, 130, v, 'b');
+  gunShootSimple(v, m, v.aim, spread, WEAPONS.tankmg);   // v6: мгновенная пуля
   v.mgCd = v === ctrlEntity() ? 0.1 : 0.22;
   emit('shot', { pos: m, team: v.team, src: v, heavy: true });
 }
@@ -439,8 +439,11 @@ function droneStep(d, dt){
     goal = add(c, add(mul(side, 18 * d.orbit), mul(toT, -10)));
     d.aim = norm(sub(c, d.pos));
     d.cd -= dt;
-    if (d.cd <= 0 && dist(c, d.pos) < 75 && los(d.pos, c)){
-      fire(add(d.pos, mul(d.aim, 1.0)), d.aim, d.team, 0.035 * (d.team === 1 ? DK().acc : 1), 6, 120, d, 'b');
+    // v6: новая цель — дрон «зависает» и наводится 0.5–0.9 с (окно, чтобы его сбить), затем стреляет мгновенными пулями
+    if (d.lastTgt !== d.target){ d.lastTgt = d.target; d.windT = 0.5 + random() * 0.4; }
+    if (d.windT > 0){ d.windT -= dt; goal = add(d.pos, mul(d.vel, 0.2)); }
+    else if (d.cd <= 0 && dist(c, d.pos) < 75 && los(d.pos, c)){
+      gunShootSimple(d, add(d.pos, mul(d.aim, 1.0)), d.aim, 0.03, WEAPONS.drone);
       d.cd = 0.28 + random() * 0.1;
       emit('shot', { pos: d.pos, team: d.team, src: d });
     }
@@ -524,7 +527,7 @@ function turretShoot(b, gun, dir, spread){
   const side = norm(cross(dir, b.up));
   const m = add(add(gun, mul(dir, isAA ? 2.2 : 1.4)), mul(side, (b.barrel = -(b.barrel || 1)) * (isAA ? 0.22 : 0.14)));
   if (isAA) fire(m, dir, b.team, spread, 8, 220, b, 'f');
-  else fire(m, dir, b.team, spread, 7, 150, b, 'm');
+  else gunShootSimple(b, m, dir, spread, WEAPONS.turret);   // v6: мгновенная пуля
   b.cd = isAA ? 0.14 : 0.16;
   if (b === S.me) b.cd *= 0.8;
   emit('shot', { pos: m, team: b.team, src: b, heavy: isAA });
