@@ -84,6 +84,8 @@ const TACT = {
   },
   // та же задача? (тот же тип и те же цели / точка / танк)
   same(a, b){
+    const cpOf = x => x.kind === 'capture' || (x.kind === 'strat' && x.order === 'cap') ? x.cp : null;
+    if (cpOf(a) && cpOf(a) === cpOf(b)) return true;      // «захватить X» штаба и «X рядом» — одна и та же задача
     if (a.kind !== b.kind) return false;
     if (a.kind === 'strat' || a.kind === 'player') return a.order === b.order && a.cp === b.cp;
     if (a.cp || b.cp) return a.cp === b.cp;

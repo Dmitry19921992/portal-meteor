@@ -36,7 +36,7 @@ const VOX = {
     const s = task && task.say; if (!s) return;
     if (task.done || MISSION.free() || S.time - s.t > 10){ task.say = null; if (MISSION.free()) this.muted++; return; }
     if (!this.ok(s.key, s.cool)){ task.say = null; this.muted++; return; }
-    if (!s.urgent && S.time - this.lastAny < 7) return;
+    if (!s.urgent && S.time - this.lastAny < 9) return;
     task.say = null;
     this.mark(s.key); this.lastAny = S.time; this.n++;
     emit('objective', { text: s.text, tac: s.tac });
@@ -61,7 +61,7 @@ const MISSION = {
     this.ignoreRun = 0; this.askT = -1e9; this.ask = null; this.recall = null; this.former = null; this.podReadyT = 0; this.nav = null;
     this.lastFight = S.time || 0; this.lastFightPos = null; this.lastSpawn = -99; this.hunters = []; this.detachedU = null;
     this.st = { spawnSquad: 0, spawnPod: 0, pods: 0, jumps: 0, asks: 0 };
-    this.cpOwn = null; this.signal = null; this.counter = null; this.evN = 0; this.recallTried = false; this.track = 'auto';
+    this.cool = {}; this.cpOwn = null; this.signal = null; this.counter = null; this.evN = 0; this.recallTried = false; this.track = 'auto';
     this.hideToast();
   },
   stats(){ return Object.assign({ voiced: VOX.n, muted: VOX.muted, ignoreRun: this.ignoreRun }, this.st); },
@@ -85,9 +85,11 @@ const MISSION = {
   known(e){ return (e.seen && e.seen[0] > 0) || e.known0 || this.hunters.includes(e.squad || e); },
   candidates(c, g, L){
     const R = 230, me = c.pos;
+    if (TUT.on || len(me) < RM - 20 || altitude(me) > 60) return;     // обучение; в шахте, в ядре или высоко в небе — «рядом» не считается
     // сигнальщик — срочная цель
     if (this.signal && this.signal.units[0] && this.signal.units[0].alive){ const u = this.signal.units[0]; L.push({ kind: 'hunt', dir: true, signal: true, pri: 78, targets: [u], pos: u.pos, xp: 120, mult: 3 }); }
-    const near = (p, a, b) => { const d = surfDist(p, me); return d >= a && d <= b ? d : -1; };
+    const near = (p, a, b) => { const d = surfDist(p, me); return d >= a && d <= b && dist(p, me) <= b * 1.05 ? d : -1; };
+    const n0 = L.length;
     const hasT = L.some(x => x.targets && x.targets.length);
     // перехват / засада: вражеский отряд идёт к нам (дальше 70 м — ближе уже «уничтожить группу»)
     for (const sq of S.squads){
@@ -135,7 +137,11 @@ const MISSION = {
       if (d > 110 || dm > 150) continue;
       L.push({ kind: 'capture', dir: true, cp, pri: 47 + (cp.owner === 1 ? 3 : 0) - dm / 30, pos: cp.pos, xp: 150 });
     }
+    // сорвавшиеся задачи режиссёра не предлагаем снова минуту — иначе «дёргается»
+    for (let i = L.length - 1; i >= n0; i--) if ((this.cool[this.candKey(L[i])] || 0) > S.time) L.splice(i, 1);
   },
+  cool: {},
+  candKey(t){ return t.kind + '|' + (t.cp ? t.cp.name : t.tank ? 'v' + t.tank.id : t.targets && t.targets[0] ? (t.targets[0].squad ? 's' + t.targets[0].squad.id : 'e' + t.targets[0].id) : ''); },
   ambushPoint(me, foe){
     const up = norm(me), to = tangent(sub(foe, me), up), side = norm(cross(up, to));
     const D = surfDist(me, foe);
@@ -354,7 +360,8 @@ const MISSION = {
     return true;
   },
   hotSpots(){
-    const L = [];
+    if (this._hs && S.rtime - this._hsT < 0.5 && this._hsMe === S.me) return this._hs;
+    const L = this._hs = []; this._hsT = S.rtime; this._hsMe = S.me;
     const consider = e => {
       let n = 0; for (const x of TGT[0]) if (x.alive && x.cls !== 'bld' && x.cls !== 'hq' && dist2(x.pos, e.pos) < 3600) n++;
       if (n >= 2) L.push({ e, n });
@@ -444,6 +451,7 @@ const MISSION = {
   taskEnd(t, ok){
     if (!t || t.ended) return;
     t.ended = true;
+    if (t.dir && !ok) this.cool[this.candKey(t)] = S.time + 60;
     if (this.free() || t.kind === 'retreat' || t.kind === 'avoid' || t.kind === 'player') return;
     const ticks = t.ticks || 0, on = t.onTicks || 0;
     if (ok || (ticks > 4 && on / ticks > 0.4)){ this.ignoreRun = 0; return; }
