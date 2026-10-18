@@ -252,8 +252,8 @@ function uixPlace(el, a){
   const W = innerWidth, H = innerHeight, w = el.offsetWidth, h = el.offsetHeight;
   let x = (W - w) / 2, y = H * 0.42 - h / 2;
   if (a && a.isConnected){
-    const r = a.getBoundingClientRect();
-    if (r.left > w + 16 && r.left > W * 0.55){ x = r.left - w - 10; y = r.top + r.height / 2 - h / 2; }
+    const r = a.getBoundingClientRect(), side = a.closest('#side'), sl = side ? side.getBoundingClientRect().left : r.left;
+    if (sl > w + 16 && sl > W * 0.55){ x = sl - w - 10; y = r.top + r.height / 2 - h / 2; }
     else { x = r.left + r.width / 2 - w / 2; y = r.top - h - 10; if (y < 50) y = r.bottom + 10; }
   }
   el.style.left = clamp(x, 6, W - w - 6) + 'px'; el.style.top = clamp(y, 6, H - h - 6) + 'px';
