@@ -14,7 +14,7 @@ const BIND_NAMES = {
   switch: ['Быстрая смена бойца (в бою)', 'Quick unit switch (in battle)', 'Đổi đội / xe'], rts: ['Стратегия ⇄ бой · в стратегии — вселиться в выделенного', 'Strategy ⇄ battle · in strategy — possess selection', 'Chế độ chiến thuật ⇄ nhập vai'], third: ['Вид от 3-го лица', 'Third person', 'Góc nhìn thứ ba'],
   follow: ['Режим «ведомый»', 'Follower mode', 'Chế độ đi theo'], nav: ['Линия к задаче', 'Objective line', 'Đường tới nhiệm vụ'], ai: ['ИИ-стратег вкл/выкл', 'AI strategist on/off', 'Bật/tắt chiến lược gia AI'],
 };
-const SET_DEF = { lang: (() => { try { const l = (navigator.language || 'en').slice(0, 2).toLowerCase(); return ['ru', 'uk', 'be', 'kk'].includes(l) ? 'ru' : l === 'vi' ? 'vi' : 'en'; } catch (e) { return 'en'; } })(), vol: 0.9, voice: true, hintsVoice: true, hintsOn: true, sens: 1, invertY: false, swapMouse: false, quality: 2, autoRes: true,
+const SET_DEF = { lang: (() => { try { const l = (navigator.language || 'en').slice(0, 2).toLowerCase(); return ['ru', 'uk', 'be', 'kk'].includes(l) ? 'ru' : l === 'vi' ? 'vi' : (l === 'he' || l === 'iw') ? 'he' : 'en'; } catch (e) { return 'en'; } })(), vol: 0.9, voice: true, hintsVoice: true, hintsOn: true, sens: 1, invertY: false, swapMouse: false, quality: 2, autoRes: true,
                   scale: 0.75, fov: 75, vhs: false, distort: true, bright: 1, diff: 3, grid: 1, bounces: 4, edgeScroll: true, unlockAll: false, battle: 1, endless: true, fog: true, chatter: true, bind: Object.assign({}, BIND_DEF) };
 const SET = JSON.parse(JSON.stringify(SET_DEF));
 function applySettings(){

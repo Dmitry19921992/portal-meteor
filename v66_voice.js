@@ -195,7 +195,8 @@ function cur66Goal(c){
     const now = S.rtime;
     AU.ping();
     if (now - CUR66.lastVoice > 14 || s.id === 'threat' || s.id === 'rts_hello'){
-      const i = s.id === 'threat' ? 3 : (s.id === 'rts_hello' || s.id === 'intro') ? 0 : 1;
+      // v6.8: в пакетах EN/VI/HE есть 5-я фраза куратора — «начни с казармы» (на подсказки про Казарму)
+      const i = s.id === 'threat' ? 3 : (s.id === 'rts_hello' || s.id === 'intro') ? 0 : (/^bar_(sel|btn|put|place)$/.test(s.id) && ((VOICE66.load().curator || {}).sel || []).length > 4) ? 4 : 1;
       if (VOICE66.has('curator', 'sel')){ CUR66.lastVoice = now; VOICE66.play('curator', 'sel', i, 1.0); }
     }
     const el = $('cur'); const box = el && el.querySelector('.cbox');

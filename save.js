@@ -20,7 +20,7 @@ const SAVE = {
   freeSlot(){ const L = this.list(); for (const s of ['m1', 'm2', 'm3']) if (!L.some(x => x.slot === s)) return s; return L.filter(x => x.slot !== 'auto').sort((a, b) => (a.at || 0) - (b.at || 0))[0].slot; },
   del(slot){ try { localStorage.removeItem(this.keyOf(slot)); const M = this.metaAll(); delete M[slot]; localStorage.setItem(this.META, JSON.stringify(M)); } catch (e){} },
   slotName(slot){ return slot === 'auto' ? tr('Автосохранение', 'Autosave', 'Tự động lưu') : tr('Сохранение ', 'Save ', 'Bản lưu ') + slot.slice(1); },
-  fmtAt(at){ return at ? new Date(at).toLocaleString(LANG.cur === 'en' ? 'en-GB' : LANG.cur === 'vi' ? 'vi-VN' : 'ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; },
+  fmtAt(at){ return at ? new Date(at).toLocaleString(LANG.cur === 'en' ? 'en-GB' : LANG.cur === 'vi' ? 'vi-VN' : LANG.cur === 'he' ? 'he-IL' : 'ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; },
   has(){ try { return this.list().length > 0; } catch (e){ return false; } },
   info(slot){
     const m = this.meta(slot || this.newest()); if (!m) return '';
