@@ -11,7 +11,7 @@
 // =====================================================================
 const G62 = {
   MAX: 2, RECH: 9, FUSE: 2.5, V: 18, LIFT: 0.21, UNDER_V: 8, UNDER_LIFT: 0.3, R: 0.12, H: 1 / 60, TAP: 0.2,
-  REST: 0.35, BOUNCE_V: 1.2, E_N: 0.28, E_T: 0.5, ROLL_K: 1.1, ROLL_C: 1.2, MOM: 0.5, DMG: 85, SPLASH: 6,
+  REST: 0.35, BOUNCE_V: 1.2, E_N: 0.28, E_T: 0.45, ROLL_K: 1.5, ROLL_C: 2.0, MOM: 0.5, DMG: 85, SPLASH: 6,
   hold: null, path: null, sig: '', sigT: 0, last: { t: -9 }, perf: { n: 0, ms: 0, max: 0, calls: 0 }, btnSig: '', boomLog: [],
 
   // ---- запас гранат (старые сохранения без поля gren — полный запас)
@@ -78,7 +78,10 @@ const G62 = {
       }
       const d = G62.sdf(b); p.clr = d; p.trav = 0;
       if (d >= G62.R){ p.pos = b; continue; }
-      const nn = G62.nrm(b, Up);
+      // нормаль: при качении берём прежнюю, пока не откатились на 0.2 м (в 3–4 раза меньше выборок SDF)
+      let nn;
+      if (p.nP && p.nbN === p.nb && dist2(b, p.nP) < 0.04) nn = p.nC;
+      else { nn = G62.nrm(b, Up); p.nC = nn; p.nP = b; p.nbN = p.nb; }
       b = add(b, mul(nn, G62.R - d + 0.004));
       const vn = dot(p.vel, nn);
       if (vn < 0){
@@ -95,8 +98,8 @@ const G62 = {
         if (!p.land) p.land = b;
       }
       p.pos = b; p.clr = G62.R;
-      // покой: медленно и почти ровно (на склоне круче ~9° — катится до взрыва)
-      if (len(p.vel) < G62.REST && dot(nn, Up) > 0.985){ p.rest = 1; p.vel = [0, 0, 0]; break; }
+      // покой: медленно и почти ровно (на склоне круче ~14° — катится до взрыва)
+      if (len(p.vel) < G62.REST && dot(nn, Up) > 0.97){ p.rest = 1; p.vel = [0, 0, 0]; break; }
     }
     return false;
   },
@@ -165,9 +168,13 @@ const G62 = {
   // ---- предсказание траектории тем же интегратором (кэш, пока прицел не сдвинулся)
   predict(u, force){
     const h = G62.hold;
-    const f3 = a => a[0].toFixed(3) + ',' + a[1].toFixed(3) + ',' + a[2].toFixed(3);
-    const sig = f3(u.pos) + f3(u.fwd) + f3(u.vel || [0, 0, 0]) + h.power + h.under;
-    if (!force && sig === G62.sig && S.rtime - G62.sigT < 0.5) return G62.path;
+    const fq = (a, k) => Math.round(a[0] * k) + ',' + Math.round(a[1] * k) + ',' + Math.round(a[2] * k);
+    const sig = fq(u.pos, 50) + fq(u.fwd, 2000) + fq(u.vel || [0, 0, 0], 10) + h.power + h.under;
+    if (!force && G62.path){
+      if (sig === G62.sig && S.rtime - G62.sigT < 0.5) return G62.path;
+      if (G62.fresh){ G62.fresh = false; return G62.path; }   // пересчёт не чаще чем через кадр (~30 Гц) — бросок всё равно считается заново
+    }
+    G62.fresh = true;
     const t0 = performance.now();
     const sp = G62.spec(u, h.power, h.under);
     const p = { pos: sp.pos, vel: sp.vel, fuse: G62.FUSE, clr: 0, trav: 0, nb: 0, bp: [], tele: 0 };
@@ -182,7 +189,10 @@ const G62 = {
     const ms = performance.now() - t0, P = G62.perf;
     P.n++; P.ms += ms; P.max = max(P.max, ms);
     G62.sig = sig; G62.sigT = S.rtime;
-    G62.path = { pts, brk, end: p.pos, land: p.land || null, bp: p.bp, tele, tp, rest: !!p.rest, ms };
+    // взрыв в воздухе (высокий бросок длиннее фитиля): высота над землёй и проекция круга на землю
+    let air = 0, gnd = null;
+    if (!p.land && !p.rest){ const dn = norm(p.pos), gr = groundR(dn); air = max(0, len(p.pos) - gr); gnd = mul(dn, gr); }
+    G62.path = { pts, brk, end: p.pos, land: p.land || null, bp: p.bp, tele, tp, rest: !!p.rest, ms, air, gnd };
     return G62.path;
   },
   // ---- шаг после update(): восстановление запаса, удержание, отпускание
@@ -201,6 +211,7 @@ const G62 = {
     if (typeof GUNS !== 'undefined') GUNS.raise = max(GUNS.raise, min(0.75, (S.rtime - h.t0) * 5));   // оружие уходит вниз, огонь заблокирован
     if (!keys[SET.bind.grenade]){ G62.release(u); return; }
     G62.predict(u);
+    G62.perf.hf = (G62.perf.hf || 0) + 1;   // кадров с дугой (perf.ms / perf.hf — мс на кадр)
   },
 
   // ---- наложение: дуга, круг поражения, дистанция, рука с гранатой, предупреждения
@@ -240,10 +251,12 @@ const G62 = {
     if (P.tp){ const s = project(P.tp); if (s){ g.fillStyle = `rgba(150,220,255,${a})`; g.font = '700 13px "Exo 2", sans-serif'; g.textAlign = 'center'; g.fillText(tr('↻ ПОРТАЛ — к антиподу', '↻ PORTAL — to the antipode', '↻ CỔNG — sang phía đối diện'), s[0], s[1] - 12); } }
     // круг поражения на земле вокруг точки взрыва
     const E = P.end, Up = norm(E), t1 = anyTangent(Up), t2 = cross(Up, t1);
+    const C = P.gnd || E, Rk = P.air > 0 ? sqrt(max(0, 1 - (P.air / G62.SPLASH) ** 2)) : 1;   // взрыв в воздухе: на земле круг меньше
     const ring = (R, fill, stroke, lw) => {
+      R *= Rk; if (R < 0.3) return;
       g.beginPath(); let ok = 0;
       for (let i = 0; i <= 32; i++){
-        const an = i / 32 * PI * 2, q = add(add(E, mul(Up, 0.12)), add(mul(t1, cos(an) * R), mul(t2, sin(an) * R)));
+        const an = i / 32 * PI * 2, q = add(add(C, mul(Up, 0.12)), add(mul(t1, cos(an) * R), mul(t2, sin(an) * R)));
         const s = project(q); if (!s) continue;
         if (ok) g.lineTo(s[0], s[1]); else g.moveTo(s[0], s[1]); ok++;
       }
@@ -255,16 +268,29 @@ const G62 = {
     g.shadowBlur = 0;
     ring(G62.SPLASH, `rgba(255,80,40,${(0.16 * a).toFixed(2)})`, `rgba(255,120,70,${(0.9 * a * pulse).toFixed(2)})`, 2.2);
     ring(G62.SPLASH * 0.4, `rgba(255,60,30,${(0.18 * a).toFixed(2)})`, `rgba(255,170,110,${(0.6 * a).toFixed(2)})`, 1.2);
+    if (P.air > 0.5 && P.gnd){
+      const sa = project(E), sb = project(P.gnd);
+      if (sa && sb){
+        g.strokeStyle = `rgba(255,170,110,${(0.8 * a).toFixed(2)})`; g.lineWidth = 1.5; g.setLineDash([3, 4]);
+        g.beginPath(); g.moveTo(sa[0], sa[1]); g.lineTo(sb[0], sb[1]); g.stroke(); g.setLineDash([]);
+        g.font = '600 12px "Exo 2", sans-serif'; g.textAlign = 'left'; g.fillStyle = `rgba(255,190,130,${a})`;
+        g.fillText(tr(`взрыв в воздухе, ${P.air.toFixed(0)} м`, `airburst, ${P.air.toFixed(0)} m up`, `nổ trên không, ${P.air.toFixed(0)} m`), sa[0] + 10, sa[1] + 4);
+      }
+    }
     const s = project(E);
     const d = dist(c.pos, E);
     if (s){
+      // экранная метка точки взрыва (видна даже когда круг на земле сплющен перспективой)
+      const q = 11 + 2 * sin(S.rtime * 8);
+      g.strokeStyle = `rgba(255,110,60,${(0.95 * a).toFixed(2)})`; g.lineWidth = 2.5;
+      g.beginPath(); g.moveTo(s[0], s[1] - q); g.lineTo(s[0] + q, s[1]); g.lineTo(s[0], s[1] + q); g.lineTo(s[0] - q, s[1]); g.closePath(); g.stroke();
       g.strokeStyle = `rgba(255,240,220,${a})`; g.lineWidth = 2;
       g.beginPath(); g.moveTo(s[0] - 6, s[1] - 6); g.lineTo(s[0] + 6, s[1] + 6); g.moveTo(s[0] + 6, s[1] - 6); g.lineTo(s[0] - 6, s[1] + 6); g.stroke();
       g.shadowBlur = 3; g.fillStyle = `rgba(255,236,200,${a})`; g.font = '700 14px "Exo 2", sans-serif'; g.textAlign = 'center';
-      g.fillText(`${Math.round(d)} ${tr('м', 'm', 'm')}`, s[0], s[1] - 14);
+      g.fillText(`${Math.round(d)} ${tr('м', 'm', 'm')}`, s[0], s[1] - 18);
     }
     // HUD у прицела: дистанция, сила, подсказка
-    const cx = W / 2, cy = H / 2, y0 = cy + 58;
+    const cx = W / 2, cy = H / 2, y0 = max(cy + 70, H * 0.66);   // ниже прицела, чтобы не закрывать точку падения
     g.shadowBlur = 3; g.textAlign = 'center';
     g.font = '700 22px "Exo 2", Consolas, sans-serif'; g.fillStyle = `rgba(255,236,200,${a})`;
     g.fillText(`${tr('ГРАНАТА', 'GRENADE', 'LỰU ĐẠN')} ▸ ${Math.round(d)} ${tr('м', 'm', 'm')}${P.tele ? ' ↻' : ''}`, cx, y0);
