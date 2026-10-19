@@ -34,6 +34,65 @@ function rtsTransportTo(t){
 }
 // высота земли под фокусом (над шахтами — не ниже RM−5); сглаживается в rtsCamera
 function rtsGroundAt(N){ return max(RM - 5, groundR(N)); }
+// наклон камеры от высоты (общий для rtsCamera и модели зума к курсору)
+function rtsTilt(h){ return lerp(0.95, 0.12, smoothstep(25, RTS_HMAX, h)); }
+// v61: «модель» камеры для состояния (dir, fwd, h) — без сглаживаний; для зума к курсору
+function rtsCamModel(dir, fwd, h){
+  const N = dir, f = fwd, focus = mul(N, (RCAM.gr === null ? rtsGroundAt(N) : RCAM.gr) + 1);
+  const want = add(add(focus, mul(N, h)), mul(f, -h * tan(rtsTilt(h))));
+  const pos = add(want, mul(norm(want), RCAM.lift));
+  const look = norm(sub(focus, pos)), right = norm(cross(f, N));
+  return { pos, fwd: look, right, up: norm(cross(right, look)) };
+}
+function rtsProjWith(c, p){
+  const v = sub(p, c.pos), z = dot(v, c.fwd); if (z <= 0.3) return null;
+  const H = innerHeight, fov = S.cam ? S.cam.fov : 1;
+  return [innerWidth / 2 + dot(v, c.right) / z / fov * H, H / 2 - dot(v, c.up) / z / fov * H];
+}
+// где окажется точка p на экране, если сдвинуть камеру на (a — вперёд, b — вправо) рад при высоте h
+function rtsProjShift(a, b, h, p){
+  const R = S.rts;
+  let d = R.dir, f = R.fwd;
+  if (a){ const ax = norm(cross(d, f)); d = norm(rotAxis(d, ax, a)); f = tangent(rotAxis(f, ax, a), d); }
+  if (b){ const rt = norm(cross(f, d)), ax = norm(cross(d, rt)); d = norm(rotAxis(d, ax, b)); f = tangent(rotAxis(f, ax, b), d); }
+  return rtsProjWith(rtsCamModel(d, f, h), p);
+}
+// v61: каждый кадр зума держим точку земли под курсором на месте (решение Ньютоном, шаг ограничен)
+function rtsAnchorStep(dt){
+  const A = RCAM.anc, R = S.rts;
+  if (!A) return;
+  A.t += dt;
+  if (S.camFly || A.t > 2.5){ RCAM.anc = null; return; }
+  const maxStep = 0.025 * min(2, dt * 60);   // рад/кадр (≈12 м по поверхности) — без рывков
+  let moved = 0;
+  for (let it = 0; it < 3; it++){
+    const s0 = rtsProjShift(0, 0, R.h, A.p); if (!s0){ RCAM.anc = null; return; }
+    const ex = s0[0] - A.x, ey = s0[1] - A.y;
+    if (hypot(ex, ey) < 0.25) break;
+    const e = 2e-4, sa = rtsProjShift(e, 0, R.h, A.p), sb = rtsProjShift(0, e, R.h, A.p);
+    if (!sa || !sb){ RCAM.anc = null; return; }
+    const j11 = (sa[0] - s0[0]) / e, j21 = (sa[1] - s0[1]) / e, j12 = (sb[0] - s0[0]) / e, j22 = (sb[1] - s0[1]) / e;
+    const det = j11 * j22 - j12 * j21; if (abs(det) < 1e-6){ RCAM.anc = null; return; }
+    let da = -(j22 * ex - j12 * ey) / det, db = -(-j21 * ex + j11 * ey) / det;
+    const l = hypot(da, db), room = maxStep - moved; if (room <= 1e-6) break;
+    if (l > room){ da *= room / l; db *= room / l; }
+    if (!isFinite(da) || !isFinite(db)){ RCAM.anc = null; return; }
+    rtsPan(da, db); moved += hypot(da, db);
+  }
+  if (abs(R.h - R.hT) < 0.05) RCAM.anc = null;   // высота доехала — больше не «держим» (подъём над скалами не крутит камеру)
+}
+// v61: колесо/трекпад → «щелчки» колеса; ограничение за событие и в секунду (ведро токенов)
+const RTS_WHEEL = { step: 1.15, perEvent: 1.5, perSec: 9, burst: 3 };
+function rtsWheel(e){
+  let n = e.deltaMode === 1 ? e.deltaY / 3 : e.deltaMode === 2 ? e.deltaY * 1.5 : e.deltaY / 100;
+  if (e.ctrlKey && e.deltaMode === 0) n *= 2.5;   // щипок трекпада: маленькие deltaY
+  if (!isFinite(n) || !n) return;
+  n = clamp(n, -RTS_WHEEL.perEvent, RTS_WHEEL.perEvent);
+  if (RCAM.wtok === undefined) RCAM.wtok = RTS_WHEEL.burst;
+  const use = min(abs(n), RCAM.wtok); if (use <= 1e-4) return;
+  RCAM.wtok -= use;
+  rtsZoomN(Math.sign(n) * use, e.clientX, e.clientY);
+}
 function rtsCamera(){
   const R = S.rts, dt = RCAM.dt;
   if (!finite3(R.dir) || len(R.dir) < 0.5 || !finite3(R.fwd)){
@@ -51,8 +110,7 @@ function rtsCamera(){
   else RCAM.gr += (grT - RCAM.gr) * (1 - Math.exp(-dt * 5));
   RTS_GR.dir = N; RTS_GR.r = RCAM.gr;
   const focus = mul(N, RCAM.gr + 1);
-  const tilt = lerp(0.95, 0.12, smoothstep(25, RTS_HMAX, R.h));
-  let want = add(add(focus, mul(N, R.h)), mul(f, -R.h * tan(tilt)));
+  let want = add(add(focus, mul(N, R.h)), mul(f, -R.h * tan(rtsTilt(R.h))));
   // Камера не «подтягивается» к фокусу, если между ними скала или здание (в v5.3 так камера
   // внезапно ныряла в штаб/рельеф — рывок на сотни метров и тёмный экран). Вместо этого она
   // плавно ПОДНИМАЕТСЯ над препятствием в своей точке: вверх сразу, обратно — медленно.
@@ -83,11 +141,11 @@ function rtsCamera(){
   return { pos, right, up, fwd: look };
 }
 function rtsFocusPoint(){ return mul(S.rts.dir, RTS_GR.r); }
-function rtsLookAt(p){ S.camFly = null; S.rts.goal = null; rtsTransportTo(p); }
+function rtsLookAt(p){ S.camFly = null; S.rts.goal = null; RCAM.anc = null; rtsTransportTo(p); }
 // сброс состояния камеры при входе в стратегию (fromCam — камера шутера для плавного перехода)
 function rtsCamReset(fromCam){
   const R = S.rts;
-  R.hT = R.h; R.goal = null; S.camFly = null; RCAM.vel = [0, 0]; RCAM.rotV = 0; RCAM.edgeT = 0; RCAM.gr = null; RCAM.lift = 0;
+  R.hT = R.h; R.goal = null; S.camFly = null; RCAM.anc = null; RCAM.vel = [0, 0]; RCAM.rotV = 0; RCAM.edgeT = 0; RCAM.gr = null; RCAM.lift = 0;
   RCAM.blend = fromCam && finite3(fromCam.pos) ? { pos: fromCam.pos, fwd: fromCam.fwd, up: fromCam.up, t: 0 } : null;
   drag = null; mdrag = null; RCAM.mm = false;
 }
@@ -113,6 +171,8 @@ function updateRTSCamera(dt){
   } else RCAM.edgeT = 0;
   const rot = k('KeyE', 'KeyE') - k('KeyQ', 'KeyQ');
   if ((ud || lr) && (S.camFly || R.goal)){ S.camFly = null; R.goal = null; }
+  if (ud || lr || rot) RCAM.anc = null;   // v61: панорама/поворот — зум дальше в центр экрана
+  RCAM.wtok = min(RTS_WHEEL.burst, (RCAM.wtok === undefined ? RTS_WHEEL.burst : RCAM.wtok) + dt * RTS_WHEEL.perSec);
   // сглаженная скорость: разгон ~0.1 с, остановка ~0.07 с; по диагонали не быстрее
   const a = 1 - Math.exp(-dt * ((ud || lr) ? 14 : 22));
   RCAM.vel[0] += (ud - RCAM.vel[0]) * a; RCAM.vel[1] += (lr - RCAM.vel[1]) * a;
@@ -126,9 +186,10 @@ function updateRTSCamera(dt){
   if (RCAM.rotV) R.fwd = tangent(rotAxis(R.fwd, R.dir, RCAM.rotV * dt * 1.6), R.dir);
   // плавный зум
   R.hT = clamp(R.hT, RTS_HMIN, RTS_HMAX);
-  R.h += (R.hT - R.h) * (1 - Math.exp(-dt * 12));
+  R.h += (R.hT - R.h) * (1 - Math.exp(-dt * 8));   // v61: мягче (было 12) — меньше поворот наклона за кадр
   if (abs(R.hT - R.h) < 0.01) R.h = R.hT;
-  // доводка к цели (зум к курсору)
+  rtsAnchorStep(dt);   // v61: точка под курсором остаётся на месте
+  // доводка к цели
   if (R.goal){
     const c = cross(R.dir, R.goal), s = len(c), ang = atan2(s, dot(R.dir, R.goal));
     if (ang < 1e-5 || s < 1e-9) R.goal = null;
@@ -206,7 +267,7 @@ addEventListener('mousemove', e => {
   if (drag){ drag.x1 = e.clientX; drag.y1 = e.clientY; }
   if (RCAM.mm && S.mode === 'rts' && (e.buttons & 1)){ const d = minimapDir(e.clientX, e.clientY); if (d) rtsLookAt(d); }
   if (mdrag && S.mode === 'rts'){
-    const dx = e.clientX - mdrag.x, dy = e.clientY - mdrag.y; mdrag.x = e.clientX; mdrag.y = e.clientY;
+    const dx = e.clientX - mdrag.x, dy = e.clientY - mdrag.y; mdrag.x = e.clientX; mdrag.y = e.clientY; RCAM.anc = null;
     S.rts.fwd = tangent(rotAxis(S.rts.fwd, S.rts.dir, -dx * 0.006), S.rts.dir);
     S.rts.h = S.rts.hT = clamp(S.rts.h * (1 + dy * 0.004), RTS_HMIN, RTS_HMAX);
   }
@@ -251,20 +312,31 @@ canvas.addEventListener('wheel', e => {
   if (S.mode !== 'rts' || S.attract) return;
   e.preventDefault();
   if (MENU.isOpen()) return;
-  rtsZoomAt(e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY, e.clientX, e.clientY);
+  rtsWheel(e);   // v61: нормализация, лимиты, зум к курсору
 }, { passive: false });
-// зум колесом/щипком к точке под курсором (приближаемся — точка под курсором остаётся на месте)
-function rtsZoomAt(delta, x, y){
+// зум к точке под курсором (программный вызов: delta — пиксели колеса)
+function rtsZoomAt(delta, x, y){ rtsZoomN(clamp(delta / 100, -RTS_WHEEL.perEvent, RTS_WHEEL.perEvent), x, y); }
+// v61: n «щелчков» зума. Точка земли под курсором закрепляется и каждый кадр удерживается на месте
+// (rtsAnchorStep), пока высота плавно едет к цели. Далёкая точка (у горизонта) подтягивается к центру.
+function rtsZoomN(n, x, y){
   const R = S.rts, h0 = R.hT === undefined ? R.h : R.hT;
-  const h1 = clamp(h0 * Math.pow(1.13, clamp(delta / 100, -3, 3)), RTS_HMIN, RTS_HMAX);
+  const h1 = clamp(h0 * Math.pow(RTS_WHEEL.step, n), RTS_HMIN, RTS_HMAX);
   if (abs(h1 - h0) < 1e-3) return;
   R.hT = h1;
-  if (h1 < h0 && x !== undefined && !S.camFly){
-    const p = pickGround(x, y); if (!p) return;
-    const base = R.goal || R.dir, t = norm(p);
-    const c = cross(base, t), s = len(c), ang = atan2(s, dot(base, t));
-    if (s > 1e-6 && ang < 0.6) R.goal = norm(rotAxis(base, mul(c, 1 / s), ang * (1 - h1 / h0)));
+  if (x === undefined || S.camFly){ RCAM.anc = null; return; }
+  R.goal = null;
+  const A = RCAM.anc;
+  if (A && hypot(A.x0 - x, A.y0 - y) < 4){ A.t = 0; return; }   // тот же курсор — та же точка (без дрейфа)
+  RCAM.anc = null;
+  let p = pickGround(x, y); if (!p || !S.cam) return;
+  const fd = R.dir, t = norm(p), c = cross(fd, t), s = len(c), ang = atan2(s, dot(fd, t));
+  const maxA = (30 + R.h * 0.9) / RM;
+  let sx = x, sy = y;
+  if (ang > maxA && s > 1e-6){   // точка у горизонта: берём ближе к центру (по той же дуге)
+    p = surfacePoint(norm(rotAxis(fd, mul(c, 1 / s), maxA)), 0);
+    const q = project(p); if (!q) return; sx = q[0]; sy = q[1];
   }
+  RCAM.anc = { p, x: sx, y: sy, x0: x, y0: y, t: 0 };
 }
 function onScreen(p){ if (!p || !facing(p)) return false; const s = project(p); return s && s[0] > 0 && s[0] < innerWidth && s[1] > 0 && s[1] < innerHeight; }
 function selGroups(){ return [...S.sel].filter(g => g.team === 0 && groupAlive(g)); }
