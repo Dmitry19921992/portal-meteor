@@ -49,7 +49,8 @@ const FPS61 = {
     this.missT = S.rtime;
     const t = tr(`Нет свободного: ${this.prefName(pref)} — вселился в: ${this.bodyName(u)}`, `No free ${this.prefName(pref)} — possessed ${this.bodyName(u)}`, `Không còn ${this.prefName(pref)} — nhập vào ${this.bodyName(u)}`);
     feed(t, '#ffd27a');
-    if (this.card) this.card.miss = t;
+    this.pendMiss = t;
+    if (this.card && S.rtime - this.card.t < 5) this.card.miss = t;
   },
   sortCands(L){
     const pref = SET.prefCls;
@@ -84,10 +85,10 @@ const FPS61 = {
     const died = !!(prev && !prev.alive && prev.cls !== 'bld');
     this.resetFx(died ? 'death' : 'possess');
     if (died && !S.attract){
-      this.card = { t: S.rtime, died: true, miss: null };
+      this.card = { t: S.rtime, died: true, miss: this.pendMiss || null };
       if (typeof CAREER !== 'undefined') CAREER.onDeath();
     }
-    this.last = u;
+    this.last = u; this.pendMiss = null;
   },
   // все временные эффекты игрока: рефлекс (замедление), прицел, присед/подкат, отдача, вспышки, «вид сверху» артиллерии
   resetFx(why){
@@ -293,9 +294,9 @@ const FPS61 = {
       el.addEventListener('click', e => { const b = e.target.closest('[data-pref]'); if (b){ e.stopPropagation(); this.setPref(b.dataset.pref, true); this.card.t = S.rtime - 3.5; } });
       el.addEventListener('touchstart', e => { const b = e.target.closest('[data-pref]'); if (b){ e.preventDefault(); e.stopPropagation(); this.setPref(b.dataset.pref, true); this.card.t = S.rtime - 3.5; } }, { passive: false });
       const st = document.createElement('style');
-      st.textContent = `#dcard{position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:30;background:rgba(10,12,14,.82);border:1px solid rgba(232,220,184,.35);padding:8px 12px;color:#e8dcb8;font:600 13px "Exo 2",Consolas,sans-serif;text-align:center;pointer-events:auto;max-width:94vw}
-#dcard h5{margin:0 0 6px;font-size:14px;color:#ff8a70;letter-spacing:.05em}#dcard .pl{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
-#dcard button{background:rgba(232,220,184,.08);border:1px solid rgba(232,220,184,.3);color:#e8dcb8;font:600 12px "Exo 2",sans-serif;padding:4px 7px;cursor:pointer}#dcard button.cur{background:rgba(140,255,170,.2);border-color:#8fffaa;color:#8fffaa}
+      st.textContent = `#dcard{position:fixed;left:50%;top:max(104px,19%);transform:translateX(-50%);z-index:30;background:rgba(10,12,14,.8);border:1px solid rgba(232,220,184,.3);padding:6px 10px;color:#e8dcb8;font:600 12px "Exo 2",Consolas,sans-serif;text-align:center;pointer-events:auto;max-width:min(94vw,760px)}
+#dcard h5{margin:0 0 5px;font-size:13px;color:#ff8a70;letter-spacing:.05em}#dcard .pl{display:flex;flex-wrap:wrap;gap:3px;justify-content:center}
+#dcard button{background:rgba(232,220,184,.08);border:1px solid rgba(232,220,184,.3);color:#e8dcb8;font:600 11px "Exo 2",sans-serif;padding:3px 6px;cursor:pointer}#dcard button.cur{background:rgba(140,255,170,.2);border-color:#8fffaa;color:#8fffaa}
 #dcard kbd{opacity:.6;margin-right:3px}#dcard em{display:block;font-style:normal;color:#ffd27a;margin-top:5px}#dcard small{opacity:.65}
 body.touch #dcard button{padding:8px 9px;font-size:13px}#touch .v61v{font-weight:700}`;
       document.head.appendChild(st);
@@ -343,7 +344,8 @@ const AIMA = {
       const c = centerOf(e), v = sub(c, eye), d = len(v);
       if (d > maxD || d < 1.5) continue;
       const cs = dot(v, fwd) / d; if (cs < 0.95) continue;
-      const ang = acos(clamp(cs, -1, 1)), rad = Math.atan((typeof hitRadiusRay === 'function' ? hitRadiusRay(e) : hitRadius(e)) / d);
+      const hr = e.cls === 'inf' ? 0.45 : (typeof hitRadiusRay === 'function' ? hitRadiusRay(e) : hitRadius(e));   // пехота: реальный «корпус», а не грубая сфера
+      const ang = acos(clamp(cs, -1, 1)), rad = Math.atan(hr / d);
       const edge = ang - rad;
       if (edge > cone) continue;
       if (e.team === 1 && e.seen && e.seen[0] <= 0 && d > 25) continue;   // невидимых не подсказываем
@@ -366,9 +368,10 @@ const AIMA = {
     this.sens += (want - this.sens) * min(1, rdt * 14);
     // (б) притяжение: только при стрельбе или прицеливании (ПКМ), мягко, в малом конусе
     const firing = (SET.swapMouse ? mouseR : mouseL), aiming = !!S.aiming;
-    if (h && (firing || aiming) && h.ang > 0.0015){
+    // тянем только до корпуса цели (не «прилипаем» к центру)
+    if (h && (firing || aiming) && h.ang > h.rad * 0.6){
       const to = norm(sub(centerOf(h.e), eye));
-      let rate = (TOUCH.on ? 6.5 : 3.6) * k;
+      let rate = (TOUCH.on ? 6 : 3.2) * k;
       // начало прицеливания — короткий «доворот» (как на консолях)
       if (aiming && !this.wasAim) this.holdT = 0.16;
       if (this.holdT > 0){ this.holdT -= rdt; rate += 10 * k; }
