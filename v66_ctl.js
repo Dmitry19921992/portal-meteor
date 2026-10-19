@@ -45,7 +45,7 @@ function toggleAuto66(){
 { const so0 = setOrder;
   setOrder = function(g, order, goal, opts){
     so0(g, order, goal, opts);
-    if (opts && opts.by === 'player' && g && g.team === 0) makeManual66(g);
+    if (opts && opts.by === 'player' && g && g.team === 0 && S.mode === 'rts') makeManual66(g);
   }; }
 { const bg0 = builderGive; builderGive = function(b, site, queue, byPlayer){ bg0(b, site, queue, byPlayer); if (byPlayer) makeManual66(b); }; }
 { const bo0 = builderOrderAt; builderOrderAt = function(bs, x, y, queue){ const r = bo0(bs, x, y, queue); for (const b of bs) makeManual66(b); if (typeof VOICE66 !== 'undefined') VOICE66.say(bs[0], 'ord'); return r; }; }

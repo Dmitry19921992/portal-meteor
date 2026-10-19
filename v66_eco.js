@@ -54,6 +54,7 @@ Object.assign(BLD_SR, { barracks: 4.5, depot: 2.6 }); Object.assign(BLD_BR, { ba
       const n = S.buildings.filter(b => b.alive && b.team === team && b.type === type).length;
       if (n >= (type === 'barracks' ? 2 : 4)) return tr('Лимит: уже построено', 'Limit reached', 'Đã đạt giới hạn');
     }
+    if (dev && B && B.req){ const rq = B.req; B.req = null; try { return cb0(team, type); } finally { B.req = rq; } }   // режим разработчика: всё открыто
     return cb0(team, type);
   }; }
 { const rr0 = rtsReason;
@@ -63,6 +64,7 @@ Object.assign(BLD_SR, { barracks: 4.5, depot: 2.6 }); Object.assign(BLD_BR, { ba
       const left = BTYPES[key].unlock - S.time;
       return { ok: false, reason: tr(`Откроется через ${fmtDur(left)}`, `Unlocks in ${fmtDur(left)}`, `Mở sau ${fmtDur(left)}`), fix: tr('Ранцы и авиацию открывают не сразу — успей поставить ПВО и турели. Пока строй Казарму и Мехзавод.', 'Jetpacks and aircraft unlock later — time to set up anti-air and turrets. Build Barracks and a Mech factory meanwhile.', 'Ba lô và không quân mở sau.'), act: null, eta: left };
     }
+    if ((kind === 'build' || kind === 'place') && BTYPES[key] && BTYPES[key].req && typeof DEV !== 'undefined' && DEV.on){ const B = BTYPES[key], rq = B.req; B.req = null; try { return rr0(action, arg); } finally { B.req = rq; } }
     return rr0(action, arg);
   }; }
 // ---------------- что где производится
