@@ -973,11 +973,53 @@ vec2 sdDepot(vec3 q){
   return r;
 }
 
+// ---- v6.6: казарма — длинный бункер со скатной крышей, воротами, окнами, антенной и флажком
+vec2 sdBarracks(vec3 q){
+  vec2 r = vec2(1e5, 0.0);
+  U(r, sdBox(q - vec3(0.0, -0.6, 0.0), vec3(5.4, 1.3, 4.3)), 9.0);
+  vec3 b = q - vec3(0.0, 2.1, -0.5);
+  float hall = sdRBox(b, vec3(4.7, 1.6, 3.0), 0.3);
+  hall = max(hall, dot(b - vec3(0.0, 1.0, 0.0), vec3(0.0, 0.9701, 0.2425)));
+  U(r, hall, 1.0);
+  U(r, sdBox(q - vec3(0.0, 2.25, -1.6), vec3(4.2, 1.9, 0.9)), 2.0);
+  U(r, sdBox(q - vec3(0.0, 1.4, 2.52), vec3(1.5, 0.95, 0.14)), 3.0);
+  U(r, sdBox(q - vec3(0.0, 2.45, 2.55), vec3(1.75, 0.08, 0.12)), 10.0);
+  vec3 a = vec3(abs(q.x), q.y, q.z);
+  U(r, sdBox(a - vec3(3.3, 1.65, 2.55), vec3(0.65, 0.25, 0.06)), 10.0);
+  U(r, sdRBox(a - vec3(5.0, 1.05, 3.3), vec3(0.45, 0.4, 0.45), 0.08), 13.0);
+  U(r, sdRBox(q - vec3(-4.95, 1.0, 2.2), vec3(0.4, 0.35, 0.4), 0.08), 13.0);
+  U(r, sdCapsule(q, vec3(-3.4, 4.0, -1.8), vec3(-3.4, 8.2, -1.8), 0.11), 3.0);
+  U(r, length(q - vec3(-3.4, 8.3, -1.8)) - 0.2, 4.0);
+  vec3 fl = q - vec3(-2.85, 7.65, -1.8); fl.z += sin(uTime * 4.0 + fl.x * 5.0) * 0.05 * (fl.x + 0.55);
+  U(r, sdBox(fl, vec3(0.55, 0.32, 0.025)), 1.0);
+  U(r, sdTorusY(q - vec3(0.0, 0.75, 0.0), 5.3, 0.08), 10.0);
+  return r;
+}
+// ---- v6.6: склад руды — приёмный бункер с зелёной рудой, транспортёр, ангар
+vec2 sdOreDepot(vec3 q){
+  vec2 r = vec2(1e5, 0.0);
+  U(r, sdBox(q - vec3(0.0, -0.5, 0.0), vec3(3.6, 1.0, 3.2)), 9.0);
+  vec3 h = q - vec3(-0.6, 1.5, -0.9);
+  float hang = max(abs(length(h.xy) - 1.8) - 0.12, max(-(h.y + 1.0), abs(h.z) - 1.9));
+  U(r, hang, 1.0);
+  U(r, max(length(h.xy) - 1.8, max(-(h.y + 1.0), abs(h.z + 1.85) - 0.06)), 2.0);
+  vec3 f = q - vec3(2.0, 1.4, 1.5);
+  float fun = max(abs(length(f.xz) - (0.7 + 0.35 * (f.y + 0.9))) - 0.08, abs(f.y) - 0.9);
+  U(r, fun, 3.0);
+  U(r, max(length(f.xz) - (0.62 + 0.35 * (f.y + 0.9)), f.y - 0.45 + 0.08 * sin(uTime * 2.0 + f.x * 6.0)), 35.0);
+  U(r, sdCapsule(q, vec3(1.4, 0.5, 0.9), vec3(0.4, 1.5, -0.2), 0.16), 3.0);
+  vec3 a = vec3(abs(q.x), q.y, abs(q.z));
+  U(r, sdBox(a - vec3(3.0, 0.7, 2.7), vec3(0.18, 0.2, 0.18)), 4.0);
+  U(r, sdTorusY(q - vec3(0.0, 0.55, 0.0), 3.4, 0.07), 10.0);
+  return r;
+}
+
 vec2 objMap(vec3 q){
   vec2 r = vec2(1e5, 0.0);
   int ty = int(gT + 0.5);
   float sq = 1.0;
-  if (ty >= 13){ sq = 0.3 + 0.7 * gProg; q.y /= sq; }   // разрушенные обломки — сплющены
+  bool prop = ty >= 13 && ty < 21;
+  if (prop){ sq = 0.3 + 0.7 * gProg; q.y /= sq; }   // разрушенные обломки — сплющены
   switch (ty){
     case 1: r = sdInf(q); break;
     case 2: r = sdWreck(q); break;
@@ -998,15 +1040,17 @@ vec2 objMap(vec3 q){
     case 18: r = gV > 7.5 ? sdVeinCrystal(q) : sdCrystal(q); break;   // v6.2: кристаллы жил — огранённые
     case 19: r = sdHut(q); break;
     case 20: r = sdDepot(q); break;
+    case 21: r = sdBarracks(q); break;
+    case 22: r = sdOreDepot(q); break;
     default: r = sdTruss(q); break;
   }
-  if (ty >= 13){ r.x *= sq; return r; }
+  if (prop){ r.x *= sq; return r; }
   if (gT > 5.5 && gProg < 0.999){
-    float bh = gT < 6.5 ? 2.4 : gT < 7.5 ? 3.3 : gT < 8.5 ? 12.5 : gT < 9.5 ? 5.6 : gT < 10.5 ? 14.2 : gT < 11.5 ? 8.6 : 8.2;
+    float bh = gT < 6.5 ? 2.4 : gT < 7.5 ? 3.3 : gT < 8.5 ? 12.5 : gT < 9.5 ? 5.6 : gT < 10.5 ? 14.2 : gT < 11.5 ? 8.6 : gT < 20.5 ? 8.2 : gT < 21.5 ? 5.4 : 3.4;
     float H = -1.0 + (bh + 1.0) * gProg;
     if (q.y - H > r.x){ r.x = q.y - H; r.y = 12.0; }
     // v6: строительные леса — угловые стойки на полную высоту и светящаяся рамка на уровне стройки
-    float hs = gT < 6.5 ? 1.25 : gT < 7.5 ? 1.8 : gT < 8.5 ? 7.4 : gT < 9.5 ? 5.4 : gT < 10.5 ? 6.3 : gT < 11.5 ? 4.9 : 2.25;
+    float hs = gT < 6.5 ? 1.25 : gT < 7.5 ? 1.8 : gT < 8.5 ? 7.4 : gT < 9.5 ? 5.4 : gT < 10.5 ? 6.3 : gT < 11.5 ? 4.9 : gT < 20.5 ? 2.25 : gT < 21.5 ? 5.0 : 3.4;
     vec3 sq2 = vec3(abs(q.x) - hs, q.y, abs(q.z) - hs);
     float th = 0.05 + hs * 0.012;
     U(r, sdCapsule(sq2, vec3(0.0, -0.5, 0.0), vec3(0.0, bh + 0.3, 0.0), th), 3.0);
@@ -1145,7 +1189,7 @@ void objMaterial(float m, vec3 q, out vec3 alb, out vec3 em, out float sp){
     alb = mix(alb, vec3(0.2, 0.09, 0.04), smoothstep(0.62, 0.8, nz(q * 0.9 + 1.7)) * 0.8);
     sp = 0.12;
   }
-  if (gT > 12.5 && gProg < 0.99){   // обгоревшие обломки
+  if (gT > 12.5 && gT < 20.5 && gProg < 0.99){   // обгоревшие обломки (v6.6: 21–22 — здания)
     alb *= mix(0.22, 1.0, gProg);
     em += vec3(1.0, 0.3, 0.05) * (1.0 - gProg) * 1.6 * smoothstep(0.62, 0.78, nz(q * 0.9 + vec3(0.0, uTime * 0.05, 0.0)));
   }
