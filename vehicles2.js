@@ -13,7 +13,7 @@
 const VK = {
   raider: { i: 1, icon: '➤', n: [['«Шакал»', '"Jackal"', '“Jackal”'], ['«Оса»', '"Wasp"', '“Wasp”']],
             cls: [['Рейдер', 'Raider', 'Raider'], ['Ховер-байк', 'Hoverbike', 'Hoverbike']],
-            hp: [430, 360], walk: [15, 17], turn: 2.4, rad: 1.1, hitR: 1.8, armor: 'light', vis: 70,
+            hp: [400, 340], walk: [15, 17], turn: 2.4, rad: 1.1, hitR: 1.8, armor: 'light', vis: 70,
             bcY: 1.2, br: 3.1, sr: 1.2, camB: 7.5, camH: 2.7, reload: 4.6, rmax: 85 },
   mlrs:   { i: 2, icon: '⁂', n: [['«Град»', '"Grad"', '“Grad”'], ['«Улей»', '"Hive"', '“Hive”']],
             cls: [['РСЗО', 'MLRS', 'MLRS'], ['Рой-ракетница', 'Swarm launcher', 'Swarm launcher']],
@@ -26,7 +26,7 @@ const VK = {
 };
 function vkv(x, team){ return Array.isArray(x) ? x[team ? 1 : 0] : x; }
 // броня лёгкой и средней техники (к таблице ARMOR из game.js)
-ARMOR.light  = { b: 0.45, m: 0.7,  r: 1.15, s: 1.1, f: 0.5, g: 0.9,  a: 1, l: 1,   x: 1 };
+ARMOR.light  = { b: 0.6,  m: 0.75,  r: 1.15, s: 1.1, f: 0.5, g: 0.9,  a: 1, l: 1,   x: 1 };
 ARMOR.medium = { b: 0.3,  m: 0.55, r: 1.05, s: 1,   f: 0.4, g: 0.75, a: 1, l: 0.9, x: 1 };
 // производство: мехзавод. Миномёт и РСЗО открываются по времени боя (середина партии)
 Object.assign(PRODUCTS, {
@@ -312,6 +312,13 @@ const V2 = {
     if (v.focus && v.focus.alive) return { p: centerOf(v.focus), arrive: 25 };
     const hunt = v.huntUntil > S.time;
     if (!hunt && (v.manualUntil > S.time || v.order === 'defend' || v.order === 'escort')){ const g = groupGoal(v); return g ? { p: g, arrive: 8 } : null; }
+    // цель рядом и по зубам (не обычный танк, не турель при малом запасе брони) — кружим вокруг неё и стреляем
+    const tg = v.target;
+    const crowd = e => e.cls === 'inf' && TGT[v.team].filter(o => o !== e && o.alive && o.cls === 'inf' && dist2(o.pos, e.pos) < 225).length >= 2;   // полный отряд — не одиночка
+    if (tg && tg.alive && tg.cls !== 'hq' && !(tg.cls === 'tank' && !tg.vk) && !crowd(tg) && !(tg.cls === 'bld' && (tg.type === 'turret' || tg.type === 'aa') && v.hp < v.maxhp * 0.6)){
+      const c = centerOf(tg), d = dist(c, v.pos);
+      if (d < 70){ const Up = norm(c), away = tangent(sub(v.pos, c), Up), side = norm(cross(Up, away)); return { p: add(c, add(mul(side, 20 * (v.id % 2 ? 1 : -1)), mul(away, 14))), arrive: 3 }; }
+    }
     // охота: строители, добытчики, одиночки вдали от турелей и танков
     v.preyT = (v.preyT || 0) - 0.5;
     if (!v.prey || !v.prey.alive || S.time > (v.preyUntil || 0)){ v.prey = V2.findPrey(v); v.preyUntil = S.time + 4; }
@@ -331,12 +338,13 @@ const V2 = {
     let best = null, bs = 1e9;
     const team = v.team;
     for (const e of TGT[team]){
-      if (!e.alive || e.cls === 'drone' || e.cls === 'tank') continue;
+      if (!e.alive || e.cls === 'drone' || (e.cls === 'tank' && (!e.vk || e.vk === 'raider'))) continue;
       const d = dist(e.pos, v.pos);
       if (d > 320) continue;
       if (e.seen[team] <= 0 && d > 90) continue;
       let sc = d;
       if (isEcoTarget(e)) sc -= 90;
+      else if (e.cls === 'tank') sc -= 70;          // артиллерия врага без прикрытия — лакомая цель
       else if (e.cls === 'inf'){
         let n = 0; for (const o of TGT[team]) if (o !== e && o.alive && o.cls !== 'bld' && dist2(o.pos, e.pos) < 625) n++;
         if (n > 0) continue;          // только одиночки
@@ -456,8 +464,8 @@ const V2 = {
   mg(v, aimPt, spread){
     const m = add(add(v.pos, mul(v.up, 0.75)), mul(v.aim, 1.2));
     const dir = aimPt ? norm(sub(aimPt, m)) : v.aim;
-    fire(m, dir, v.team, spread, 6, 130, v, 'b');
-    v.mgCd = v === ctrlEntity() ? 0.1 : 0.16;
+    fire(m, dir, v.team, spread, 4.5, 130, v, 'b');
+    v.mgCd = v === ctrlEntity() ? 0.1 : 0.18;
     emit('shot', { pos: m, team: v.team, src: v, heavy: true });
   },
   aiFire(v, dt){
@@ -474,8 +482,10 @@ const V2 = {
         const ang = acos(clamp(dot(v.aim, want), -1, 1));
         const soft = tg.cls === 'inf' || tg.cls === 'drone';
         if (v.salvoN > 0) v.salvoAim = lead;
-        if (v.cd <= 0 && v.salvoN === 0 && ang < 0.1 && d < 80 && !(soft && d > 45)) V2.shootMain(v, lead, tg);
-        if (v.mgCd <= 0 && ang < 0.2 && d < 70 && (soft || tg.cls === 'builder')) V2.mg(v, lead, 0.03 * (v.team === 1 ? DK().acc : 1));
+        // по пехоте ракетами — только по кучке (2+ бойца в 4 м), иначе пулемёт
+        const bunch = soft && TGT[v.team].some(o => o !== tg && o.alive && o.cls === 'inf' && dist2(o.pos, tg.pos) < 16);
+        if (v.cd <= 0 && v.salvoN === 0 && ang < 0.1 && d < 80 && (!soft || (bunch && d < 40))) V2.shootMain(v, lead, tg);
+        if (v.mgCd <= 0 && ang < 0.2 && d < 70 && (soft || tg.cls === 'builder')) V2.mg(v, lead, 0.03 * (1 + len(v.vel) / 12) * (v.team === 1 ? DK().acc : 1));   // на ходу пулемёт мажет
       } else v.aim = turnToward(v.aim, tangent(v.fwd, v.up), dt);
       return;
     }
@@ -526,7 +536,7 @@ const V2 = {
     S.aiming = false;
     const KK = VK[v.vk];
     // только что вселились в артиллерию: опускаем прицел, чтобы перекрестие легло на землю в ~60 м
-    if (v.vk !== 'raider' && S.rtime - (v.possT || -9) > 0.5){ const f0 = tangent(v.aim, v.up); v.aim = norm(add(f0, mul(v.up, -0.08))); }
+    if (v.vk !== 'raider' && S.rtime - (v.possT || -9) > 0.5){ const f0 = tangent(v.aim, v.up); v.aim = norm(add(f0, mul(v.up, -0.15))); }
     v.possT = S.rtime;
     const f = clamp((K('fwd') ? 1 : 0) - (K('back') ? 1 : 0) + TOUCH.move[1], -1, 1);
     const turn = clamp((K('right') ? 1 : 0) - (K('left') ? 1 : 0) + TOUCH.move[0], -1, 1);
