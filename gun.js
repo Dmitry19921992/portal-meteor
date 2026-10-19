@@ -404,12 +404,16 @@ function gunBotFire(u, aimDir, supp){
   if (u.elite) err *= 0.8;
   const g = u.squad; if (g && g.vet) err *= 1 - 0.07 * g.vet;
   if (R.rail) err *= 0.45;
-  if (vsPlayer) err *= 1.1;   // по игроку боты бьют чуть менее метко: игрок убивает бота за ~0.5 с, боты его — за 2–4 с
+  if (typeof MISS70 !== 'undefined') err = MISS70.err(u, tg, td, err, vsPlayer, eye);   // v7.0: система промахов (дальность, движение, укрытие, подавление)
+  else if (vsPlayer) err *= 1.1;   // по игроку боты бьют чуть менее метко: игрок убивает бота за ~0.5 с, боты его — за 2–4 с
   err += (u.burstN || 0) * 0.0025 * (W === WEAPONS.hmg ? 0.5 : 1);   // очередь «уводит» ствол
   dir = spreadDir(dir, err, true);
+  const cine = vsPlayer && typeof MISS70 !== 'undefined' ? MISS70.cine(u, tg, eye, dir) : null;   // v7.0: «киношный» промах по игроку
+  if (cine) dir = cine.dir;
   const from = add(add(eye, mul(dir, 0.8)), mul(norm(cross(u.fwd, u.up)), 0.22));
-  const r = gunShoot(u, eye, dir, W, { from, know: tg, steps: 40, range: min(W.range, (td || 60) + 40), dmgK: u.elite ? 1.15 : 1,
-                                       tracer: W.tracer ? random() < (W === WEAPONS.hmg ? 0.5 : 0.36) : false });
+  const r = gunShoot(u, eye, dir, W, { from, know: cine ? null : tg, steps: cine ? 60 : 40, range: min(W.range, (td || 60) + 40), dmgK: u.elite ? 1.15 : 1,
+                                       tracer: cine ? true : W.tracer ? random() < (W === WEAPONS.hmg ? 0.5 : 0.36) : false });
+  if (cine) MISS70.after(cine, r);
   u.mag--;
   if (R.rail){
     S.beams.push({ a: from, b: r.pos, t: 0, life: 0.3, team: u.team, rail: 1 });

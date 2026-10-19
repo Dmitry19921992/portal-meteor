@@ -553,8 +553,8 @@ HV65.draw = function(c, nl, np){
       }
       if (S.time - st.shAt > 0.4){ st.shAt = S.time + random() * 0.1; st.sh = shadowJS(add(o.origin, mul(e.up, 1.0))); }
       // модель: X = Up × F (правая тройка), Y = нормаль поверхности, Z = взгляд; ступни на o.origin
-      const fw = tangent(e.fwd, e.up), xs = cross(e.up, fw), s = this.SCALE;
-      HV_UM.set([xs[0] * s, xs[1] * s, xs[2] * s, 0, e.up[0] * s, e.up[1] * s, e.up[2] * s, 0, fw[0] * s, fw[1] * s, fw[2] * s, 0,
+      const eu = e.kdUp || e.up, fw = tangent(e.fwd, eu), xs = cross(eu, fw), s = this.SCALE;   // v7.0: наклон при падении от взрыва
+      HV_UM.set([xs[0] * s, xs[1] * s, xs[2] * s, 0, eu[0] * s, eu[1] * s, eu[2] * s, 0, fw[0] * s, fw[1] * s, fw[2] * s, 0,
                  o.origin[0] - c.pos[0], o.origin[1] - c.pos[1], o.origin[2] - c.pos[2], 1]);
       gl.uniformMatrix4fv(U.uM, false, HV_UM);
       gl.uniformMatrix4fv(U.uB, false, st.K);

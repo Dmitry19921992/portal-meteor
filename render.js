@@ -245,9 +245,9 @@ function objInfo(e){
   switch (e.cls){
     case 'inf': {
       if (!e.alive){ const o = sub(e.pos, mul(e.up, 0.5)); return { type: 2, origin: o, bc: add(o, mul(e.up, 0.2)), br: 0.95, prog: e.heat || 0 }; }
-      const o = sub(e.pos, mul(e.up, 0.5));
-      return { type: 1, origin: o, bc: add(o, mul(e.up, 0.9)), br: 1.2, variant: (e.leader ? 1 : 0) + (e.elite ? 2 : 0) + 4 * roleOf(e).i,
-               sc: add(o, mul(e.up, 0.9)), sr: 0.33, thrust: e.thrusting ? 1 : 0 };
+      const o = sub(e.pos, mul(e.up, 0.5 + (e.kdSink || 0))), U = e.kdUp || e.up;   // v7.0: падение от взрыва — наклон и «осадка»
+      return { type: 1, origin: o, bc: add(o, mul(U, 0.9)), br: 1.2, variant: (e.leader ? 1 : 0) + (e.elite ? 2 : 0) + 4 * roleOf(e).i,
+               sc: add(o, mul(U, 0.9)), sr: 0.33, thrust: e.thrusting ? 1 : 0 };
     }
     case 'tank': { if (e.vk) return V2.objInfo(e); const o = sub(e.pos, mul(e.up, 1.5)); return { type: 5, origin: o, bc: add(o, mul(e.up, 1.6)), br: 4.3, sc: add(o, mul(e.up, 1.3)), sr: 1.6, thrust: e.overT > 0 ? 1 : 0 }; }
     case 'drone': return { type: 4, origin: e.pos, bc: e.pos, br: 1.5, sc: e.pos, sr: 0.5, thrust: 1 };
@@ -294,12 +294,12 @@ function gatherObjects(){
   renderList.forEach((o, i) => {
     const e = o.e, k = i * 28;
     if (firstPerson && e === S.me) meIdx = i;
-    const fwd = tangent(e.fwd, e.up);
+    const eu = e.kdUp || e.up, fwd = tangent(e.fwd, eu);   // v7.0: наклон при падении
     const aim = e.aim || fwd;
     const meshed = hv && HV65.take(e, o, firstPerson && e === S.me);
     OBJ.set([o.bc[0], o.bc[1], o.bc[2], meshed ? -o.br : o.br,
              o.origin[0], o.origin[1], o.origin[2], o.type,
-             e.up[0], e.up[1], e.up[2], e.team,
+             eu[0], eu[1], eu[2], e.team,
              fwd[0], fwd[1], fwd[2], e.phase || 0,
              aim[0], aim[1], aim[2], e.flash || 0,
              o.thrust || 0, o.prog !== undefined ? o.prog : 1, o.variant || 0, e.moveAmt || 0,
@@ -518,6 +518,7 @@ function render(dt, now){
   gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.ALWAYS); gl.depthMask(true);   // v6.5: рэймарчер заполняет глубину
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   if (typeof HV65 !== 'undefined') HV65.draw(c, nl, np);   // v6.5: 3D-модели поверх, с тестом глубины
+  if (typeof ST70 !== 'undefined'){ ST70.collect(); ST70.draw(c, nl); }   // v7.0: постройки улучшений форпостов и штаба
   if (vmMesh) WPN69.draw(c, nl, eyeSh, vm3, wk, me);       // v6.9: оружие в руках — поверх всего
   gl.disable(gl.DEPTH_TEST);
 
