@@ -266,7 +266,7 @@ MENU.html_career = () => CAREER.html();
   PROG.onKill = function(e, src){ ok.call(this, e, src); try { CAREER.onKill(e, src); } catch (err){ console.warn(err); } };
   PROG.onCapture = function(cp){ const x0 = this.matchXP; oc.call(this, cp); CAREER.onCapture(cp, this.matchXP > x0); };
   PROG.onTaskDone = function(t){ ot.call(this, t); CAREER.onTask(); };
-  PROG.newMatch = function(){ nm.call(this); if (!S.attract) CAREER.onMatch(); };
+  PROG.newMatch = function(){ nm.call(this); if (typeof FPS61 !== 'undefined'){ FPS61.last = null; FPS61.card = null; FPS61.resetFx('match'); } if (!S.attract) CAREER.onMatch(); };
 })();
 (function careerCSS(){
   const st = document.createElement('style');
