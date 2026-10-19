@@ -363,10 +363,11 @@ void main(){
   vec3 n = normalize(vN); if (!gl_FrontFacing) n = -n;
   vec3 p = vW + uCamW, vd = normalize(-vW), up = normalize(p);
   vec3 alb; float sp;
-  if (vC.a > 0.5){ alb = vC.rgb; sp = 0.55; }
+  if (vC.a > 1.5){ alb = vec3(0.02); sp = 0.3; }   // v6.9: светящиеся детали оружия
+  else if (vC.a > 0.5){ alb = vC.rgb; sp = 0.55; }
   else { alb = pow(texture(uTex, vT).rgb, vec3(2.2)) * uP.w; sp = 0.22; }
   alb = mix(alb, vec3(1.0, 0.55, 0.2), uP.y * 0.5);
-  vec3 em = vec3(1.0, 0.45, 0.15) * uP.y * 0.8 + vec3(1.4, 0.45, 0.12) * uP.z * uP.z * 0.04 * (1.0 - smoothstep(0.1, 0.6, vH));
+  vec3 em = vec3(1.0, 0.45, 0.15) * uP.y * 0.8 + vec3(1.4, 0.45, 0.12) * uP.z * uP.z * 0.04 * (1.0 - smoothstep(0.1, 0.6, vH)) + (vC.a > 1.5 ? vC.rgb : vec3(0.0));
   float d1 = dot(n, SUN1);
   vec3 L = d1 > 0.0 ? SUN1 : SUN2, LC = d1 > 0.0 ? C1 : C2;
   float sh = smoothstep(-0.1, 0.05, dot(up, L)); if (dot(up, L) > 0.0) sh *= uP.x;

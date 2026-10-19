@@ -458,6 +458,7 @@ function gatherDistortion(){
     const a = project(b.a), c = project(b.b); if (!a || !c) continue;
     TRC.set([a[0] / W, 1 - a[1] / H, c[0] / W, 1 - c[1] / H], nt * 4); nt++;
   }
+  if (typeof WPN69 !== 'undefined') nt = WPN69.shimmer(TRC, nt);   // v6.9: марево над горячим стволом
   return [nw, nt];
 }
 const CPU = new Float32Array(7 * 4);
@@ -509,13 +510,15 @@ function render(dt, now){
   const wk = S.kit ? S.kit.w : 'rifle';
   const reload = S.kit && S.kit.reloadT > 0 ? min(1, S.kit.reloadT / WEAPONS[wk].reload) : 0;
   const vm3 = gunVM3();   // v6: прицел, опускание оружия при перелёте, заряд рельсы
-  gl.uniform4f(U.uVM, showVM && !vm3[3] ? 1 : 0, S.bob, S.recoil, S.muzzle > 0 ? 1 : min(0.5, vm3[2] * 0.5));
+  const vmMesh = showVM && !vm3[3] && typeof WPN69 !== 'undefined' && WPN69.ok();   // v6.9: 3D-оружие отдельным проходом
+  gl.uniform4f(U.uVM, showVM && !vm3[3] && !vmMesh ? 1 : 0, S.bob, S.recoil, S.muzzle > 0 ? 1 : min(0.5, vm3[2] * 0.5));
   gl.uniform4f(U.uVM3, vm3[0], vm3[1], vm3[2], 0);
   gl.uniform4f(U.uVM2, me ? me.team : 0, (wk === 'rail' ? 2 : wk === 'hmg' ? 3 : (me && me.elite ? 1 : 0)) + reload * 0.9, eyeSh, me ? (me.moveAmt || 0) : 0);
   gl.uniform1f(U.uLamp, S.mode === 'fps' && !S.attract ? 1 : 0);
   gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.ALWAYS); gl.depthMask(true);   // v6.5: рэймарчер заполняет глубину
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   if (typeof HV65 !== 'undefined') HV65.draw(c, nl, np);   // v6.5: 3D-модели поверх, с тестом глубины
+  if (vmMesh) WPN69.draw(c, nl, eyeSh, vm3, wk, me);       // v6.9: оружие в руках — поверх всего
   gl.disable(gl.DEPTH_TEST);
 
   // --- пост
