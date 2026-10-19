@@ -1,11 +1,22 @@
 // =====================================================================
 //  ОПЫТ И ЗВАНИЯ (как в Battlefield): убийства, захваты, приказы стратега
 // =====================================================================
+// v6.1: звания в бою — медленнее (каждое следующее дороже), после полковника — генералы и «Маршал ★N» без потолка
 const RANKS = [
-  [0, 'Рядовой', 'Private', 'Binh nhì'], [150, 'Ефрейтор', 'Lance Corporal', 'Binh nhất'], [400, 'Младший сержант', 'Corporal', 'Hạ sĩ'], [750, 'Сержант', 'Sergeant', 'Trung sĩ'],
-  [1200, 'Старший сержант', 'Staff Sergeant', 'Thượng sĩ'], [1800, 'Старшина', 'Master Sergeant', 'Thượng sĩ nhất'], [2600, 'Прапорщик', 'Warrant Officer', 'Chuẩn úy'],
-  [3600, 'Лейтенант', 'Lieutenant', 'Trung úy'], [5000, 'Капитан', 'Captain', 'Đại úy'], [7000, 'Майор', 'Major', 'Thiếu tá'], [9500, 'Полковник', 'Colonel', 'Đại tá'],
+  [0, 'Рядовой', 'Private', 'Binh nhì'], [200, 'Ефрейтор', 'Lance Corporal', 'Binh nhất'], [550, 'Младший сержант', 'Corporal', 'Hạ sĩ'], [1000, 'Сержант', 'Sergeant', 'Trung sĩ'],
+  [1650, 'Старший сержант', 'Staff Sergeant', 'Thượng sĩ'], [2500, 'Старшина', 'Master Sergeant', 'Thượng sĩ nhất'], [3600, 'Прапорщик', 'Warrant Officer', 'Chuẩn úy'],
+  [5000, 'Лейтенант', 'Lieutenant', 'Trung úy'], [6800, 'Капитан', 'Captain', 'Đại úy'], [9000, 'Майор', 'Major', 'Thiếu tá'], [11800, 'Полковник', 'Colonel', 'Đại tá'],
+  [15500, 'Генерал-майор', 'Major General', 'Thiếu tướng'], [20000, 'Генерал-лейтенант', 'Lieutenant General', 'Trung tướng'], [26000, 'Генерал-полковник', 'Colonel General', 'Thượng tướng'],
+  [33500, 'Генерал армии', 'General of the Army', 'Đại tướng'], [43000, 'Маршал', 'Marshal', 'Nguyên soái'],
 ];
+// порог звания i (за пределами таблицы: Маршал ★n, каждая звезда на 15% дороже)
+function rankXPAt(i){
+  const L = RANKS.length - 1;
+  if (i <= L) return RANKS[max(0, i)][0];
+  let x = RANKS[L][0];
+  for (let n = 1; n <= i - L; n++) x += Math.round(12000 * Math.pow(1.15, n - 1));
+  return x;
+}
 const UNLOCKS = { 1: 'grenade', 2: 'dmg1', 3: 'reflex', 4: 'rail', 5: 'strike', 6: 'armor', 7: 'jet', 8: 'dmg2', 9: 'reflex2', 10: 'orbital' };
 const UNLOCK_INFO = {
   grenade: { key: 'G', n: ['Граната', 'Grenade', 'Lựu đạn'],               d: ['G — бросить гранату. Взрыв с ударной волной.', 'G — throw a grenade. Blast with a shockwave.', 'G — ném lựu đạn. Nổ kèm sóng xung kích.'] },
@@ -32,8 +43,13 @@ const PROG = {
   has(k){ return this.unl.has(k); },
   dmgMul(){ return (this.has('dmg1') ? 1.15 : 1) * (this.has('dmg2') ? 1.13 : 1); },
   armorMul(){ return this.has('armor') ? 0.8 : 1; },
-  rankName(i){ i = i === undefined ? this.rank : i; const L = LANG.cur; return L === 'en' ? RANKS[i][2] : L === 'vi' ? RANKS[i][3] : RANKS[i][1]; },
-  nextXP(){ return this.rank + 1 < RANKS.length ? RANKS[this.rank + 1][0] : null; },
+  rankName(i){
+    i = i === undefined ? this.rank : i; const L = LANG.cur, j = min(i, RANKS.length - 1);
+    const n = L === 'en' ? RANKS[j][2] : L === 'vi' ? RANKS[j][3] : RANKS[j][1];
+    return i > j ? n + ' ★' + (i - j) : n;
+  },
+  rankXP(i){ return rankXPAt(i); },
+  nextXP(){ return rankXPAt(this.rank + 1); },
   award(base, why, mult, color){
     if (S.attract || !base) return 0;
     mult = mult || 1;
@@ -41,7 +57,7 @@ const PROG = {
     this.xp += amt; this.matchXP += amt; this.career.xp += amt;
     S.popups.push({ text: `+${amt} ${why}`, mult, t: 0, color: color || (mult >= 3 ? '#ffb347' : mult >= 2 ? '#8fffaa' : '#e8dcb8') });
     if (S.popups.length > 6) S.popups.shift();
-    while (this.rank + 1 < RANKS.length && this.xp >= RANKS[this.rank + 1][0]) this.rankUp();
+    while (this.xp >= rankXPAt(this.rank + 1)) this.rankUp();
     return amt;
   },
   rankUp(){

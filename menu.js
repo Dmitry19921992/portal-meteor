@@ -54,7 +54,7 @@ const MENU = {
     else if (this.cur === 'main' || this.cur === 'end') return;
     else this.close();
   },
-  pause(){ if (S.attract) return; S.paused = true; this.stack = []; this.openedAt = performance.now(); this.show('pause'); AU.duck(true); },
+  pause(){ if (S.attract) return; if (typeof FPS61 !== 'undefined') FPS61.resetFx('menu'); if (typeof CAREER !== 'undefined') CAREER.save(); S.paused = true; this.stack = []; this.openedAt = performance.now(); this.show('pause'); AU.duck(true); },
   // v6: Chrome не даёт захватить мышь по нажатию Esc — тогда игра ждёт клика по оверлею «кликни, чтобы продолжить»
   resume(){
     this.close(); AU.duck(false);
@@ -112,6 +112,7 @@ const MENU = {
       <p>${tr('Матчей', 'Matches', 'Trận')}: <b>${C.matches}</b> · ${tr('побед', 'wins', 'thắng')}: <b>${C.wins}</b></p>
       <p>${tr('Убито роботов', 'Robots destroyed', 'Robot đã hạ')}: <b>${C.kills}</b> · ${tr('приказов выполнено', 'orders completed', 'lệnh đã hoàn thành')}: <b>${C.tasks}</b></p>
       <p>${tr('Всего опыта', 'Total XP', 'Tổng kinh nghiệm')}: <b>${C.xp}</b> · ${tr('лучшее звание', 'best rank', 'cấp bậc cao nhất')}: <b>${PROG.rankName(C.best)}</b></p>
+      ${typeof CAREER !== 'undefined' ? CAREER.mainSide() : ''}
       <h3>${tr('Новое в v6', 'New in v6', 'Mới trong v6')}</h3>
       <ul>
         <li>${tr('Стрельба как в шутерах: мгновенные пули, автомат 720 выстр/мин, пулемёт, отдача, прицел на ПКМ, магазины и перезарядка R, метки попаданий', 'Shooter-grade guns: hitscan bullets, 720 RPM rifle, MG, recoil, RMB aim, magazines and R reload, hit markers')}</li>
@@ -146,6 +147,7 @@ const MENU = {
       ${this.btn('save', tr('Сохранить бой', 'Save battle', 'Lưu trận'))}
       ${this.btn('saves', tr('Сохранения и загрузка…', 'Saves & loading…', 'Lưu & tải…'))}
       ${typeof MISSION !== 'undefined' ? MISSION.modeRows() : ''}
+      ${typeof FPS61 !== 'undefined' ? FPS61.pauseRows() : ''}
       ${this.btn('settings', tr('Настройки', 'Settings', 'Cài đặt'))}
       ${this.btn('controls', tr('Управление и проверка клавиш', 'Controls & key test', 'Điều khiển & kiểm tra phím'))}
       <div class="diffrow">${LANGS.map(([c, n]) => `<button class="lbtn ${SET.lang === c ? 'cur' : ''}" data-lang="${c}">${n}</button>`).join('')}</div>
@@ -202,6 +204,7 @@ const MENU = {
       ${row(tr('Приказы стратега', 'Strategist orders', 'Lệnh chiến lược gia'), ch('ordersFree', [[false, tr('следовать', 'follow', 'theo lệnh')], [true, tr('свобода действий', 'free play', 'tự do')]]))}
       ${row(tr('Отряд', 'Squad', 'Đội'), ch('solo', [[false, tr('со мной', 'with me', 'đi cùng')], [true, tr('действую один', 'going solo', 'một mình')]]))}
       ${row(tr('Все способности сразу (тест)', 'All abilities unlocked (test)', 'Mở khóa mọi kỹ năng (thử nghiệm)'), tog('unlockAll'))}
+      ${typeof FPS61 !== 'undefined' ? FPS61.settingsRows(row, ch) : ''}
       </div></div>
       ${this.btn('back', tr('Назад', 'Back', 'Quay lại'), 'big')}</div>`;
   },
@@ -240,6 +243,7 @@ const MENU = {
     on('menu', () => { if (this.cur === 'pause' && typeof MISSION !== 'undefined') this.show('quit', true); else this.toMenu(); });
     on('saves', () => this.show('saves', true));
     if (typeof MISSION !== 'undefined') MISSION.wireMenu(name);
+    if (typeof FPS61 !== 'undefined') FPS61.wireMenu(name);
     on('back', () => this.back());
     el0().querySelectorAll('[data-lang]').forEach(b => b.onclick = e => { e.stopPropagation(); SET.lang = b.dataset.lang; this.applyLang(); this.show(this.cur); });
     on('resetbind', () => { SET.bind = Object.assign({}, BIND_DEF); this.save(); this.show('controls'); });

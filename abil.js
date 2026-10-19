@@ -311,7 +311,7 @@ function switchWeapon(w){
   emit('wswitch', {});
 }
 function startReload(){
-  const K = S.kit, W = WEAPONS[K.w];
+  const K = S.kit, W = typeof pW === 'function' ? pW(K.w) : WEAPONS[K.w];   // v6.1: обвесы игрока
   if (K.reloadT > 0 || K.mag[K.w] >= gstat(W, 'mag')) return;
   K.reloadT = gstat(W, 'reload');
   HINTS.used('reload');
@@ -321,6 +321,7 @@ function startReload(){
 function playerFire(u, inp, dt){ return gunPlayerFire(u, inp, dt); }   // v6: стрельба — gun.js (hitscan, отдача, разброс)
 // помощь в прицеливании (зависит от сложности): пуля слегка «притягивается» к цели у перекрестия
 function assistAim(eye, fwd, team){
+  if (typeof AIMA !== 'undefined') return AIMA.fire(eye, fwd, team);   // v6.1: настройка «Помощь в прицеливании»
   const a = DK().assist || 0;
   if (a <= 0) return fwd;
   const cone = 0.012 + 0.05 * a;

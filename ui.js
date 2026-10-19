@@ -60,7 +60,7 @@ function lookBy(mx, my){
   if (S.mode !== 'fps' || S.attract || !S.me || CAMFX.busy()) return;
   const c = ctrlEntity(); if (!c) return;
   if (c.cls === 'inf'){
-    const p = c, s = 0.0022 * SET.sens / (1 + S.slow * 0.6) * (S.aiming ? (S.adsSens || 0.6) : 1);
+    const p = c, s = 0.0022 * SET.sens / (1 + S.slow * 0.6) * (S.aiming ? (S.adsSens || 0.6) : 1) * (typeof AIMA !== 'undefined' ? AIMA.sens : 1);
     p.fwd = norm(rotAxis(p.fwd, p.up, -mx * s));
     const right = norm(cross(p.fwd, p.up));
     const nf = norm(rotAxis(p.fwd, right, -my * s * (SET.invertY ? -1 : 1)));
@@ -89,6 +89,7 @@ addEventListener('keydown', e => {
   // Esc без захвата мыши (оверлей «кликни», телефон) — меню паузы
   if (e.code === 'Escape' && S.mode === 'fps' && !isLocked()){ MENU.waitLock = false; MENU.pause(); return; }
   if (typeof MISSION !== 'undefined' && MISSION.key(e)) return;
+  if (typeof FPS61 !== 'undefined' && FPS61.key(e)) return;
   // общие
   switch (e.code){
     case 'KeyM': AU.toggle(); feed(tr('Звук: ', 'Sound: ', 'Âm thanh: ') + (AU.on ? tr('вкл', 'on', 'bật') : tr('выкл', 'off', 'tắt'))); return;
@@ -185,6 +186,7 @@ function takeControl(u){
   const prev = S.me;
   if (prev && prev.cls === 'inf' && prev !== u){ prev.isPlayerBody = false; prev.jet = jetOf(prev); }
   S.me = u; S.mode = 'fps'; S.freecam = false;
+  if (typeof FPS61 !== 'undefined') FPS61.onPossess(u);   // v6.1: сброс рефлекса и прочих временных эффектов
   if (u.cls === 'inf'){ u.hopT = 0; u.leapT = 0; u.isPlayerBody = true; u.jet = jetOf(u); S.lastInf = u;
     if (S.kit && !S.attract){ const w = roleOf(u).w; if (w !== 'rifle' || !weaponAvail(S.kit.w)){ S.kit.w = weaponAvail(w) ? w : 'rifle'; S.kit.mag[S.kit.w] = WEAPONS[S.kit.w].mag; } } }
   if (u.cls === 'drone'){ u.aim = tangent(u.fwd, u.up); u.kamikaze = null; }
@@ -197,6 +199,7 @@ function takeControl(u){
 function enterRTS(){
   const fromCam = S.mode === 'fps' && S.cam ? { pos: S.cam.pos, fwd: S.cam.fwd, up: S.cam.up } : null;
   S.mode = 'rts';
+  if (typeof FPS61 !== 'undefined') FPS61.resetFx('rts');
   unlockMouse();
   const c = ctrlEntity();
   if (c){ S.rts.dir = norm(c.pos); S.rts.fwd = tangent(c.fwd || c.aim || anyTangent(S.rts.dir), S.rts.dir); S.rts.h = min(S.rts.h, 60); }
@@ -216,9 +219,9 @@ function enterFPS(want){
   releasePlayerUnits();
   let u = want && want.team === 0 && (want.alive || (want.cls === 'bld' && want.done)) && want.cls !== 'builder' ? want : null;
   if (!u && S.selB && S.selB.alive && S.selB.team === 0 && (S.selB.type === 'turret' || S.selB.type === 'aa') && S.selB.done) u = S.selB;
-  if (!u) for (const g of S.sel){ if (g.team !== 0 || !groupAlive(g) || g.cls === 'builder') continue; u = isSquad(g) ? g.units.find(x => x.alive) : g; if (u) break; }
+  if (!u) for (const g of S.sel){ if (g.team !== 0 || !groupAlive(g) || g.cls === 'builder') continue; u = isSquad(g) ? ((typeof FPS61 !== 'undefined' && FPS61.inSquad(g)) || g.units.find(x => x.alive)) : g; if (u) break; }
   if (!u && S.me && (S.me.alive || S.me.cls === 'bld')) u = S.me;
-  if (!u) u = nearestToAction(0);
+  if (!u) u = typeof FPS61 !== 'undefined' ? FPS61.pickAuto() : nearestToAction(0);   // v6.1: свой класс в приоритете
   if (!u){ feed(tr('Нет живых роботов — закажи отряд', 'No robots alive — order a squad', 'Không còn robot nào — hãy gọi một đội'), '#f88'); if (typeof uiExplainShow === 'function') uiExplainShow('possess'); return; }
   // плавный «нырок» камеры из стратегии к бойцу (тот же пролёт, что при переключении)
   if (S.mode === 'rts' && S.cam && !S.attract) CAMFX.last = { pos: S.cam.pos, fwd: S.cam.fwd };
@@ -254,7 +257,7 @@ function switchCandidates(){
   for (const d of S.drones) if (d.alive && d.team === 0) L.push({ e: d, d: actionDist(d, 0), label: groupLabel(d), kind: 'drone' });
   for (const b of S.buildings) if (b.alive && b.done && b.team === 0 && (b.type === 'turret' || b.type === 'aa')){ const d = actionDist(b, 0); if (d < 120) L.push({ e: b, d, label: bname(b.type), kind: 'bld' }); }
   L.sort((a, b) => a.d - b.d);
-  return L;
+  return typeof FPS61 !== 'undefined' ? FPS61.sortCands(L) : L;
 }
 const SW = { list: null, idx: 0, t: -99 };
 function switchUnit(dir){
@@ -273,7 +276,7 @@ function switchUnit(dir){
 }
 function autoSwitch(){
   if (S.turretBody && S.turretBody.alive){ const b = S.turretBody; b.parked = false; S.turretBody = null; takeControl(b); return; }
-  const u = nearestToAction(0);
+  const u = typeof FPS61 !== 'undefined' ? FPS61.pickAuto() : nearestToAction(0);   // v6.1: свой класс в приоритете
   if (u){ takeControl(u); S.flashT = 0.2; }
   else { enterRTS(); }
 }
@@ -738,8 +741,8 @@ function updateHUD(){
       jL.textContent = c.type === 'aa' ? tr('ЗЕНИТКА · ЛКМ', 'AA GUN · LMB', 'PHÁO PHÒNG KHÔNG · CHUỘT TRÁI') : tr('ПУЛЕМЁТ · ЛКМ', 'MACHINE GUN · LMB', 'SÚNG MÁY · CHUỘT TRÁI');
     }
     // звание
-    const nx = PROG.nextXP(), base = RANKS[PROG.rank][0];
-    $('rankLbl').innerHTML = `<b>${PROG.rankName().toUpperCase()}</b> · ${PROG.xp}${nx ? ' / ' + nx : ''} XP`;
+    const nx = PROG.nextXP(), base = PROG.rankXP ? PROG.rankXP(PROG.rank) : RANKS[PROG.rank][0];
+    $('rankLbl').innerHTML = `${typeof CAREER !== 'undefined' ? CAREER.badge() : ''}<b>${PROG.rankName().toUpperCase()}</b> · ${PROG.xp}${nx ? ' / ' + nx : ''} XP`;
     $('xpFill').style.width = (nx ? (PROG.xp - base) / (nx - base) * 100 : 100).toFixed(1) + '%';
     updateKit(c);
   }
@@ -776,7 +779,7 @@ function updateKit(c){
   const el = $('kit'), K = S.kit;
   let h = '';
   if (c.cls === 'inf'){
-    const W = WEAPONS[K.w];
+    const W0 = typeof pW === 'function' ? pW(K.w) : WEAPONS[K.w], W = { n: W0.n, mag: gstat(W0, 'mag'), reload: gstat(W0, 'reload') };   // v6.1: с обвесами
     const wl = [roleOf(c).w === 'smg' ? 'smg' : 'rifle', 'rail', 'hmg'].map((w, i) => `<span class="${K.w === w ? 'cur' : weaponAvail(w) ? '' : 'na'}">${i + 1}</span>`).join('');
     const lowA = K.reloadT <= 0 && K.mag[K.w] <= W.mag * 0.25, rlP = K.reloadT > 0 ? 1 - K.reloadT / (W.reload || 1) : 0;
     h += `<div class="weap${lowA ? ' low' : ''}${K.reloadT > 0 ? ' rl' : ''}"><small>${N2(W.n).toUpperCase()}${K.incT > 0 ? ' · ' + tr('ЗАЖИГ.', 'INC.', 'ĐẠN CHÁY') + ' ' + Math.ceil(K.incT) : ''}${K.w === 'hmg' ? ' · ' + Math.ceil(K.hmgT) + tr('с', 's', 'giây') : ''}</small>` +

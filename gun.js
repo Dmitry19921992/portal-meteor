@@ -45,6 +45,16 @@ function gstat(W, k){
   if (W.mods) for (const slot in W.mods){ const A = ATTACH[W.mods[slot]]; if (A && A[k] !== undefined) v *= A[k]; }
   return k === 'mag' ? Math.round(v) : v;
 }
+// v6.1: оружие игрока — копия с обвесами из карьеры (боты пользуются базовым WEAPONS)
+const PWEAP = {};
+function pW(w){
+  const B = WEAPONS[w] || WEAPONS.rifle;
+  let P = PWEAP[w];
+  if (!P || Object.getPrototypeOf(P) !== B){ P = PWEAP[w] = Object.create(B); P.mods = {}; }
+  const M = typeof CAREER !== 'undefined' ? CAREER.modsFor(w) : null;
+  P.mods = M || {};
+  return P;
+}
 function gunOfUnit(u){ const w = roleOf(u).w; return WEAPONS[w] || WEAPONS.rifle; }
 ROLES.scout.w = 'smg';   // разведчик — с пистолетом-пулемётом
 
@@ -214,6 +224,7 @@ function gunShoot(src, eye, dir, W, o){
   if (ent){
     const dmg = W.dmg * gunFall(W, t) * (head ? (W.head || 1) : 1) * (o.dmgK || 1);
     const wasAlive = ent.alive;
+    if (o.player) GUNS.lastHead = !!head;   // v6.1: для медали «в голову» (карьера)
     damage(ent, dmg, src, W.type || 'b');
     const killed = wasAlive && !ent.alive;
     if (camD2 < 90000) burst(hit, head ? 6 : (ent.cls === 'tank' || ent.cls === 'bld' || ent.cls === 'hq') ? 4 : 3, head ? 9 : 6, 0.12);
@@ -291,7 +302,7 @@ function gunPlayerFire(u, inp, dt){
   const K = S.kit;
   if (!WEAPONS[K.w] || !WEAPONS[K.w].mag) K.w = 'rifle';
   gunKitInit(K);
-  const w = K.w, W = WEAPONS[w];
+  const w = K.w, W = pW(w);
   if (K.reloadT > 0){
     K.reloadT -= dt; K.charge = 0; K.spin = max(0, K.spin - dt * 2);
     if (K.reloadT <= 0){ K.reloadT = 0; K.mag[w] = gstat(W, 'mag'); K.dry = 0; }
@@ -423,7 +434,7 @@ function gunStep(dt, rdt){
   GUNS.dashCd = max(0, GUNS.dashCd - rdt);
   if (S.attract || !S.kit) { GUNS.xfer = 0; return; }
   const K = S.kit; gunKitInit(K);
-  const W = WEAPONS[K.w] || WEAPONS.rifle;
+  const W = pW(K.w);
   const firing = S.time - K.lastFire < 0.12;
   K.bloom = max(0, K.bloom - (W.rec || 0.1) * rdt * (firing ? 0.25 : 1));
   const me = ctrlEntity();
@@ -563,7 +574,8 @@ function gunOverlay(dt){
   }
   if (!c) return;
   const K = S.kit, inf = c.cls === 'inf';
-  const Wp = inf && K ? (WEAPONS[K.w] || WEAPONS.rifle) : null;
+  const Wp = inf && K ? pW(K.w) : null;
+  const XC = typeof CAREER !== 'undefined' ? CAREER.xcol() : '242,234,210';   // v6.1: цвет прицела (косметика)
   const ads = S.aimK || 0;
   g.save();
   // прицел рельсы
@@ -582,7 +594,7 @@ function gunOverlay(dt){
     const s = gunSpread(c, Wp, K);
     const gap = clamp(s * H / S.cam.fov, 2, 70) + 3;
     const a = clamp(1 - ads * 0.75, 0.25, 1);
-    g.strokeStyle = `rgba(242,234,210,${(0.9 * a).toFixed(2)})`; g.lineWidth = 2; g.shadowColor = '#000'; g.shadowBlur = 2;
+    g.strokeStyle = `rgba(${XC},${(0.9 * a).toFixed(2)})`; g.lineWidth = 2; g.shadowColor = '#000'; g.shadowBlur = 2;
     const L = 7;
     g.beginPath();
     g.moveTo(cx - gap - L, cy); g.lineTo(cx - gap, cy); g.moveTo(cx + gap, cy); g.lineTo(cx + gap + L, cy);
@@ -591,7 +603,7 @@ function gunOverlay(dt){
     g.fillStyle = 'rgba(255,110,80,.95)'; g.beginPath(); g.arc(cx, cy, ads > 0.5 ? 2 : 1.3, 0, PI * 2); g.fill();
     g.shadowBlur = 0;
   } else {
-    g.strokeStyle = 'rgba(242,234,210,.85)'; g.lineWidth = 2;
+    g.strokeStyle = `rgba(${XC},.85)`; g.lineWidth = 2;
     g.beginPath(); g.arc(cx, cy, 8, 0, PI * 2); g.stroke();
     g.fillStyle = 'rgba(255,110,80,.95)'; g.beginPath(); g.arc(cx, cy, 1.5, 0, PI * 2); g.fill();
   }

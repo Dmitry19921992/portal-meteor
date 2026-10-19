@@ -56,6 +56,7 @@ function update(rdt){
   const ctrl = ctrlEntity();
   if (!S.attract) kitStep(dt, rdt);
   gunStep(dt, rdt);   // v6: трассеры, отдача, разброс, перелёт камеры
+  if (typeof FPS61 !== 'undefined') FPS61.step(dt, rdt);   // v6.1: помощь в прицеливании, сброс эффектов
 
   // ---- пехота
   for (const u of [...S.units]){
@@ -69,6 +70,7 @@ function update(rdt){
     if (u.repT > 0){ u.repT -= edt; u.hp = min(u.maxhp, u.hp + 14 * edt); if (random() < edt * 8) S.sparks.push({ pos: add(u.pos, mul(randUnit(), 0.5)), vel: mul(u.up, 2), life: 0.4, heal: 1 }); }
     else if (S.time - u.lastHurt > 10 && u.hp < u.maxhp) u.hp = min(u.maxhp, u.hp + 2.5 * edt);
     const inp = isMe ? playerInput(u) : botInput(u, edt);
+    if (isMe && typeof FPS61 !== 'undefined') FPS61.coreInput(u, inp, edt);   // v6.1: выход из ядра / лифт в шахте
     const skipPhys = isMe && !S.freecam && parkourStep(u, inp, edt);
     if (!skipPhys) physStep(u, inp, edt, isMe && S.freecam);
     if (isMe && u.justTeleported){ S.flashT = 0.25; emit('portal', {}); }

@@ -169,6 +169,8 @@ function setupCamera(dt){
       const want = add(add(head, mul(c.fwd, -3.4)), add(mul(c.up, 0.5), mul(right, 0.7)));
       const pos = pullCam(head, want);
       cam = Object.assign({ pos }, camBasis(c.fwd, c.up));
+    } else if (typeof FPS61 !== 'undefined' && FPS61.vehFP(c)){
+      cam = FPS61.vehCam(c, dt);   // v6.1: техника от первого лица (V — снаружи)
     } else if (c.cls === 'tank' && c.vk){
       cam = V2.camera(c, dt);
     } else if (c.cls === 'tank'){
@@ -258,7 +260,7 @@ function gatherObjects(){
   L.sort((a, b) => a.d - b.d);
   renderList = L.slice(0, MAXO);
   let meIdx = -1;
-  const firstPerson = S.mode === 'fps' && !S.attract && S.me && S.me.cls === 'inf' && !S.third;
+  const firstPerson = S.mode === 'fps' && !S.attract && S.me && ((S.me.cls === 'inf' && !S.third) || (typeof FPS61 !== 'undefined' && FPS61.vehFP(S.me) && !CAMFX.busy()));   // v6.1: свою машину не рисуем в кабине (тень и отражения остаются)
   renderList.forEach((o, i) => {
     const e = o.e, k = i * 28;
     if (firstPerson && e === S.me) meIdx = i;

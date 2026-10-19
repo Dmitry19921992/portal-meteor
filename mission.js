@@ -341,6 +341,7 @@ const MISSION = {
   },
   redeploy(hot){
     const c = ctrlEntity(); if (!c || S.attract || S.mode !== 'fps') return false;
+    if (typeof FPS61 !== 'undefined' && FPS61.coreEvac(hot)) return true;   // v6.1: из ядра/шахты — капсула на поверхность
     if (!hot && this.canRedeploy()) return this.podDrop(c, this.trackTarget());
     if (!hot && c.cls === 'inf' && S.time < this.podReadyT && this.trackTarget() && surfDist(c.pos, this.trackTarget()) > 150)
       feed(tr(`Капсула будет готова через ${Math.ceil(this.podReadyT - S.time)} с. Shift+${bk('redeploy')} — в гущу боя.`, `Pod ready in ${Math.ceil(this.podReadyT - S.time)} s. Shift+${bk('redeploy')} — into the fight.`, `Khoang sẵn sàng sau ${Math.ceil(this.podReadyT - S.time)} giây. Shift+${bk('redeploy')} — vào trận.`), '#f88');

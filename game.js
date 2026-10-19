@@ -381,7 +381,7 @@ function physStep(e, inp, dt, free){
     if (inp.boost) a = add(a, mul(inp.boostDir, inp.boost * (RULES.BOOST_K || 1)));
     if (inp.lift && inShaft(e.pos)){
       const vr = dot(e.vel, Up);
-      a = add(a, mul(Up, gAt(r) + (vr < 12 ? 5 : 0)));
+      a = add(a, mul(Up, gAt(r) + (vr < (inp.liftV || 12) ? (inp.liftA || 5) : 0)));   // v6.1: у игрока лифт быстрее
       e.lifting = true;
     }
     if (e.grounded){
@@ -555,6 +555,7 @@ function damage(e, dmg, src, ptype){
   if (e.cls === 'inf' && src && src.role === 'heavy') e.suppT = max(e.suppT || 0, 1.1);
   if (src && src.team !== undefined && src.team < 2 && src.team !== e.team){ e.seen[src.team] = 2; e.lastAttacker = src; }
   const meCtrl = ctrlEntity();
+  if (isPlayerSrc(src)) S.lastPT = ptype;   // v6.1: чем убил (карьера, медали)
   if (isPlayerSrc(src) && S.mode === 'fps'){ S.hitT = 0.15; emit('hitmark', {}); e.playerHitT = S.time; if (ptype === 'b' || ptype === 'l') ADAPT.hits++; }
   if (meCtrl && e === meCtrl && S.mode === 'fps' && !S.attract){ S.dmgT = min(0.6, S.dmgT + dmg / 60); if (src && src.pos) S.dmgDir = { pos: src.pos, t: 1.2 }; }
   if (e.cls === 'hq'){ e.lastHit = S.time; if (e.hp <= 0) destroyHQ(e, src); return; }

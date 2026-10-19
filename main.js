@@ -19,7 +19,7 @@ function frame(now){
   if (S.me && S.me.cls === 'inf') S.bob = S.me.phase;
   setupCamera(dt);
   render(dt, now);
-  drawOverlay(dt); gunOverlay(dt);
+  drawOverlay(dt); if (typeof FPS61 !== 'undefined') FPS61.overlay(dt); gunOverlay(dt);
   navTimer -= dt; if (navTimer <= 0){ navTimer = 0.25; computeNav(); }
   AU.frame(dt); AU.process(S.events); gunEvents(S.events);
   rtsWatch(dt);
