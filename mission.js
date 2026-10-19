@@ -179,8 +179,8 @@ const MISSION = {
     this.counterStep();
     const calm = S.time - this.lastFight;
     if (calm < 25 || S.time - this.lastSpawn < 40 || S.time < 40) return;
-    // кто-то уже рядом — бой вот-вот начнётся
-    for (const e of TGT[0]) if (e.alive && (e.cls === 'inf' || e.cls === 'tank') && surfDist(e.pos, c.pos) < 150) return;
+    // кто-то уже рядом — подождём (но если тишина затянулась, враги рядом явно не идут — всё равно зовём)
+    if (calm < 50) for (const e of TGT[0]) if (e.alive && (e.cls === 'inf' || e.cls === 'tank') && surfDist(e.pos, c.pos) < 150) return;
     if (underground(c.pos) || surfDist(c.pos, BASES[0]) < 90) return;
     this.lastSpawn = S.time;
     this.evN = (this.evN || 0) + 1;
