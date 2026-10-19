@@ -83,7 +83,7 @@ function initTextures(){
   for (const w of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R]) gl.texParameteri(gl.TEXTURE_3D, w, gl.REPEAT);
   gl.bindVertexArray(gl.createVertexArray());
 }
-let fbo = null, fboTex = null, fboW = 0, fboH = 0;
+let fbo = null, fboTex = null, fboW = 0, fboH = 0, fboDepth = null;
 function makeFBO(w, h){
   if (fboTex) gl.deleteTexture(fboTex);
   if (fbo) gl.deleteFramebuffer(fbo);
@@ -98,6 +98,12 @@ function makeFBO(w, h){
   fbo = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fboTex, 0);
+  // v6.5: буфер глубины — рэймарчер пишет gl_FragDepth, 3D-модели (heavy65.js) рисуются поверх с тестом глубины
+  if (fboDepth) gl.deleteRenderbuffer(fboDepth);
+  fboDepth = gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER, fboDepth);
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, fboDepth);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   fboW = w; fboH = h;
 }
@@ -284,12 +290,14 @@ function gatherObjects(){
   renderList = L.slice(0, MAXO);
   let meIdx = -1;
   const firstPerson = S.mode === 'fps' && !S.attract && S.me && ((S.me.cls === 'inf' && !S.third) || (typeof FPS61 !== 'undefined' && FPS61.vehFP(S.me) && !CAMFX.busy()));   // v6.1: свою машину не рисуем в кабине (тень и отражения остаются)
+  const hv = typeof HV65 !== 'undefined' && HV65.begin(firstPerson);   // v6.5: 3D-модели тяжёлых бойцов
   renderList.forEach((o, i) => {
     const e = o.e, k = i * 28;
     if (firstPerson && e === S.me) meIdx = i;
     const fwd = tangent(e.fwd, e.up);
     const aim = e.aim || fwd;
-    OBJ.set([o.bc[0], o.bc[1], o.bc[2], o.br,
+    const meshed = hv && HV65.take(e, o, firstPerson && e === S.me);
+    OBJ.set([o.bc[0], o.bc[1], o.bc[2], meshed ? -o.br : o.br,
              o.origin[0], o.origin[1], o.origin[2], o.type,
              e.up[0], e.up[1], e.up[2], e.team,
              fwd[0], fwd[1], fwd[2], e.phase || 0,
@@ -505,7 +513,10 @@ function render(dt, now){
   gl.uniform4f(U.uVM3, vm3[0], vm3[1], vm3[2], 0);
   gl.uniform4f(U.uVM2, me ? me.team : 0, (wk === 'rail' ? 2 : wk === 'hmg' ? 3 : (me && me.elite ? 1 : 0)) + reload * 0.9, eyeSh, me ? (me.moveAmt || 0) : 0);
   gl.uniform1f(U.uLamp, S.mode === 'fps' && !S.attract ? 1 : 0);
+  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.ALWAYS); gl.depthMask(true);   // v6.5: рэймарчер заполняет глубину
   gl.drawArrays(gl.TRIANGLES, 0, 3);
+  if (typeof HV65 !== 'undefined') HV65.draw(c, nl, np);   // v6.5: 3D-модели поверх, с тестом глубины
+  gl.disable(gl.DEPTH_TEST);
 
   // --- пост
   const [nw, nt] = gatherDistortion();

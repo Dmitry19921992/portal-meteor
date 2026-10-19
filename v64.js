@@ -271,7 +271,7 @@ const V64_NEWS63 = [
     return h;
   };
   const al0 = MENU.applyLang;
-  MENU.applyLang = function(){ al0.call(this); document.title = 'Portal Meteor — v6.4'; };
+  MENU.applyLang = function(){ al0.call(this); document.title = 'Portal Meteor — v6.5'; };
 }
 // ---------------------------------------------------------------------
 //  стили

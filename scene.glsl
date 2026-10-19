@@ -1169,6 +1169,7 @@ void traceObjects(vec3 o, vec3 d, int seg, inout float bestT, inout vec3 bN, ino
     if (i >= uNO) break;
     if (i == uMe && (seg == 0 || uSelf < 0.5)) continue;
     vec4 b0 = texelFetch(uObj, ivec2(0, i), 0);
+    if (b0.w < 0.0 && seg == 0) continue;   // v6.5: юнит рисуется 3D-моделью (heavy65.js); сквозь портал — по-старому
     vec3 oc = o - b0.xyz;
     float bb = dot(oc, d);
     float h = bb*bb - (dot(oc, oc) - b0.w*b0.w);
@@ -1534,11 +1535,13 @@ void main(){
       vec3 c = shade(p, nW, -d, alb, sp, 0.85, uVM2.z) + em;
       c += vec3(2.4, 1.6, 0.8) * uVM.w * 0.25 * max(dot(nW, normalize(uRot * vec3(0.0, 0.0, -1.0))), 0.0);
       frag = vec4(c, 1.0);
+      gl_FragDepth = 0.0;
       return;
     }
   }
 
   float total = 0.0;
+  float tPrim = 1e6;   // v6.5: дальность первого отрезка луча -> буфер глубины для 3D-моделей
   vec3 acc = vec3(0.0), thr = vec3(1.0), pend = vec3(0.0);
   bool done = false;
   for (int b = ZERO; b < 16; b++){
@@ -1565,6 +1568,7 @@ void main(){
     }
     traceObjects(o, d, b, bestT, bN, bA, bE, bS, bAO, kind);
     traceParticles(o, d, bestT, bE, kind);
+    if (b == 0) tPrim = bestT;
 
     // сияние купола, сквозь которое видна земля антипода, приглушаем — иначе оно похоже на светящиеся дороги
     acc += pend * (kind == 1 ? 0.3 : 1.0); pend = vec3(0.0);
@@ -1616,4 +1620,6 @@ void main(){
     acc += vec3(3.0, 1.9, 0.9) * uVM.w * exp(-a * a / (0.0016 * star));
   }
   frag = vec4(acc, 1.0);
+  // v6.5: логарифмическая глубина (та же формула в heavy65.js): z вдоль оси камеры, 0.05 … 20000 м
+  gl_FragDepth = clamp(log(max(tPrim * -dc.z, 0.05) / 0.05) / log(400000.0), 0.0, 1.0);
 }
