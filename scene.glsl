@@ -28,6 +28,8 @@ uniform float uLamp;
 uniform vec4  uVM3;       // v6: x — прицел (ADS), y — оружие опущено (перелёт/подъём), z — заряд рельсы
 uniform vec2  uHQ;
 uniform int   uZero;
+uniform vec3  uGP[92];   // v6.2: центры граней м-ка Гольдберга GP(3,0) (первые 32 — усечённый икосаэдр)
+uniform vec4  uVein[20]; uniform int uNV;   // v6.2: рудные жилы (центр на грунте) — тёмный базальт и изумрудная крошка вокруг
 uniform float uStorm;   // пылевая буря 0..1    // всегда 0: не даёт компилятору D3D разворачивать циклы (иначе компиляция идёт минутами)
 #define ZERO uZero      // штабы живы (1) или в руинах (0)
 out vec4 frag;
@@ -39,6 +41,7 @@ const vec3 SUN2 = -SUN1;                               // холодное со�
 const vec3 C1 = vec3(1.0, 0.82, 0.62) * 1.7;
 const vec3 C2 = vec3(0.58, 0.74, 1.0) * 1.55;
 const float BOUND = RM + 50.0;
+const vec3 EMER = vec3(0.10, 1.0, 0.40);   // v6.2: изумрудное свечение руды
 float gDist = 0.0;
 float gBump = 1.0;
 float gDetail = 1.0;
@@ -213,6 +216,20 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
     vein *= max(max(near, depth), spot * 0.6);
     em += vec3(0.1, 0.85, 0.6) * vein * (0.22 + 0.8 * depth) * (0.7 + 0.6 * fine) * mix(1.0, 0.35, smoothstep(60.0, 300.0, gDist));
     alb *= 1.0 - vein * 0.6;
+    // v6.2: вокруг кристаллов жилы — чёрный базальт с холодным отливом и светящаяся изумрудная крошка
+    float vk = 0.0;
+    for (int i = ZERO; i < 20; i++){
+      if (i >= uNV) break;
+      vec3 dv = p - uVein[i].xyz;
+      float dd = dot(dv, dv);
+      if (dd < 324.0) vk = max(vk, 1.0 - smoothstep(4.0, 14.0, sqrt(dd) + (nz(p * 0.11) - 0.5) * 9.0));
+    }
+    if (vk > 0.0){   // неровное пятно базальта, без чётного круга
+      float bas = smoothstep(0.0, 0.4, vk);
+      alb = mix(alb, vec3(0.026, 0.033, 0.031) * (0.75 + 0.5 * fine), bas * 0.92);
+      float grit = smoothstep(0.66, 0.8, nz(p * 0.85)) * smoothstep(0.35, 0.8, nz(p * 0.21 + 1.7));
+      em += EMER * vk * vk * (mix(0.07, grit * 1.4, exp(-gDist * 0.012)) + 0.025);
+    }
     // световые кольца в шахтах — ориентиры под землёй
     if (depth > 0.2 && r > CORE_R + 2.0 && min(length(p.yz), length(p.xy)) < TUN_R + 1.0){
       float along = r;
@@ -220,6 +237,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
       em += vec3(0.35, 0.6, 1.0) * 1.2 * band;
     }
     sp = 0.03 + 0.05 * (1.0 - slope);
+    sp = mix(sp, 0.12, smoothstep(0.0, 0.45, vk));   // v6.2: базальт у жил блестит холодным
     // иней и лёд в низинах кратеров
     float low = RM - r;
     if (low > 1.5 && low < 30.0 && min(length(p.yz), length(p.xy)) > TUN_R + 2.0){
@@ -247,6 +265,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
 
 // ---------------------------------------------------------------- объекты (роботы, техника, здания)
 float gT, gTeam, gV, gPh, gM, gTh, gProg, gFl, gYaw, gPitch;
+float gTr = 0.0;   // v6.2: дальность луча при марше объекта (тонкие фермы утолщаются вдали — не мерцают)
 
 vec2 sdInf(vec3 q){
   float lead = mod(gV, 2.0);
@@ -385,25 +404,94 @@ vec2 sdBuilder(vec3 q){
   }
   return r;
 }
-// v6: рудный экстрактор — фундамент, вышка, вращающийся шнек, бункер со светящейся рудой
+// v6.2: шестигранная призма вдоль Y (h — апофема, hy — полувысота)
+float sdHexY(vec3 p, float h, float hy){
+  const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
+  vec2 xz = abs(p.xz);
+  xz -= 2.0 * min(dot(k.xy, xz), 0.0) * k.xy;
+  vec2 d = vec2(length(xz - vec2(clamp(xz.x, -k.z * h, k.z * h), h)) * sign(xz.y - h), abs(p.y) - hy);
+  return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+// v6.2: ажурная ферма-вышка: 4 сходящиеся стойки, X-раскосы и пояса на каждой секции
+float sdLattice(vec3 t, float Ht, float w0, float w1, float hs){
+  float th = max(0.024, gTr * 0.0015);
+  vec3 a = vec3(abs(t.x), t.y, abs(t.z));
+  float y = clamp(t.y, 0.0, Ht), w = mix(w0, w1, y / Ht);
+  float d = sdCapsule(a, vec3(w0, 0.0, w0), vec3(w1, Ht, w1), th * 1.7);
+  vec2 f = a.x > a.z ? vec2(a.z, a.x) : vec2(a.x, a.z);
+  float u = fract(t.y / hs), inY = max(-t.y, t.y - Ht);
+  float br = length(vec2((f.x - w * abs(2.0 * u - 1.0)) * 0.6, f.y - w)) - th;
+  float ring = length(vec2(min(u, 1.0 - u) * hs, f.y - w)) - th;
+  return min(d, max(min(br, ring), max(inY, f.x - w)));
+}
+// v6.2: огранённый кристалл — усечённый икосаэдр (многогранник Гольдберга GP(1,1)): 12 пяти- и 20 шестиугольных граней
+float sdGold(vec3 a, float R){
+  const float P = 1.618034;
+  a = abs(a);
+  float p5 = max(max(dot(a, vec3(0.0, 1.0, P)), dot(a, vec3(1.0, P, 0.0))), dot(a, vec3(P, 0.0, 1.0))) * 0.5257311;
+  float p6 = max(max(dot(a, vec3(1.0)), dot(a, vec3(0.618034, 0.0, P))), max(dot(a, vec3(P, 0.618034, 0.0)), dot(a, vec3(0.0, P, 0.618034)))) * 0.5773503;
+  return max(p5 - R * 1.026, p6 - R);
+}
+// кристалл жилы по варианту (8 — крупный на камне, 9 — средний, 10 — малый): локальные координаты и радиус
+vec3 cryLocal(vec3 q, out float R){
+  float v = gV - 8.0;
+  vec3 c = v < 0.5 ? vec3(0.0, 1.62, 0.0) : v < 1.5 ? vec3(0.0, 0.5, 0.0) : vec3(0.0, 0.3, 0.0);
+  R = v < 0.5 ? 0.9 : v < 1.5 ? 0.68 : 0.44;
+  vec3 a = q - c;
+  a.xz = r2(a.xz, 0.7 + v * 1.9);
+  a.xy = r2(a.xy, 0.35 + v * 0.5);
+  a /= vec3(1.12, 1.3, 0.86);   // вытянутый, неровный — не «мяч» (расстояние × 0.86)
+  return a;
+}
+vec2 sdVeinCrystal(vec3 q){
+  vec2 r = vec2(1e5, 32.0);
+  float R; vec3 a = cryLocal(q, R);
+  U(r, sdGold(a, R) * 0.86, 32.0);
+  float v = gV - 8.0;
+  for (int k = ZERO; k < 4; k++){   // светящиеся осколки вокруг
+    float fk = float(k), ang = fk * 1.7 + v * 2.3;
+    float rad = (v < 0.5 ? 1.55 : 1.1) + 0.4 * fract(fk * 0.618 + v * 0.31);
+    vec3 s = q - vec3(cos(ang) * rad, 0.04, sin(ang) * rad);
+    s.xz = r2(s.xz, ang * 2.0); s.xy = r2(s.xy, 0.5 + fk * 0.4);
+    float sz = 0.1 + 0.08 * fract(fk * 0.37 + v * 0.5);
+    U(r, (abs(s.x) + abs(s.y) * 0.45 + abs(s.z) - sz) * 0.52, 35.0);
+  }
+  if (v < 0.5){   // тёмный базальтовый камень под крупным кристаллом
+    vec3 b = q - vec3(0.0, 0.32, 0.0); b.xz = r2(b.xz, 0.4);
+    float rock = sdBox(b, vec3(1.3, 0.6, 1.0));
+    rock = max(rock, dot(b, vec3(0.47, 0.85, 0.21)) - 0.55);
+    rock = max(rock, dot(b, vec3(-0.55, 0.79, -0.24)) - 0.5);
+    rock = max(rock, dot(b, vec3(0.17, 0.51, -0.85)) - 0.7);
+    U(r, rock, 31.0);
+  }
+  for (int k = ZERO; k < 2; k++){   // острые камни рядом
+    float fk = float(k), ang = 2.4 + fk * 2.2 + v * 1.3;
+    vec3 b = q - vec3(cos(ang) * 1.5, -0.1, sin(ang) * 1.5);
+    b.xz = r2(b.xz, ang); b.xy = r2(b.xy, 0.3 - fk * 0.5);
+    float rk = max(sdBox(b, vec3(0.45, 0.6, 0.35) * (0.8 + 0.4 * fk)), dot(b, vec3(0.51, 0.85, 0.17)) - 0.28);
+    U(r, rk, 31.0);
+  }
+  return r;
+}
+// v6.2: экстрактор по референсам — тёмный шестигранный постамент, сотовый светящийся купол над жилой,
+// ажурная вышка с зелёным огнём-маяком; полоса на постаменте и вымпел — цвет команды
 vec2 sdExtractor(vec3 q){
   vec2 r = vec2(1e5, 0.0);
-  U(r, sdCylY(q - vec3(0.0, -0.3, 0.0), 2.3, 0.5), 9.0);
-  vec3 a = vec3(abs(q.x), q.y, abs(q.z));
-  U(r, sdCapsule(a, vec3(1.25, 0.1, 1.25), vec3(0.38, 4.1, 0.38), 0.09), 3.0);
-  U(r, max(sdBox(q - vec3(0.0, 2.1, 0.0), vec3(0.85, 0.06, 0.85)), -sdBox(q - vec3(0.0, 2.1, 0.0), vec3(0.72, 0.2, 0.72))), 2.0);
-  U(r, sdRBox(q - vec3(0.0, 4.25, 0.0), vec3(0.48, 0.3, 0.48), 0.06), 1.0);
-  U(r, sdBox(q - vec3(0.0, 4.25, 0.49), vec3(0.3, 0.06, 0.01)), 10.0);
-  vec3 d = q - vec3(0.0, 1.9, 0.0);
-  d.xz = r2(d.xz, uTime * 2.5 * step(0.999, gProg) + d.y * 3.5);
-  U(r, 0.6 * sdBox(d, vec3(0.38, 1.85, 0.05)), 5.0);
-  U(r, sdCylY(q - vec3(0.0, 1.9, 0.0), 0.1, 2.0), 3.0);
-  vec3 h = q - vec3(1.55, 0.55, 0.0);
-  U(r, max(sdRBox(h, vec3(0.55, 0.45, 0.65), 0.05), -sdBox(h - vec3(0.0, 0.4, 0.0), vec3(0.45, 0.4, 0.55))), 2.0);
-  U(r, length(h - vec3(0.1, 0.22, 0.15)) - 0.3, 30.0);
-  U(r, length(h - vec3(-0.18, 0.2, -0.22)) - 0.25, 30.0);
-  U(r, sdCapsule(q, vec3(0.35, 0.9, 0.0), vec3(1.25, 1.25, 0.0), 0.12), 3.0);
-  U(r, length(q - vec3(0.0, 4.72, 0.0)) - 0.13, 4.0);
+  U(r, sdHexY(q - vec3(0.0, -0.05, 0.0), 2.26, 0.55) - 0.04, 3.0);
+  U(r, sdHexY(q - vec3(0.0, 0.34, 0.0), 2.34, 0.07), 10.0);
+  U(r, sdHexY(q - vec3(0.0, 0.6, 0.0), 1.72, 0.1) - 0.02, 5.0);
+  vec3 dc = q - vec3(0.0, 0.72, 0.0);
+  U(r, max(length(dc) - 1.36, -dc.y), 33.0);
+  U(r, sdTorusY(dc - vec3(0.0, 0.03, 0.0), 1.38, 0.08), 3.0);
+  vec3 tq = q - vec3(-1.0, 0.5, -1.732);
+  U(r, sdLattice(tq, 6.9, 0.42, 0.13, 0.78), 34.0);
+  U(r, sdBox(tq - vec3(0.0, 0.08, 0.0), vec3(0.52, 0.08, 0.52)), 3.0);
+  U(r, sdBox(tq - vec3(0.0, 6.95, 0.0), vec3(0.2, 0.04, 0.2)), 3.0);
+  U(r, length(tq - vec3(0.0, 7.2, 0.0)) - 0.2, 36.0);
+  U(r, sdCapsule(tq, vec3(0.0, 7.0, 0.0), vec3(0.0, 7.95, 0.0), 0.025), 3.0);
+  vec3 fl = tq - vec3(0.21, 7.76, 0.0); fl.z += sin(uTime * 4.0 + fl.x * 6.0) * 0.03 * fl.x;
+  U(r, sdBox(fl, vec3(0.2, 0.11, 0.012)), 4.0);
+  U(r, sdCapsule(q, vec3(-0.8, 0.75, -1.38), vec3(-0.45, 1.05, -0.78), 0.09), 3.0);
   return r;
 }
 
@@ -907,14 +995,14 @@ vec2 objMap(vec3 q){
     case 14: r = sdModule(q); break;
     case 15: r = sdSonar(q); break;
     case 16: r = sdCont(q); break;
-    case 18: r = sdCrystal(q); break;
+    case 18: r = gV > 7.5 ? sdVeinCrystal(q) : sdCrystal(q); break;   // v6.2: кристаллы жил — огранённые
     case 19: r = sdHut(q); break;
     case 20: r = sdDepot(q); break;
     default: r = sdTruss(q); break;
   }
   if (ty >= 13){ r.x *= sq; return r; }
   if (gT > 5.5 && gProg < 0.999){
-    float bh = gT < 6.5 ? 2.4 : gT < 7.5 ? 3.3 : gT < 8.5 ? 12.5 : gT < 9.5 ? 5.6 : gT < 10.5 ? 14.2 : gT < 11.5 ? 8.6 : 4.9;
+    float bh = gT < 6.5 ? 2.4 : gT < 7.5 ? 3.3 : gT < 8.5 ? 12.5 : gT < 9.5 ? 5.6 : gT < 10.5 ? 14.2 : gT < 11.5 ? 8.6 : 8.2;
     float H = -1.0 + (bh + 1.0) * gProg;
     if (q.y - H > r.x){ r.x = q.y - H; r.y = 12.0; }
     // v6: строительные леса — угловые стойки на полную высоту и светящаяся рамка на уровне стройки
@@ -982,6 +1070,58 @@ void objMaterial(float m, vec3 q, out vec3 alb, out vec3 em, out float sp){
     } else if (m < 41.5){ alb = vec3(0.5, 0.48, 0.42) * (0.8 + 0.3 * nz(q * 2.0)); sp = 0.5; }
     else { alb = vec3(0.03); em = vec3(1.0, 0.1, 0.03) * (2.2 + 0.8 * sin(uTime * 6.0 + q.z * 4.0)); }
   }
+  else if (m > 30.5){   // v6.2: руда жил и экстрактор — 31 базальт, 32 огранённый кристалл, 33 сотовый купол, 34 ферма, 35 осколки, 36 маяк
+    if (m < 31.5){
+      alb = vec3(0.026, 0.032, 0.030) * (0.6 + 0.8 * nz(q * 1.7)); sp = 0.6;
+      em = EMER * 0.025;
+    } else if (m < 33.5){
+      // грани: две ближайшие плоскости (м-к Гольдберга GP(1,1)) → тёмные швы; внутри — трещины по сетке GP(3,0) и искры
+      vec3 a; float R = 1.0;
+      bool dome = m > 32.5;
+      if (dome){ a = q - vec3(0.0, 0.72, 0.0); R = 1.36; }
+      else a = cryLocal(q, R);
+      vec3 na = normalize(a);
+      float b1 = -1e5, b2 = -1e5, c1 = -1e5, c2 = -1e5; int id = 0, cid = 0;
+      for (int i = ZERO; i < 92; i++){
+        float c = dot(na, uGP[i]);
+        if (c > c1){ c2 = c1; c1 = c; cid = i; } else if (c > c2) c2 = c;
+        if (i < 32){
+          float v = dot(a, uGP[i]) - R * (i < 12 ? 1.026 : 1.0);
+          if (v > b1){ b2 = b1; b1 = v; id = i; } else if (v > b2) b2 = v;
+        }
+      }
+      float seam, crack, fb;
+      if (dome){
+        seam = 1.0 - smoothstep(0.004, 0.012, c1 - c2);
+        crack = 0.0;
+        fb = 0.65 + 0.7 * hash12(vec2(float(cid), 7.3));
+      } else {
+        float g = (b1 - b2) / R;
+        seam = 1.0 - smoothstep(0.008, 0.022, g);
+        crack = 0.0;
+        vec3 nf = uGP[id];
+        fb = 0.45 + 0.8 * hash12(vec2(float(id), gV)) + 0.45 * max(dot(nf, vec3(0.28, 0.92, 0.27)), 0.0);   // грани светятся неравномерно, верх ярче
+        fb *= 0.55 + 0.45 * smoothstep(-0.9, 0.5, na.y);
+        fb += 1.1 * (1.0 - smoothstep(0.0, 0.08, g)) * (1.0 - seam);   // светлая кайма у рёбер, как преломление
+      }
+      vec3 cell = floor(a * 9.0);
+      float hs = hash12(cell.xy + vec2(cell.z * 17.31, gV * 3.7));
+      float spark = step(0.9, hs) * smoothstep(0.32, 0.05, length(fract(a * 9.0) - 0.5)) * pow(0.5 + 0.5 * sin(uTime * (2.0 + hs * 5.0) + hs * 40.0), 4.0);
+      float pulse = dome ? (0.75 + 0.25 * sin(uTime * 2.6 - na.y * 6.0)) * mix(0.12, 1.0, step(0.999, gProg))
+                         : 0.85 + 0.15 * sin(uTime * 1.6 + gV * 2.0);
+      alb = EMER * 0.03; sp = 0.95;
+      em = EMER * (1.3 * fb * pulse * (1.0 - 0.4 * crack) + 3.0 * spark) * (1.0 - 0.93 * seam);
+    } else if (m < 34.5){
+      alb = vec3(0.03); sp = 0.5;
+      em = EMER * (0.7 + 0.3 * sin(uTime * 2.2 - q.y * 1.3)) * mix(0.1, 1.0, gProg);
+    } else if (m < 35.5){
+      alb = EMER * 0.05; sp = 0.9;
+      em = EMER * (1.3 + 0.5 * sin(uTime * 2.0 + dot(q, vec3(5.0, 3.0, 4.0))));
+    } else {
+      alb = vec3(0.0);
+      em = mix(EMER, vec3(0.8, 1.0, 0.85), 0.35) * 7.0 * (0.7 + 0.3 * sin(uTime * 3.4)) * mix(0.08, 1.0, step(0.999, gProg));
+    }
+  }
   else if (m > 29.5){   // кристаллы: светятся изнутри, цвет зависит от варианта
     vec3 cA = vec3(0.1, 1.0, 0.85), cB = vec3(0.7, 0.3, 1.0);
     vec3 c = mix(cA, cB, fract(gV * 0.37));
@@ -1047,6 +1187,7 @@ void traceObjects(vec3 o, vec3 d, int seg, inout float bestT, inout vec3 bN, ino
     for (int s = ZERO; s < 86; s++){
       vec3 e = vec3(0.0);
       if (mode > 0 && mode < 5) e = 0.5773 * (2.0 * vec3(float(((mode + 2) >> 1) & 1), float(((mode - 1) >> 1) & 1), float((mode - 1) & 1)) - 1.0);
+      if (mode == 0) gTr = t;
       vec2 m = objMap(mode == 0 ? lo + ld * t : q + e * hn);
       if (mode == 0){
         if (m.x < 0.0015 + t * 0.0005){ q = lo + ld * t; bestT = t; hitI = i; mode = 1; nq = vec3(0.0); continue; }

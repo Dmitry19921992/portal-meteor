@@ -63,15 +63,16 @@ function veins(){
   for (let t = 0; t < 2; t++) for (let k = 0; k < 3; k++) place(BASES[t], 46, 92, 'base', t);
   CPD.forEach((c, i) => place(c, 20, 36, 'cp', i));
   for (const [la, lo] of [[24, 0], [24, 180], [-24, 90], [-24, 270], [58, 130], [-58, 310]]) place(dirLL(la, lo), 0, 45, 'free', -1);
-  // кристаллы-маяки: два светящихся кристалла у каждой жилы (видно и из шутера)
+  // кристаллы-маяки у каждой жилы (видно и из шутера). v6.2: три огранённых кристалла —
+  // крупный на базальтовом камне (variant 8), средний (9) и малый (10), вокруг — осколки и острые камни
   const K = PROP_KINDS[5];
   for (const v of VEINS){
     const t1 = anyTangent(v.dir), t2 = cross(v.dir, t1);
-    for (let k = 0; k < 2; k++){
-      const a = (v.i * 1.7 + k * 2.6), dir = offsetOnSphere(v.dir, add(mul(t1, cos(a)), mul(t2, sin(a))), 3.7 + k * 0.6);
+    for (let k = 0; k < 3; k++){
+      const a = (v.i * 1.7 + k * 2.3), dir = offsetOnSphere(v.dir, add(mul(t1, cos(a)), mul(t2, sin(a))), [4.6, 4.3, 4.9][k]);
       const up = dir, fwd = tangent(add(mul(t1, -sin(a)), mul(t2, cos(a))), up), gr = groundR(dir);
       PROPS.push({ cls: 'prop', id: 100000 + PROPS.length, kind: 5, dir, pos: mul(dir, gr - K.sink), up, fwd, R: norm(cross(fwd, up)), hp: 1e7, maxhp: 1e7,
-                   bound: K.br, integ: 1, alive: true, variant: 2 + k * 4, team: 2, seen: [1, 1], flash: 0, loot: 0, vein: v.i });
+                   bound: K.br, integ: 1, alive: true, variant: 8 + k, team: 2, seen: [1, 1], flash: 0, loot: 0, vein: v.i });
     }
   }
   buildPropGrid();

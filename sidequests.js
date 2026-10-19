@@ -16,7 +16,7 @@ const SIDEQ = {
   },
   offer(c){
     const L = [];
-    const prop = PROPS.filter(p => p.alive && dist(p.pos, c.pos) < 130 && dist(p.pos, c.pos) > 15).sort((a, b) => dist(a.pos, c.pos) - dist(b.pos, c.pos))[0];
+    const prop = PROPS.filter(p => p.alive && p.vein === undefined && dist(p.pos, c.pos) < 130 && dist(p.pos, c.pos) > 15).sort((a, b) => dist(a.pos, c.pos) - dist(b.pos, c.pos))[0];
     if (prop) L.push(['salvage', 3, prop]);
     const sonar = PROPS.find(p => p.alive && p.kind === 2 && dist(p.pos, c.pos) < 170);
     if (sonar) L.push(['beacon', 3, sonar]);

@@ -19,6 +19,22 @@ const vec3 CPD[6] = vec3[6](${CPD.map(d => `vec3(${f5(d)})`).join(',')});
 const vec4 CRAT[8] = vec4[8](${CRATERS.map(c => `vec4(${f5(c)})`).join(',')});
 float hgt(vec3 q){ return ${NK.map(([a,k1,k2]) => `${a.toFixed(3)}*cos(dot(q,vec3(${f5(k1)})))*cos(dot(q,vec3(${f5(k2)})))`).join(' + ')}; }`;
 }
+let GP_U = null;   // v6.2: передаётся юниформом uGP (константный массив в шейдере компилируется в D3D минутами)
+// v6.2: центры граней многогранника Гольдберга GP(3,0) = вершины геодезической сферы частоты 3:
+// 12 вершин икосаэдра (пятиугольники) + 20 центров граней (вместе — усечённый икосаэдр) + 60 точек на рёбрах
+function gpNormals(){
+  const P = (1 + Math.sqrt(5)) / 2, V = [];
+  for (const s1 of [-1, 1]) for (const s2 of [-1, 1]) V.push([0, s1, s2 * P], [s1, s2 * P, 0], [s2 * P, 0, s1]);
+  const E = [], F = [], isE = (i, j) => Math.abs(dist(V[i], V[j]) - 2) < 1e-6;
+  for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) if (isE(i, j)){
+    E.push([i, j]);
+    for (let k = j + 1; k < 12; k++) if (isE(i, k) && isE(j, k)) F.push([i, j, k]);
+  }
+  const out = V.map(norm);
+  for (const [i, j, k] of F) out.push(norm(add(add(V[i], V[j]), V[k])));
+  for (const [i, j] of E) out.push(norm(add(mul(V[i], 2), V[j])), norm(add(V[i], mul(V[j], 2))));
+  return out;
+}
 const VS = `#version 300 es
 void main(){ vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
 // компиляция без блокировки (для экрана загрузки): start → poll → finish
@@ -42,7 +58,7 @@ function finishProgram(h, names){
   return { p: h.p, U };
 }
 const SCENE_U = ['uRes','uCam','uRot','uR','uBounces','uGrid','uSelf','uTiles','uFov','uTime','uQ','uMe','uObj','uNO','uPar','uNP','uNoise',
-                 'uLP','uLC','uNL','uCP','uVM','uVM2','uLamp','uHQ','uZero','uStorm','uVM3'];
+                 'uLP','uLC','uNL','uCP','uVM','uVM2','uLamp','uHQ','uZero','uStorm','uVM3','uVein','uNV','uGP'];
 const POST_U = ['uTex','uRes','uTime','uExpo','uFlash','uDmg','uVhs','uBloom','uWave','uNW','uTrc','uNT','uSlow','uDist','uXfer'];
 let SCENE = null, POST = null;
 let texObj, texPar, texNoise;
@@ -208,10 +224,17 @@ function setupCamera(dt){
 }
 
 // ---- сбор объектов
-const BLD_BC = { turret: 1.0, aa: 1.2, factory: 4, hub: 1, airdock: 5, outpost: 2.5, extractor: 2.1 };
-const BLD_SC = { turret: 1.2, aa: 1.3, factory: 4, hub: 1.5, airdock: 7, outpost: 2.2, extractor: 2.0 };
-const BLD_SR = { turret: 0.7, aa: 1.0, factory: 6, hub: 3, airdock: 3, outpost: 4, extractor: 1.2 };
-const BLD_BR = { turret: 2.7, aa: 3.7, factory: 14, hub: 8, airdock: 12, outpost: 10, extractor: 4.2 };
+const BLD_BC = { turret: 1.0, aa: 1.2, factory: 4, hub: 1, airdock: 5, outpost: 2.5, extractor: 3.3 };   // v6.2: экстрактор с вышкой-маяком выше
+const BLD_SC = { turret: 1.2, aa: 1.3, factory: 4, hub: 1.5, airdock: 7, outpost: 2.2, extractor: 0.9 };
+const BLD_SR = { turret: 0.7, aa: 1.0, factory: 6, hub: 3, airdock: 3, outpost: 4, extractor: 1.5 };
+const BLD_BR = { turret: 2.7, aa: 3.7, factory: 14, hub: 8, airdock: 12, outpost: 10, extractor: 5.4 };
+// v6.2: рудные жилы для шейдера (тёмный базальт и крошка вокруг) — позиции постоянны
+const VEIN_U = new Float32Array(20 * 4); let veinUN = -1;
+function veinUniforms(){
+  const V = veins();
+  if (V.length !== veinUN){ veinUN = min(20, V.length); VEIN_U.fill(0); for (let i = 0; i < veinUN; i++) VEIN_U.set([V[i].pos[0], V[i].pos[1], V[i].pos[2], 1], i * 4); }
+  return veinUN;
+}
 function objInfo(e){
   switch (e.cls){
     case 'inf': {
@@ -356,7 +379,16 @@ function gatherLights(){
     else if (b.type === 'airdock') add2(add(b.pos, mul(b.up, 2)), E, 16, 0.003);
     else if (b.type === 'hub') add2(add(b.pos, mul(b.up, 1.5)), E, 14, 0.002);
     else if (b.type === 'outpost') add2(add(b.pos, mul(b.up, 4.5)), E, 14, 0.003);
-    else if (b.type === 'extractor') add2(add(add(b.pos, mul(b.up, 1.2)), mul(b.R, 1.5)), [2.2, 1.3, 0.4], 9, 0.002);
+    else if (b.type === 'extractor'){   // v6.2: зелёный огонь-маяк на вышке (с ореолом) и свет купола на постамент
+      const k = 0.75 + 0.25 * sin(S.time * 3.4);
+      add2(add(add(add(b.pos, mul(b.up, 7.9)), mul(b.R, -1.0)), mul(b.fwd, -1.732)), [0.5 * k, 3.2 * k, 1.5 * k], 8, 0.006);
+      add2(add(b.pos, mul(b.up, 2.4)), [0.25, 2.0, 0.9], 9, 0);
+    }
+  }
+  // v6.2: кристаллы жил подсвечивают грунт и камни вокруг зелёным, лёгкая дымка в воздухе
+  for (const v of veins()){
+    const k = 0.9 + 0.1 * sin(S.time * 1.6 + v.i);
+    add2(add(v.pos, mul(norm(v.pos), 1.8)), [0.22 * k, 2.1 * k, 0.9 * k], 11, 0.0015);
   }
   for (const p of PROPS){
     if (p.alive && p.kind === 1) add2(add(p.pos, mul(p.up, 3)), [1.6, 0.8, 0.2].map(x => x * (0.5 + 0.5 * (sin(S.time * 2 + p.id) > 0.6 ? 1 : 0))), 9, 0.002);
@@ -460,6 +492,9 @@ function render(dt, now){
   gl.uniform4fv(U.uCP, CPU);
   gl.uniform2f(U.uHQ, HQ_ALIVE[0] ? 1 : 0, HQ_ALIVE[1] ? 1 : 0);
   gl.uniform1i(U.uZero, 0);
+  gl.uniform1i(U.uNV, veinUniforms()); gl.uniform4fv(U.uVein, VEIN_U);
+  if (!GP_U) GP_U = new Float32Array(gpNormals().flat());
+  gl.uniform3fv(U.uGP, GP_U);
   gl.uniform1f(U.uStorm, (S.storm ? S.storm.k : 0) * (fpsLike ? 1 : 0.12));
   const me = S.me;
   const showVM = S.mode === 'fps' && !S.attract && me && me.cls === 'inf' && !S.third && !S.freecam;

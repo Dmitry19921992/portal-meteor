@@ -182,7 +182,11 @@ function propLocalSDF(kind, x, y, z, v){
       return d;
     }
     case 4: return min(sdBox3(x, y - 0.65, z, 0.65, 0.65, 8.2), sdBox3(x, y - 1.0, z + 8.6, 1.4, 1.0, 1.4));
-    case 5: return sdCapsule(x, y, z, 0, -0.2, 0, 0, 1.6, 0, 0.55);
+    case 5:   // v6.2: кристаллы жил (variant 8..10) — огранённые, крупный лежит на камне
+      if (v === 8) return min(hypot(x, y - 1.62, z) - 0.95, sdBox3(x, y - 0.32, z, 1.2, 0.55, 0.95));
+      if (v === 9) return hypot(x, y - 0.5, z) - 0.72;
+      if (v === 10) return hypot(x, y - 0.3, z) - 0.47;
+      return sdCapsule(x, y, z, 0, -0.2, 0, 0, 1.6, 0, 0.55);
     case 6: return min(sdCapsule(x, y, z, -3.4, 1.9, 0, 3.4, 1.9, 0, 1.6), sdCapsule(x, y, z, -1, 3.3, 0, -1, 5.6, 0, 0.1));
     case 7: return max(hypot(x, y) - 3.1, -y, abs(z) - 4.5);
   }
@@ -290,7 +294,7 @@ function bldSDF(b, x, y, z){
     case 'hub':     d = min(sdCylY(qx, qy + 1, qz, 6.5, 1.4), hypot(qx, qy - 0.4, qz) - 3.2); break;
     case 'airdock': d = min(sdBox3(qx, qy + 1, qz, 6, 1.6, 6), sdBox3(abs(qx) - 3.2, qy - 7, qz + 3.5, 0.45, 6.5, 0.45)); break;
     case 'outpost': d = min(sdBox3(qx, qy + 0.5, qz, 4.6, 1.5, 4.6), sdBox3(qx, qy - 2.4, qz - 0.6, 3.2, 1.6, 2.8), sdCapsule(qx, qy, qz, 2.2, 3, -2, 2.2, 8.5, -2, 0.18)); break;
-    case 'extractor': d = min(sdCylY(qx, qy + 0.3, qz, 2.3, 0.5), sdCylY(qx, qy - 2.3, qz, 0.95, 2.3), sdBox3(qx - 1.55, qy - 0.55, qz, 0.55, 0.45, 0.65)); break;
+    case 'extractor': d = min(sdCylY(qx, qy + 0.05, qz, 2.4, 0.6), hypot(qx, max(0, qy - 0.72), qz) - 1.38, sdBox3(qx + 1.0, qy - 4.0, qz + 1.732, 0.42, 3.5, 0.42)); break;   // v6.2: постамент, купол, вышка
     default: d = 1e9;
   }
   return max(d, qy - H);
