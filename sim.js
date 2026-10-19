@@ -33,7 +33,7 @@ function dronePlayerStep(d, dt){
   d.cd -= dt;
   if (inp.fire && d.cd <= 0){
     const m = add(d.pos, mul(d.aim, 1.0));
-    fire(m, d.aim, d.team, 0.02, 8, 130, d, 'b');
+    gunShootSimple(d, m, d.aim, 0.012, WEAPONS.drone);   // v6: мгновенная пуля
     d.cd = 0.16; S.recoil = 0.5;
     emit('shot', { pos: d.pos, team: d.team, src: d, me: true });
   }
@@ -55,6 +55,7 @@ function update(rdt){
   const fps = S.mode === 'fps' && !S.attract;
   const ctrl = ctrlEntity();
   if (!S.attract) kitStep(dt, rdt);
+  gunStep(dt, rdt);   // v6: трассеры, отдача, разброс, перелёт камеры
 
   // ---- пехота
   for (const u of [...S.units]){
@@ -82,25 +83,8 @@ function update(rdt){
       let aim = inp.fire ? inp.aim : null;
       // подавление: стреляем по площади, если нет цели
       if (!aim && u.squad.suppUntil > S.time && u.squad.suppPos){ aim = norm(sub(add(u.squad.suppPos, mul(randUnit(), 6)), u.pos)); }
-      if (aim){
-        const eye = add(u.pos, mul(u.up, RULES.EYE * 0.8));
-        const td = u.target ? dist(centerOf(u.target), eye) : 60;
-        const acc = (u.team === 1 ? DK().acc : 1) * (u.suppT > 0 ? 2.2 : 1) * (u.crouch ? 0.8 : 1);
-        const supp = u.squad.suppUntil > S.time;
-        const R = roleOf(u);
-        if (R.rail){
-          const p = fire(eye, aim, u.team, 0.004 * acc * R.spread, R.dmg * (u.elite ? 1.2 : 1), 600, u, 'l');
-          S.beams.push({ a: add(eye, mul(aim, 0.8)), b: add(eye, mul(norm(p.vel), min(td + 2, 160))), t: 0, life: 0.3, team: u.team, rail: 1 });
-          addLight(add(eye, mul(aim, 1)), [3, 6, 12], 10, 0.1, 0.006);
-          emit('rail', { pos: eye, src: u });
-          u.cd = R.cd + random() * R.cdr; u.lastShotT = S.time;
-        } else {
-          fire(eye, aim, u.team, (0.01 + td * 0.00035 + (u.grounded ? 0 : 0.015)) * acc * R.spread, R.dmg * (u.elite ? 1.2 : 1), 115, u, 'b');
-          u.cd = supp && !R.supp ? 0.12 + random() * 0.05 : R.cd + random() * R.cdr;
-          emit('shot', { pos: eye, team: u.team, src: u, heavy: !!R.supp });
-        }
-        if (random() < 0.35) addLight(add(eye, mul(aim, 1.2)), u.team ? [6, 1.2, 0.5] : [4, 5, 7], 7, 0.05, 0.003);
-      }
+      // v6: то же оружие, что у игрока — мгновенные пули, очереди, магазины, модель точности (gun.js)
+      if (aim) gunBotFire(u, aim, u.squad.suppUntil > S.time);
     }
     if (inp.rocket && u.rocketCd <= 0 && !(isMe && S.freecam)) fireRocket(u, isMe ? u.fwd : inp.aim);
     if (!isMe){

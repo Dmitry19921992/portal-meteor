@@ -16,7 +16,8 @@ const TOUCH = {
       <div class="tf fps">
         <button data-t="fire" class="big">●</button>
         <button data-t="jet" class="mid">⇑</button>
-        <button data-t="aim">◎</button>
+        <button data-t="aim" class="adsb">◎</button>
+        <button data-k="dash">»</button>
         <button data-k="rocket">Q</button>
         <button data-k="grenade">G</button>
         <button data-k="reload">R</button>

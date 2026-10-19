@@ -25,6 +25,7 @@ uniform vec4  uCP[7];    // точки захвата: w — прогресс (-
 uniform vec4  uVM;       // оружие в руках: x показ, y фаза покачивания, z отдача, w вспышка
 uniform vec4  uVM2;      // x команда, y элита, z тень у глаз (0..1), w движение
 uniform float uLamp;
+uniform vec4  uVM3;       // v6: x — прицел (ADS), y — оружие опущено (перелёт/подъём), z — заряд рельсы
 uniform vec2  uHQ;
 uniform int   uZero;
 uniform float uStorm;   // пылевая буря 0..1    // всегда 0: не даёт компилятору D3D разворачивать циклы (иначе компиляция идёт минутами)
@@ -1298,9 +1299,13 @@ vec3 portalGlow(vec3 P, vec3 d){
 float vmWeapon(){ return floor(uVM2.y + 0.001); }
 float vmReload(){ return fract(uVM2.y + 0.001) / 0.9; }
 vec3 vmOff(){
-  float bob = uVM.y, mv = uVM2.w;
+  float bob = uVM.y, mv = uVM2.w, ads = uVM3.x, low = uVM3.y;
   float rl = sin(clamp(vmReload(), 0.0, 1.0) * 3.14159);
-  return vec3(0.19 + sin(bob) * 0.008 * mv, -0.185 - abs(cos(bob)) * 0.01 * mv + uVM.z * 0.012 - rl * 0.09, 0.50 - uVM.z * 0.06);
+  vec3 hip = vec3(0.19 + sin(bob) * 0.008 * mv, -0.185 - abs(cos(bob)) * 0.01 * mv + uVM.z * 0.012 - rl * 0.09, 0.50 - uVM.z * 0.06);
+  vec3 aim = vec3(0.0, -0.132 + uVM.z * 0.004 - rl * 0.09, 0.42 - uVM.z * 0.045);
+  vec3 o = mix(hip, aim, ads);
+  o.y -= low * 0.3; o.x += low * 0.06;
+  return o;
 }
 vec2 vmSDF(vec3 g){
   vec2 r = vec2(1e5, 0.0);
@@ -1344,7 +1349,7 @@ vec2 vmSDF(vec3 g){
 }
 vec3 toGun(vec3 c){   // камера (-z вперёд) -> система оружия (+z вперёд)
   vec3 g = vec3(c.x, c.y, -c.z) - vmOff();
-  g.zy = r2(g.zy - vec2(-0.1, 0.0), uVM.z * 0.08 + sin(clamp(vmReload(), 0.0, 1.0) * 3.14159) * 0.5) + vec2(-0.1, 0.0);
+  g.zy = r2(g.zy - vec2(-0.1, 0.0), uVM.z * 0.08 * (1.0 - 0.6 * uVM3.x) + sin(clamp(vmReload(), 0.0, 1.0) * 3.14159) * 0.5 + uVM3.y * 0.7) + vec2(-0.1, 0.0);
   return g;
 }
 vec4 viewModel(vec3 dc, out vec3 nW){
@@ -1377,7 +1382,7 @@ void main(){
   vec3 d = normalize(uRot * dc);
   vec3 o = uCam;
 
-  if (uVM.x > 0.5 && uv.x > -0.1 && uv.y < 0.15){
+  if (uVM.x > 0.5 && uv.x > -0.1 - uVM3.x * 0.2 && uv.y < 0.15){
     vec3 nW;
     vec4 vm = viewModel(dc, nW);
     if (vm.w > 0.0){

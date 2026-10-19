@@ -42,8 +42,8 @@ function finishProgram(h, names){
   return { p: h.p, U };
 }
 const SCENE_U = ['uRes','uCam','uRot','uR','uBounces','uGrid','uSelf','uTiles','uFov','uTime','uQ','uMe','uObj','uNO','uPar','uNP','uNoise',
-                 'uLP','uLC','uNL','uCP','uVM','uVM2','uLamp','uHQ','uZero','uStorm'];
-const POST_U = ['uTex','uRes','uTime','uExpo','uFlash','uDmg','uVhs','uBloom','uWave','uNW','uTrc','uNT','uSlow','uDist'];
+                 'uLP','uLC','uNL','uCP','uVM','uVM2','uLamp','uHQ','uZero','uStorm','uVM3'];
+const POST_U = ['uTex','uRes','uTime','uExpo','uFlash','uDmg','uVhs','uBloom','uWave','uNW','uTrc','uNT','uSlow','uDist','uXfer'];
 let SCENE = null, POST = null;
 let texObj, texPar, texNoise;
 const MAXO = 160, MAXP = 200;
@@ -162,7 +162,7 @@ function setupCamera(dt){
   else if (S.mode === 'fps' && c){
     if (c.cls === 'inf' && !S.third){
       const right = norm(cross(c.fwd, c.up));
-      cam = { pos: add(c.pos, mul(c.up, RULES.EYE + parkourEye(dt))), right, up: cross(right, c.fwd), fwd: c.fwd };
+      cam = { pos: add(c.pos, mul(c.up, RULES.EYE + parkourEye(dt) - 0.32 * GUNS.crouchK)), right, up: cross(right, c.fwd), fwd: c.fwd };
     } else if (c.cls === 'inf'){
       const head = add(c.pos, mul(c.up, 1.2));
       const right = norm(cross(c.fwd, c.up));
@@ -197,7 +197,7 @@ function setupCamera(dt){
   } else cam = rtsCamera();
   cam = CAMFX.apply(cam, dt);
   S.aimK = (S.aimK || 0) + (((S.mode === 'fps' && S.aiming) ? 1 : 0) - (S.aimK || 0)) * min(1, dt * 12);
-  cam.fov = FOV * (1 - 0.4 * S.aimK);
+  cam.fov = FOV * (1 - (S.adsZ || 0.4) * S.aimK);   // v6: приближение зависит от оружия
   S.cam = cam;
   eyeShT -= dt;
   if (eyeShT <= 0){ eyeShT = 0.15; eyeSh = shadowJS(cam.pos); }
@@ -311,6 +311,7 @@ function gatherParticles(){
     const ty = p.type === 'b' ? (p.inc ? 3 : p.team) : p.type === 'f' ? 5 : 3;
     push(p.pos, p.type === 's' || p.type === 'a' ? 0.12 : p.type === 'r' ? 0.1 : p.type === 'g' ? 0.14 : 0.055, b, ty);
   }
+  tracersGather(push, near);   // v6: трассеры мгновенных пуль
   for (const s of S.sparks){
     if (!near(s.pos, 250)) continue;
     push(s.pos, s.big ? 0.07 : 0.035, sub(s.pos, mul(s.vel, s.big ? 0.05 : 0.03)), s.heal ? 9 : 2);
@@ -395,6 +396,13 @@ function gatherDistortion(){
     const d = dist(p.pos, S.cam.pos); if (d > 45 || d < 0.8) continue;
     tr.push({ p, d });
   }
+  // v6: трассеры мгновенных пуль у камеры
+  tracersNear((T, h) => {
+    if (nt >= 8) return;
+    const h2 = max(0, h - 4);
+    const a = project([T.a[0] + T.d[0] * h, T.a[1] + T.d[1] * h, T.a[2] + T.d[2] * h]), b = project([T.a[0] + T.d[0] * h2, T.a[1] + T.d[1] * h2, T.a[2] + T.d[2] * h2]);
+    if (a && b){ TRC.set([a[0] / W, 1 - a[1] / H, b[0] / W, 1 - b[1] / H], nt * 4); nt++; }
+  });
   tr.sort((a, b) => a.d - b.d);
   for (const { p } of tr){
     if (nt >= 8) break;
@@ -455,7 +463,9 @@ function render(dt, now){
   const showVM = S.mode === 'fps' && !S.attract && me && me.cls === 'inf' && !S.third && !S.freecam;
   const wk = S.kit ? S.kit.w : 'rifle';
   const reload = S.kit && S.kit.reloadT > 0 ? min(1, S.kit.reloadT / WEAPONS[wk].reload) : 0;
-  gl.uniform4f(U.uVM, showVM ? 1 : 0, S.bob, S.recoil, S.muzzle > 0 ? 1 : 0);
+  const vm3 = gunVM3();   // v6: прицел, опускание оружия при перелёте, заряд рельсы
+  gl.uniform4f(U.uVM, showVM && !vm3[3] ? 1 : 0, S.bob, S.recoil, S.muzzle > 0 ? 1 : min(0.5, vm3[2] * 0.5));
+  gl.uniform4f(U.uVM3, vm3[0], vm3[1], vm3[2], 0);
   gl.uniform4f(U.uVM2, me ? me.team : 0, (wk === 'rail' ? 2 : wk === 'hmg' ? 3 : (me && me.elite ? 1 : 0)) + reload * 0.9, eyeSh, me ? (me.moveAmt || 0) : 0);
   gl.uniform1f(U.uLamp, S.mode === 'fps' && !S.attract ? 1 : 0);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -481,5 +491,6 @@ function render(dt, now){
   gl.uniform4fv(P.uTrc, TRC); gl.uniform1i(P.uNT, nt);
   gl.uniform1f(P.uSlow, S.slow);
   gl.uniform1f(P.uDist, SET.distort ? 1 : 0);
+  gl.uniform1f(P.uXfer, S.attract ? 0 : (S.xfer || 0));
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }

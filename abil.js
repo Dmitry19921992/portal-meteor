@@ -264,7 +264,8 @@ function aiPowerNote(t, k, p){
 //  СНАРЯЖЕНИЕ ИГРОКА: оружие, гранаты, рефлекс (замедление), удар
 // =====================================================================
 function newKit(){
-  return { w: 'rifle', mag: { rifle: WEAPONS.rifle.mag, rail: WEAPONS.rail.mag, hmg: WEAPONS.hmg.mag }, reloadT: 0, grenCd: 0, reflex: 1, reflexOn: false,
+  const mag = {}; for (const k in WEAPONS) if (WEAPONS[k].mag) mag[k] = WEAPONS[k].mag;   // v6: магазины всех видов оружия
+  return { w: 'rifle', mag, reloadT: 0, grenCd: 0, reflex: 1, reflexOn: false,
            strikeCd: 0, hmgT: 0, incT: 0, freeRockets: 0, strikeCharges: 0, lastShot: -9 };
 }
 // луч из глаз: первая поверхность или сущность
@@ -295,13 +296,15 @@ function rayCast(o, d, maxT, team, wantEnt){
   return { t, pos: end, ent: null };
 }
 function weaponAvail(w){
-  if (w === 'rifle') return true;
   const role = S.me && S.me.cls === 'inf' ? S.me.role : null;
+  if (w === 'rifle') return role !== 'scout';
+  if (w === 'smg') return role === 'scout';   // v6: у разведчика основное — ПП
   if (w === 'rail') return PROG.has('rail') || role === 'sniper';
   if (w === 'hmg') return S.kit.hmgT > 0 || role === 'heavy';
   return false;
 }
 function switchWeapon(w){
+  if (w === 'rifle' && S.me && S.me.cls === 'inf' && roleOf(S.me).w === 'smg') w = 'smg';   // клавиша 1 — основное оружие роли
   if (!weaponAvail(w)){ HINTS.denied(w); return; }
   if (S.kit.w === w) return;
   S.kit.w = w; S.kit.reloadT = 0;
@@ -309,47 +312,13 @@ function switchWeapon(w){
 }
 function startReload(){
   const K = S.kit, W = WEAPONS[K.w];
-  if (K.reloadT > 0 || K.mag[K.w] >= W.mag) return;
-  K.reloadT = W.reload;
+  if (K.reloadT > 0 || K.mag[K.w] >= gstat(W, 'mag')) return;
+  K.reloadT = gstat(W, 'reload');
   HINTS.used('reload');
   emit('reload', {});
 }
 // огонь игрока (вызывается из sim для своего бойца)
-function playerFire(u, inp, dt){
-  const K = S.kit, W = WEAPONS[K.w];
-  if (K.reloadT > 0){ K.reloadT -= dt; if (K.reloadT <= 0){ K.reloadT = 0; K.mag[K.w] = W.mag; } return; }
-  if (!inp.fire || u.cd > 0) return;
-  if (K.mag[K.w] <= 0){ startReload(); return; }
-  K.mag[K.w]--;
-  K.lastShot = S.time;
-  ADAPT.shots++;
-  const eye = add(u.pos, mul(u.up, RULES.EYE * 0.8));
-  const aimDir = assistAim(eye, u.fwd, u.team);
-  const inc = K.incT > 0;
-  if (W.type === 'l'){
-    const r = rayCast(eye, aimDir, 420, u.team, true);
-    const from = add(add(eye, mul(u.fwd, 0.8)), mul(norm(cross(u.fwd, u.up)), 0.18));
-    S.beams.push({ a: from, b: r.pos, t: 0, life: 0.35, team: u.team, rail: 1 });
-    if (r.ent){
-      const k = 0.8 + 0.45 * smoothstep(10, 90, r.t);    // рельса — сильнее издалека
-      damage(r.ent, W.dmg * k * (inc ? 1.3 : 1), u, 'l');
-      burst(r.pos, 10, 9);
-    } else { burst(r.pos, 6, 6); fxSmoke(r.pos, 0.5, 0.3); }
-    addWave(r.pos, 0.9, 0.3);
-    S.recoil = 2.4; S.shake = max(S.shake, 0.35);
-    u.cd = W.rof;
-    addLight(add(eye, mul(u.fwd, 1.2)), [3, 6, 12], 14, 0.12, 0.01);
-    emit('rail', { pos: eye, src: u });
-  } else {
-    const spread = W.spread * (u.grounded ? 1 : 1.6) * (S.aiming ? 0.45 : 1) * (S.kit.w === 'hmg' && !u.grounded ? 1.3 : 1);
-    fire(eye, aimDir, u.team, spread * (1 - 0.5 * DK().assist), W.dmg * (u.elite ? 1.15 : 1) * (inc ? 1.5 : 1), W.speed, u, 'b', inc ? { inc: 1 } : null);
-    u.cd = W.rof;
-    S.recoil = K.w === 'hmg' ? 0.7 : 1; S.muzzle = 0.05;
-    addLight(add(eye, mul(u.fwd, 1.2)), inc ? [9, 4, 1] : [7, 5, 2.6], 9, 0.05, 0.004);
-    emit('shot', { pos: eye, team: u.team, src: u, me: true, heavy: K.w === 'hmg' });
-  }
-  if (K.mag[K.w] <= 0) startReload();
-}
+function playerFire(u, inp, dt){ return gunPlayerFire(u, inp, dt); }   // v6: стрельба — gun.js (hitscan, отдача, разброс)
 // помощь в прицеливании (зависит от сложности): пуля слегка «притягивается» к цели у перекрестия
 function assistAim(eye, fwd, team){
   const a = DK().assist || 0;
@@ -372,7 +341,7 @@ function playerGrenade(){
   if (S.kit.grenCd > 0) return;
   S.kit.grenCd = 9;
   const eye = add(u.pos, mul(u.up, RULES.EYE));
-  const v = add(mul(u.fwd, 21), mul(u.up, 4.5));
+  const v = add(mul(u.fwd, 21), mul(u.up, 4.5 * Math.sqrt(RULES.G / 3.5)));   // v6: гравитация сильнее — бросаем выше
   S.proj.push({ pos: add(eye, mul(u.fwd, 0.6)), org: eye, vel: add(v, mul(u.vel, 0.5)), team: u.team, life: 4, fuse: 1.9, dmg: 85, splash: 6, from: u, type: 'g' });
   HINTS.used('grenade');
   emit('throw', { pos: eye, src: u, me: true });
