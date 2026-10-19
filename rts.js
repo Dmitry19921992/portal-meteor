@@ -441,7 +441,7 @@ function orderAt(x, y, queue, forceRush){
   const ent = pickEntity(x, y, true);
   if (ent && ent.team === 1){
     for (const g of sel){ setOrder(g, 'focus', centerOf(ent), { focus: ent.cls === 'hq' ? null : ent, by: 'player', lock: 120 }); if (ent.cls === 'hq') g.order = 'attack'; }
-    S.orderMark = { p: centerOf(ent), t: 0.8, col: '#ff6050' };
+    S.orderMark = { p: centerOf(ent), t: 0.8, col: '#ff6050', kind: 'attack' };
     emit('ui', { kind: 'ok' });
     return;
   }
@@ -461,15 +461,16 @@ function orderAt(x, y, queue, forceRush){
     if (n > 1 && order === 'move'){ const up = norm(p), a = i / n * PI * 2; tp = add(p, mul(add(mul(anyTangent(up), cos(a)), mul(cross(up, anyTangent(up)), sin(a))), 5 + n * 1.5)); }
     setOrder(g, order, tp, { cp, by: 'player', lock: 120, rush });
   });
-  S.orderMark = { p: target, t: 0.8, col: rush ? '#9cf' : null };
+  S.orderMark = { p: target, t: 0.8, col: rush ? '#9cf' : null, kind: rush ? 'march' : order === 'cap' ? 'cap' : 'amove', from: leaderPos(sel[0]) };
   if (rush) HINTS.used('rush');
-  if (rush) feed(tr('Бегом! Не ввязываться в бой', 'On the double! Do not engage', 'Chạy nhanh! Không giao chiến'), '#9cf');
+  if (rush) feed(tr('Марш! Бегом, не останавливаясь — стреляют на ходу', 'March! Running without stopping — firing on the move', 'Hành quân! Chạy không dừng — vừa chạy vừa bắn'), '#9cf');
   emit('ui', { kind: 'ok' });
   HINTS.used('order');
 }
 function orderHold(){
-  for (const g of selGroups()){ const L = leaderOf(g); if (L) setOrder(g, 'hold', L.pos, { by: 'player', lock: 300 }); }
-  feed(tr('Удерживать позицию', 'Hold position', 'Giữ vị trí')); emit('ui', { kind: 'ok' });
+  const bs = selBuilders(); if (bs.length) builderStop(bs);   // v61: инженеры — «Стоп» (бросить задания)
+  for (const g of selGroups()){ if (g.cls === 'builder') continue; const L = leaderOf(g); if (L) setOrder(g, 'hold', L.pos, { by: 'player', lock: 300 }); }
+  feed(selGroups().every(g => g.cls === 'builder') ? tr('Инженеры: стоп', 'Builders: stop', 'Kỹ sư: dừng') : tr('Удерживать позицию', 'Hold position', 'Giữ vị trí')); emit('ui', { kind: 'ok' });
 }
 function orderSkySel(){
   const sel = selGroups().filter(isSquad);
@@ -536,7 +537,7 @@ function buildSidebar(){
   const ore = c => `<i class="ore"></i>${c}`;
   const mk = (id, icon, name, cost, time, fn, extra) => {
     const b = document.createElement('button'); b.className = 'item'; b.dataset.ux = id;
-    const hk = SLOT_KEYS[SIDE.btns.length]; if (hk) b.dataset.hk = hk;
+    const hk = extra && 'hk' in extra ? extra.hk : SLOT_KEYS[SIDE.btns.length]; if (hk) b.dataset.hk = hk;
     b.innerHTML = `<i>${icon}</i>${hk ? `<kbd>${keyLabel(hk)}</kbd>` : ''}<b>${name}</b><span class="cost">${cost}</span>${time ? `<span class="tm">${time}</span>` : ''}<span class="q"></span><span class="st"></span><span class="bar"><s></s></span>`;
     b.onclick = e => { e.stopPropagation(); AU.init(); fn(); };
     b.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); if (extra && extra.cancel) extra.cancel(); };
@@ -544,8 +545,9 @@ function buildSidebar(){
     SIDE.btns.push({ el: b, id, extra: extra || {} });
   };
   if (SIDE.tab === 'build'){
-    mk('prod:builder', BICON.builder, pname('builder'), ore(pCost(0, 'builder')), fmtDur(pTime(0, 'builder')), () => uiProduce('builder'), { key: 'builder' });
-    for (const k in BTYPES){ const B = BTYPES[k]; mk('build:' + k, UIX_ICON.b[k] || BICON[k] || '▣', bname(k), ore(B.cost), fmtDur(B.time), () => startPlace(k)); }
+    // v61: клавиши зданий = клавиши стройки инженера (Z X C V B N K) — одна и та же клавиша везде
+    for (const k in BTYPES){ const B = BTYPES[k]; mk('build:' + k, UIX_ICON.b[k] || BICON[k] || '▣', bname(k), ore(B.cost), fmtDur(B.time), () => startPlace(k), { hk: BUILD_KEYS[k] || '' }); }
+    mk('prod:builder', BICON.builder, pname('builder'), ore(pCost(0, 'builder')), fmtDur(pTime(0, 'builder')), () => uiProduce('builder'), { key: 'builder', hk: '' });
     const bq = document.createElement('div'); bq.className = 'bqueue'; bq.id = 'bqueue'; list.appendChild(bq);
   } else if (SIDE.tab === 'units' || SIDE.tab === 'tech'){
     for (const k in PRODUCTS){
@@ -558,7 +560,7 @@ function buildSidebar(){
     for (const k in POWERS){ const P = POWERS[k]; mk('power:' + k, P.icon, N2(P.n), P.cost + ' ' + tr('КО', 'CP', 'ĐCH'), fmtDur(P.cd), () => startPower(k), { power: k }); }
   }
   const hint = document.createElement('div'); hint.className = 'shint';
-  hint.innerHTML = SIDE.tab === 'units' || SIDE.tab === 'tech' ? tr('ПКМ по кнопке — отменить последний заказ', 'RMB on a button — cancel the last order') : SIDE.tab === 'build' ? tr('Выбери здание и кликни место на своей базе', 'Pick a building, then click a spot on your base') : tr('Выбери удар и кликни цель на карте', 'Pick a power, then click the target');
+  hint.innerHTML = SIDE.tab === 'units' || SIDE.tab === 'tech' ? tr('ПКМ по кнопке — отменить последний заказ', 'RMB on a button — cancel the last order') : SIDE.tab === 'build' ? tr('Строит только инженер. Инженер не выделен — кнопка выберет ближайшего свободного и включит чертёж; затем ЛКМ по месту.', 'Only builders build. No builder selected — the button picks the nearest idle one and starts the blueprint; then LMB on a spot.', 'Chỉ kỹ sư xây. Chưa chọn kỹ sư — nút sẽ chọn kỹ sư rảnh gần nhất.') : tr('Выбери удар и кликни цель на карте', 'Pick a power, then click the target');
   list.appendChild(hint);
   const foot = document.createElement('div'); foot.className = 'sfoot';
   foot.innerHTML = `<button id="aiBtn"></button><button id="abBtn"></button><button id="helpBtn" data-tip="${uixEsc(`<b>${tr('Управление', 'Controls')}</b><p>${tr('Все клавиши стратегии', 'All strategy keys')}</p>`)}">?${TOUCH.on ? '' : ' <kbd>/</kbd>'}</button>`;
@@ -575,6 +577,11 @@ function updateSidebar(){
     b.el.classList.toggle('off', !x.ok); b.el.classList.toggle('soft', !x.ok && !!x.soft);
     const q = b.el.querySelector('.q'), bar = b.el.querySelector('.bar s'), st = b.el.querySelector('.st');
     let stT = x.ok ? '' : (x.short || x.reason), stC = x.ok ? '' : 'bad', prog = 0;
+    // v61: строит только инженер. Не выделен — кнопка в состоянии «нужен инженер» (приглушена),
+    // клик сам выберет ближайшего свободного инженера и включит чертёж
+    const need = x.ok && b.id.startsWith('build:') && !selBuilders().length;
+    b.el.classList.toggle('need', need);
+    if (need){ stT = '⚒ ' + (teamBuilders(0).some(builderIdle) ? tr('выберет ближ. инженера', 'picks nearest builder', 'chọn kỹ sư gần') : tr('займёт инженера', 'takes a busy builder', 'lấy kỹ sư đang bận')); stC = 'need'; }
     if (b.extra.key){
       const k = b.extra.key, n = countQueued(0, [k]);
       q.textContent = n ? '×' + n : '';
@@ -649,15 +656,15 @@ function updateCard(){
       h += `<div class="tx"><small class="help">${TOUCH.on ? tr('Тап — выделить · долгий тап — приказ · двойной тап — вселиться · палец — камера, два — масштаб', 'Tap — select · long tap — order · double tap — possess · drag — camera, pinch — zoom') : tr('ЛКМ — выделить · рамка — несколько · ПКМ — приказ · двойной клик — вселиться · Ctrl+1…9 — группа', 'LMB — select · drag — box · RMB — order · double-click — possess · Ctrl+1…9 — group')}</small></div>`;
     }
     h += '</div><div class="cmds">';
-    if (sel.length){
-      h += `<button class="ab" data-ux="cmd:move" data-act="move"><i>➤</i><b>${tr('Идти', 'Move')}</b><kbd>${tr('ПКМ', 'RMB')}</kbd></button>`;
-      h += `<button class="ab" data-ux="cmd:rush" data-act="rush"><i>»</i><b>${tr('Бегом', 'Run')}</b><kbd>2×${tr('ПКМ', 'RMB')}</kbd></button>`;
+    // v61: командная карточка — только команды ВЫДЕЛЕННОГО: способности + «Ещё приказы ▾»
+    // (ПКМ = атакующее движение, 2×ПКМ = марш). Инженерам — их карточка (builderCardHTML),
+    // заказ войск/исследований и стройка базы — только в правой панели (глобальное).
+    if (sel.some(g => g.cls !== 'builder')){
       for (const code of ['KeyR', 'KeyF', 'KeyG', 'KeyT']){ const k = abil[code]; if (!k) continue; const A = ABIL[k]; h += `<button class="ab" data-ux="abil:${code}" data-key="${code}"><i>${A.icon}</i><b>${N2(A.n)}</b><kbd>${keyLabel(code)}</kbd><em></em><s></s></button>`; }
-      h += `<button class="ab" data-ux="cmd:hold" data-act="hold"><i>⛊</i><b>${tr('Стоять', 'Hold', 'Giữ')}</b><kbd>H</kbd></button>`;
-      h += `<button class="ab" data-ux="cmd:retreat" data-act="retreat"><i>↩</i><b>${tr('Отступить', 'Retreat')}</b><kbd>⇧H</kbd></button>`;
       if (sky) h += `<button class="ab" data-ux="cmd:sky" data-act="sky"><i>⇑</i><b>${tr('Десант', 'Sky assault', 'Đổ bộ')}</b><kbd>Y</kbd></button>`;
+      h += r61MoreHTML();
     } else if (B && prods.length && (B.cls === 'hq' || B.done)){
-      h += prods.map(k => `<button class="ab prod" data-ux="prod:${k}" data-prod="${k}"><i>${PRODUCTS[k].icon}</i><b>${pname(k)}</b><kbd><i class="ore"></i>${pCost(0, k)}</kbd><em></em><s></s></button>`).join('');
+      h += `<em class="note r61pn">${tr('Заказ войск и исследований — панель справа', 'Order troops and research in the right panel', 'Đặt quân và nghiên cứu ở bảng bên phải')} ▸ <kbd>F2</kbd> <kbd>F3</kbd></em>`;
     }
     h += '</div>' + bxh;
     const rally = B && B.team === 0 && prods.length ? `<em class="note">${TOUCH.on ? tr('Долгий тап по земле — точка сбора', 'Long tap on the ground — rally point') : tr('ПКМ по земле — точка сбора', 'RMB on the ground — rally point')}</em>` : '';
@@ -665,7 +672,8 @@ function updateCard(){
     el.innerHTML = h;
     bindBuilderCard(el);
     el.querySelectorAll('[data-key]').forEach(b => b.onclick = e => { e.stopPropagation(); abilityKey(b.dataset.key); });
-    el.querySelectorAll('[data-act]').forEach(b => b.onclick = e => { e.stopPropagation(); const a = b.dataset.act; if (a === 'hold') orderHold(); else if (a === 'retreat') orderRetreat(); else if (a === 'sky') orderSkySel(); else if (a === 'move' || a === 'rush') startOrderCast(a === 'rush'); });
+    el.querySelectorAll('[data-act]').forEach(b => b.onclick = e => { e.stopPropagation(); const a = b.dataset.act; r61More(false); if (a === 'hold') orderHold(); else if (a === 'retreat') orderRetreat(); else if (a === 'sky') orderSkySel(); else if (a === 'move' || a === 'rush') startOrderCast(a === 'rush'); });
+    r61BindMore(el);
     el.querySelectorAll('[data-prod]').forEach(b => b.onclick = e => { e.stopPropagation(); uiProduce(b.dataset.prod); });
     el.querySelectorAll('[data-q]').forEach(b => b.onclick = e => { e.stopPropagation(); if (S.selB && S.selB.queue){ cancelProduct(S.selB, +b.dataset.q); emit('ui', { kind: 'ok' }); } });
     el.querySelector('.poss').onclick = e => { e.stopPropagation(); AU.init(); const t = cardPossessTarget(); enterFPS(t ? t.e : undefined); HINTS.used('possess'); };
@@ -696,6 +704,7 @@ function cardLive(el, sel, B){
     if (b.dataset.key) b.classList.toggle('cast', !!(S.cast && S.cast.code === b.dataset.key));
   });
   el.querySelectorAll('[data-act="move"],[data-act="rush"]').forEach(b => b.classList.toggle('on', !!(S.cast && S.cast.kind === 'order' && S.cast.rush === (b.dataset.act === 'rush'))));
+  const mb = el.querySelector('[data-more]'); if (mb) mb.classList.toggle('on', !!(R61.more || (S.cast && S.cast.kind === 'order')));
   const pb = el.querySelector('.poss'); if (pb) pb.classList.toggle('off', !uiExplain('possess').ok);
 }
 function updateRTSHUD(){ $('sel').textContent = ''; }
@@ -704,13 +713,15 @@ function helpRTS(){
   const row = (k, t) => L.push(`<b>${k}</b> ${t}`);
   row('WASD / ←↑→↓', tr('камера (и края экрана)', 'camera (and screen edges)', 'camera (và mép màn hình)')); row('Q / E', tr('поворот', 'rotate', 'xoay')); row(tr('колесо', 'wheel', 'con lăn'), tr('высота', 'zoom', 'phóng to')); row(tr('СКМ', 'MMB', 'chuột giữa'), tr('вращать', 'orbit', 'xoay quanh'));
   row(tr('ЛКМ', 'LMB', 'Chuột trái'), tr('выделить, рамка — несколько', 'select, drag — many', 'chọn, kéo khung — nhiều')); row('Ctrl+' + tr('клик', 'click', 'nhấp'), tr('все такие на экране', 'all of that type on screen', 'mọi đơn vị cùng loại trên màn hình'));
-  row(tr('ПКМ', 'RMB', 'Chuột phải'), tr('идти / захват / атаковать цель', 'move / capture / attack target', 'đi / chiếm / tấn công mục tiêu'));
+  row(tr('ПКМ', 'RMB', 'Chuột phải'), tr('атакующее движение ⚔ (встретят врага — остановятся и будут воевать, потом дальше) · по врагу — атаковать · по точке — захват', 'attack-move ⚔ (stop and fight on contact, then continue) · on an enemy — attack · on a point — capture', 'di chuyển tấn công ⚔ · vào địch — tấn công · vào điểm — chiếm'));
+  row('2×' + tr('ПКМ', 'RMB', 'Chuột phải'), tr('марш » — бегом, не останавливаясь, отстреливаясь на ходу', 'march » — run without stopping, firing on the move', 'hành quân » — chạy không dừng, vừa chạy vừa bắn'));
+  row('Alt', tr('(удерживать) подписи всех юнитов', '(hold) labels on all units', '(giữ) nhãn mọi đơn vị'));
   row(tr('двойной клик', 'double-click', 'nhấp đúp'), tr('вселиться', 'possess', 'nhập vai')); row('R F G T', tr('способности', 'abilities', 'kỹ năng'));
-  row('Z X C V B N K', tr('стройка (выбраны инженеры): турель, ПВО, экстрактор, форпост, мехзавод, дрон-хаб, аэродок', 'build (builders selected): turret, AA, extractor, outpost, factory, hub, airdock', 'xây (đã chọn kỹ sư)'));
+  row('Z X C V B N K', tr('стройка: турель, ПВО, экстрактор, форпост, мехзавод, дрон-хаб, аэродок (строит инженер; не выделен — выберется ближайший)', 'build: turret, AA, extractor, outpost, factory, hub, airdock (a builder builds; none selected — the nearest is picked)', 'xây (kỹ sư xây)'));
   row('.', tr('свободный инженер', 'idle builder', 'kỹ sư rảnh')); row('Del', tr('отменить стройку (+руда)', 'cancel construction (refund)', 'hủy xây (hoàn quặng)'));
   row('H', tr('удерживать', 'hold', 'giữ')); row('Y', tr('десант через купол', 'sky assault', 'đổ bộ')); row('Ctrl+1…9 / 1…9', tr('группы', 'groups', 'nhóm')); row('Ctrl+A', tr('вся армия', 'whole army', 'toàn quân'));
   row(tr('Пробел', 'Space', 'Space'), tr('к последней тревоге', 'jump to last alert', 'tới cảnh báo gần nhất')); row('Home', tr('к базе', 'to base', 'về căn cứ')); row(bk('rts'), tr('вселиться в выделенного (ничего не выделено — в бой)', 'possess the selection (nothing selected — to battle)', 'nhập vai đơn vị đã chọn')); row('I', tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI'));
-  row('Shift+H', tr('отступить к базе', 'retreat to base', 'rút về căn cứ')); row('Z C V B N J K L', tr('кнопки панели справа', 'right panel buttons', 'nút bảng bên phải')); row('F1…F4', tr('вкладки панели', 'panel tabs', 'thẻ bảng'));
+  row('Shift+H', tr('отступить к базе', 'retreat to base', 'rút về căn cứ')); row('Z C V B N J K L', tr('кнопки вкладок «Войска», «Улучш.», «Удары» справа', 'buttons of the Units/Tech/Powers tabs on the right', 'nút bảng bên phải')); row('F1…F4', tr('вкладки панели', 'panel tabs', 'thẻ bảng'));
   row(tr('миникарта', 'minimap', 'bản đồ nhỏ'), tr('клик/перетаскивание — камера, ПКМ — приказ', 'click/drag — camera, RMB — order', 'nhấp/kéo — camera, chuột phải — lệnh'));
   return L.join('<br>');
 }
@@ -734,14 +745,8 @@ function drawRTSOverlay(dt){
       octx.strokeStyle = 'rgba(140,255,170,.85)'; octx.lineWidth = 1.5;
       groundRing(u.pos, u.cls === 'tank' ? 3.2 : u.cls === 'drone' ? 1.6 : 0.9, 16);
     }
-    const far = S.rts.h > 120;
-    if (far || u.cls === 'builder'){
-      octx.fillStyle = u.cls === 'builder' && u.team === 0 ? '#7fd4ff' : col;
-      if (u.cls === 'tank'){ if (u.vk) V2.icon(s[0], s[1], u, col, 1.2); else octx.fillRect(s[0] - 5, s[1] - 4, 10, 8); }
-      else if (u.cls === 'drone'){ octx.beginPath(); octx.moveTo(s[0], s[1] - 5); octx.lineTo(s[0] + 4, s[1] + 3); octx.lineTo(s[0] - 4, s[1] + 3); octx.fill(); }
-      else { octx.beginPath(); octx.arc(s[0], s[1], u.leader ? 3.6 : 2.6, 0, PI * 2); octx.fill(); }
-    }
-    if (isSel || u.hp < u.maxhp * 0.95){
+    r61Dot(u, s, col);   // v61: высоко — точки (модели сливаются), значки групп рисует r61Badges
+    if ((isSel || u.hp < u.maxhp * 0.95) && S.rts.h < 110){
       const hp = add(u.pos, mul(u.up, u.cls === 'tank' ? 4 : u.cls === 'builder' ? 1.4 : 2.2));
       const q = project(hp);
       if (q){ const w = u.cls === 'tank' ? 30 : 16; octx.fillStyle = 'rgba(0,0,0,.6)'; octx.fillRect(q[0] - w / 2, q[1], w, 3); octx.fillStyle = u.hp / u.maxhp > 0.5 ? '#9c9' : u.hp / u.maxhp > 0.25 ? '#dc6' : '#e66'; octx.fillRect(q[0] - w / 2, q[1], w * max(0, u.hp) / u.maxhp, 3); }
@@ -756,19 +761,14 @@ function drawRTSOverlay(dt){
     if (!tgt) continue;
     const a = project(L.pos), b = project(tgt);
     if (a && b && facing(L.pos)){ octx.strokeStyle = g.focus ? 'rgba(255,110,90,.7)' : 'rgba(255,255,255,.5)'; octx.beginPath(); octx.moveTo(a[0], a[1]); octx.lineTo(b[0], b[1]); octx.stroke(); }
-    octx.fillStyle = '#fff'; octx.font = '600 11px "Exo 2", sans-serif'; octx.textAlign = 'center';
-    if (a && facing(L.pos) && S.rts.h < 200) octx.fillText(groupLabel(g), a[0], a[1] - 18);
   }
   octx.setLineDash([]);
+  r61Badges(sel, dt);   // v61: значки-маркеры групп, номера, подписи (наведение/выделенные/все, Alt)
   V2.rtsOverlay(sel);   // дальность и цель огня артиллерии (vehicles2.js)
   // точка сбора
   const B = S.selB;
   if (B && B.rally){ const a = project(B.cls === 'hq' ? B.pos : B.pos), b = project(B.rally); if (b){ octx.strokeStyle = '#9cf'; octx.setLineDash([3, 4]); if (a){ octx.beginPath(); octx.moveTo(a[0], a[1]); octx.lineTo(b[0], b[1]); octx.stroke(); } octx.setLineDash([]); octx.fillStyle = '#9cf'; octx.fillRect(b[0], b[1] - 14, 10, 7); octx.fillRect(b[0], b[1] - 14, 1.5, 14); } }
-  if (S.orderMark && S.orderMark.t > 0){
-    S.orderMark.t -= dt;
-    const s = project(S.orderMark.p);
-    if (s){ octx.strokeStyle = S.orderMark.col || '#7f7'; octx.lineWidth = 2; octx.beginPath(); octx.arc(s[0], s[1], 6 + (0.8 - S.orderMark.t) * 20, 0, PI * 2); octx.stroke(); }
-  }
+  r61OrderMarks(sel, dt);   // v61: ⚔ атакующее движение / » марш / ⌖ атака — разные значки
   if (drag && hypot(drag.x1 - drag.x0, drag.y1 - drag.y0) > 6){
     octx.strokeStyle = '#8fffaa'; octx.lineWidth = 1; octx.fillStyle = 'rgba(140,255,170,.08)';
     const x = min(drag.x0, drag.x1), y = min(drag.y0, drag.y1), w = abs(drag.x1 - drag.x0), h = abs(drag.y1 - drag.y0);
@@ -823,7 +823,7 @@ function minimapClick(x, y, btn){
       const sel = selGroups(); if (!sel.length) return true;
       const p = surfacePoint(dir, 0.5);
       for (const g of sel) setOrder(g, 'move', p, { by: 'player', lock: 120 });
-      S.orderMark = { p, t: 0.8 }; emit('ui', { kind: 'ok' });
+      S.orderMark = { p, t: 0.8, kind: 'amove' }; emit('ui', { kind: 'ok' });
     }
     return true;
   }

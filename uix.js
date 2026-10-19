@@ -312,7 +312,7 @@ function orderRetreat(){
     let best = homes[0]; for (const h of homes) if (dist(h, L) < dist(best, L)) best = h;
     setOrder(g, 'move', best, { by: 'player', lock: 120, rush: true }); mark = best;
   }
-  if (mark) S.orderMark = { p: mark, t: 0.8, col: '#9cf' };
+  if (mark) S.orderMark = { p: mark, t: 0.8, col: '#9cf', kind: 'march' };
   feed(tr('Отступаем! Бегом к базе, не ввязываясь в бой', 'Retreat! Running back to base, not engaging'), '#9cf');
   emit('ui', { kind: 'ok' });
 }
@@ -322,8 +322,8 @@ function uixKey(e){
   const fk = { F1: 'build', F2: 'units', F3: 'tech', F4: 'cmd' }[c];
   if (fk){ e.preventDefault(); SIDE.tab = fk; buildSidebar(); emit('ui', { kind: 'ok' }); return true; }
   if (e.ctrlKey || e.altKey || e.metaKey) return false;
-  const i = SLOT_KEYS.indexOf(c);
-  if (i >= 0 && SIDE.btns[i]){ SIDE.btns[i].el.click(); return true; }
+  const hb = SIDE.btns.find(b => b.el.dataset.hk === c);   // v61: по клавише, показанной на кнопке (во «Зданиях» — Z X C V B N K)
+  if (hb){ hb.el.click(); return true; }
   return false;
 }
 // ---------- уникальные id объектов для DOM ----------

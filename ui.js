@@ -199,7 +199,7 @@ function enterRTS(){
   S.mode = 'rts';
   unlockMouse();
   const c = ctrlEntity();
-  if (c){ S.rts.dir = norm(c.pos); S.rts.fwd = tangent(c.fwd || c.aim || anyTangent(S.rts.dir), S.rts.dir); S.rts.h = min(S.rts.h, 60); }
+  if (c){ S.rts.dir = norm(c.pos); S.rts.fwd = tangent(c.fwd || c.aim || anyTangent(S.rts.dir), S.rts.dir); S.rts.h = min(S.rts.h, 42); }   // v61: ближе — юниты крупнее (было 60)
   rtsCamReset(c ? fromCam : null);
   S.sel.clear();
   const g = c ? (c.cls === 'bld' ? null : groupOf(c)) : null;
