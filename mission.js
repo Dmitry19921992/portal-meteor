@@ -5,7 +5,7 @@
 //  задачи рядом, переброска капсулой, прыжок в гущу боя), навигация
 //  (компас, маркеры по поверхности, слежение за целью), вопрос «работаешь сам?»
 // =====================================================================
-Object.assign(BIND_DEF, { track: 'KeyH', freeplay: 'KeyK', solo: 'KeyJ', redeploy: 'KeyZ' });
+Object.assign(BIND_DEF, { track: 'KeyH', freeplay: 'KeyK', solo: 'KeyJ', redeploy: 'KeyB' });   // v6-merge: Z занят рывком ранца (gun.js)
 Object.assign(BIND_NAMES, {
   track: ['Следить за другой целью', 'Track another objective', 'Theo dõi mục tiêu khác'],
   freeplay: ['Приказы ↔ свобода действий', 'Orders ↔ free play', 'Lệnh ↔ tự do hành động'],
