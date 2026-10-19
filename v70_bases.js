@@ -205,7 +205,7 @@ const BASE70 = {
     const g = this.g70(b), v = this.slots(b), A = v.s[0];
     const gun = add(add(A.pos, mul(A.Y, 1.25)), mul(A.Z, 1.9));
     g.think -= dt; g.cd -= dt;
-    if (g.think <= 0){ g.think = 0.35; g.tg = findTarget(b, b.team, gun, { range: 60, structures: false }); if (g.tg && (g.tg.cls === 'hq' || g.tg.cls === 'tank')) g.tg = null; }
+    if (g.think <= 0){ g.think = 0.35; g.tg = this.soft(b.team, gun, 60, false); }
     if (g.tg && g.tg.alive){
       const c = centerOf(g.tg), want = norm(sub(c, gun));
       g.aim = g.aim ? turnToward(g.aim, want, 3.5 * dt) : want;
@@ -313,7 +313,7 @@ const BASE70 = {
         const a = PI / 8 + q.k * PI / 2, base = add(mul(F.Y, RM + 1.6), add(mul(F.X, cos(a) * 13), mul(F.Z, sin(a) * 13)));
         const gun = add(base, mul(F.Y, 1.5));
         q.pos = base; q.think -= dt; q.cd -= dt;
-        if (q.think <= 0){ q.think = 0.3; q.tg = findTarget(h, t, gun, { range: 95, structures: false }); if (q.tg && (q.tg.cls === 'hq' || (q.tg.cls === 'tank' && !q.tg.vk))) q.tg = null; }
+        if (q.think <= 0){ q.think = 0.3; q.tg = this.soft(t, gun, 95, true); }
         if (q.tg && q.tg.alive){
           const want = norm(sub(centerOf(q.tg), gun));
           q.aim = q.aim ? turnToward(q.aim, want, 3 * dt) : want;
@@ -326,6 +326,18 @@ const BASE70 = {
         }
       }
     }
+  },
+  // ближайшая «мягкая» цель для пулемётов (пехота, дроны, инженеры; light — ещё и лёгкая техника) с прямой видимостью
+  soft(team, gun, range, light){
+    let best = null, bd = range;
+    for (const e of TGT[team]){
+      if (!e.alive || e.cls === 'bld' || e.cls === 'hq' || e.cls === 'prop') continue;
+      if (e.cls === 'tank' && !(light && e.vk)) continue;
+      if (e.cls === 'inf' && e.squad && e.squad.solo === 'sniper' && e.seen[team] <= 0 && dist2(e.pos, gun) > 900) continue;
+      const c = centerOf(e), d = dist(c, gun);
+      if (d < bd && los(gun, c)){ bd = d; best = e; }
+    }
+    return best;
   },
   hqFrame(t){ const Y = BASES[t], X = anyTangent(Y), Z = norm(cross(X, Y)); return { X, Y, Z }; },
   spotted(team, p){ for (const s of this.spots) if (s.team === team && dist(s.pos, p) < s.r) return true; return false; },
