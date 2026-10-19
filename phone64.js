@@ -24,10 +24,6 @@ function p64Frame(dt){
   if (bc.contains('m64fps') !== fps) bc.toggle('m64fps', fps);
   const cu = rts && typeof CUR !== 'undefined' && CUR.enabled();
   if (bc.contains('cur64') !== cu) bc.toggle('cur64', cu);
-  // подписи кнопок (язык мог смениться после создания)
-  const lab = { box: '⬚ ' + tr('Рамка', 'Box', 'Khung'), army: '◆ ' + tr('Вся армия', 'All army', 'Toàn quân'), builder: '⚒ ' + tr('Инженер', 'Builder', 'Kỹ sư'),
-    map: rts ? '▶ ' + tr('В бой', 'Battle', 'Vào trận') : '◩ ' + tr('Стратегия', 'Strategy', 'Chiến thuật') };
-  for (const k in lab){ const b = document.querySelector(`#touch [data-t="${k}"]`); if (b && b.textContent !== lab[k]) b.textContent = lab[k]; }
   // кнопка сворачивания правой панели
   let tg = $('sideTog');
   if (!tg){
@@ -41,9 +37,16 @@ function p64Frame(dt){
   const sig = (selBuilders().length ? 'b' : '') + (S.selB && v64IsProd(S.selB) ? 'h' + uixId(S.selB) : '');
   if (sig !== P64.lastSel){ P64.lastSel = sig; if (sig && P64.min) p64Side(false); }
 }
+// подписи кнопок каждый кадр (uix.js прячет «Стратегию» в стратегии — у нас там «▶ В бой»; язык мог смениться)
+function p64Labels(){
+  const rts = S.mode === 'rts' && !S.attract;
+  const lab = { box: '⬚ ' + tr('Рамка', 'Box', 'Khung'), army: '◆ ' + tr('Вся армия', 'All army', 'Toàn quân'), builder: '⚒ ' + tr('Инженер', 'Builder', 'Kỹ sư'),
+    map: rts ? '▶ ' + tr('В бой', 'Battle', 'Vào trận') : '◩ ' + tr('Стратегия', 'Strategy', 'Chiến thuật') };
+  for (const k in lab){ const b = document.querySelector(`#touch [data-t="${k}"]`); if (!b) continue; if (b.textContent !== lab[k]) b.textContent = lab[k]; if (k === 'map' && b.style.display) b.style.display = ''; }
+}
 {
   const uf0 = uixFrame;
-  uixFrame = function(dt){ uf0(dt); try { p64Frame(dt); } catch (e){ if (!P64.err){ P64.err = 1; console.warn('p64', e); } } };
+  uixFrame = function(dt){ uf0(dt); try { if (TOUCH.on) p64Labels(); p64Frame(dt); } catch (e){ if (!P64.err){ P64.err = 1; console.warn('p64', e); } } };
 }
 (function p64CSS(){
   const st = document.createElement('style'); st.id = 'p64css';
@@ -59,11 +62,12 @@ function p64Frame(dt){
   body.touch #squadp{transform:scale(.62)}
   body.touch.m64fps #feed{bottom:112px;max-width:38vw;font-size:10.5px}
   body.touch.m64fps #feed > *:nth-last-child(n+3){display:none}
-  body.touch #r61cards{top:50px}
+  body.touch #r61cards{top:54px}
   body.touch.m64rts #pstrip{top:84px;left:6px;max-width:calc(100vw - var(--sideW) - 40px)}
-  body.touch.m64rts.r61open #pstrip{top:118px}
-  body.touch.m64rts #feed{top:132px;max-width:30vw}
-  body.touch.m64rts.r61open #feed{top:164px}
+  body.touch.m64rts.r61open #pstrip{top:130px}
+  body.touch.m64rts #feed{top:132px;max-width:34vw;font-size:10.5px;max-height:62px;overflow:hidden}
+  body.touch.m64rts #feed > *:nth-last-child(n+3){display:none}
+  body.touch.m64rts.r61open #feed{top:174px;max-height:28px}
   body.touch #card .inf{min-width:160px}
   body.touch.m64rts #hint{top:128px;left:6px;right:auto;bottom:auto;transform:none;max-width:38vw}
   body.touch.m64rts.cur64 #hint{display:none !important}
@@ -75,7 +79,7 @@ function p64Frame(dt){
   body.touch #side .item{height:60px} body.touch #side .item > i{font-size:18px;top:2px} body.touch #side .item b{top:23px}
   body.touch #side .item .cost,body.touch #side .item .tm{bottom:13px}
   body.touch #side .bqueue{display:none}
-  #sideTog{display:none;position:fixed;top:66px;right:calc(var(--sideW) + 2px);z-index:16;width:30px;height:44px;padding:0;background:rgba(12,13,14,.85);border:1px solid var(--line);border-right:none;color:#e8dcb8;font:700 16px "Exo 2";border-radius:6px 0 0 6px;pointer-events:auto}
+  #sideTog{display:none;position:fixed;top:112px;right:calc(var(--sideW) + 2px);z-index:16;width:30px;height:44px;padding:0;background:rgba(12,13,14,.85);border:1px solid var(--line);border-right:none;color:#e8dcb8;font:700 16px "Exo 2";border-radius:6px 0 0 6px;pointer-events:auto}
   #sideTog small{display:block;font-size:8.5px;font-weight:600}
   body.side64min{--sideW:0px}
   body.touch.side64min #side{display:none !important}

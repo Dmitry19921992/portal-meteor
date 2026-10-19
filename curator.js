@@ -106,7 +106,7 @@ const curFactory = c => c.factory.find(b => b.done) || null;
 const curVeinW = c => c.vein ? { pos: add(c.vein.pos, mul(c.vein.dir, 2)), label: CUR_W.vein() } : null;
 const CUR_STEPS = [
   { id: 'intro', pri: 1000, once: true, when: () => true, min: 6,
-    text: () => curL('Я — Куратор. Подскажу по ходу боя, что делать: подсвечу кнопку и место на карте. Выключить — «✕» здесь или кнопка «Куратор» внизу справа.', 'I am the Curator. I will suggest what to do as you play, highlighting the button and the spot on the map. Turn me off with "✕" here or the "Curator" button at the bottom right.', 'Tôi là Người hướng dẫn. Tôi sẽ gợi ý việc cần làm, đánh dấu nút và vị trí. Tắt bằng “✕” hoặc nút “Hướng dẫn”.'),
+    text: () => TOUCH.on ? curL('Я — Куратор: подсвечу нужную кнопку и место на карте. «✕» — выключить.', 'I am the Curator: I highlight the button and the spot on the map. "✕" turns me off.', 'Tôi là Người hướng dẫn: tôi chỉ nút và vị trí. “✕” để tắt.') : curL('Я — Куратор. Подскажу по ходу боя, что делать: подсвечу кнопку и место на карте. Выключить — «✕» здесь или кнопка «Куратор» внизу справа.', 'I am the Curator. I will suggest what to do as you play, highlighting the button and the spot on the map. Turn me off with "✕" here or the "Curator" button at the bottom right.', 'Tôi là Người hướng dẫn. Tôi sẽ gợi ý việc cần làm, đánh dấu nút và vị trí. Tắt bằng “✕” hoặc nút “Hướng dẫn”.'),
     ui: ['#curBtn'], done: (c, k) => S.rtime - k.t0 > 7 },
   { id: 'threat', pri: 900, cool: 50, when: c => !!c.threat,
     text: () => (TOUCH.on ? curL('Рой у базы! «Вся армия», затем долгий тап по врагам. Турель у базы тоже поможет.', 'The Swarm is at the base! "All army", then long-tap the enemies. A turret at the base helps too.', 'Bầy Đàn ở căn cứ! “Toàn quân”, rồi chạm giữ vào địch.')
@@ -331,8 +331,10 @@ Object.assign(CUR, {
       else {
         const v = sub(w.pos, S.cam.pos); let dx = dot(v, S.cam.right), dy = -dot(v, S.cam.up);
         if (s){ dx = s[0] - W / 2; dy = s[1] - H / 2; }
-        const k = min((W / 2 - 60) / max(1e-3, abs(dx)), (H / 2 - 60) / max(1e-3, abs(dy)));
-        x = W / 2 + dx * k; y = H / 2 + dy * k;
+        const sd = $('side'), sR = sd && getComputedStyle(sd).display !== 'none' ? sd.getBoundingClientRect().left : W;
+        const x0 = 46, x1 = sR - 56, y0 = 96, y1 = H - 60, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        const k = min((x1 - cx) / max(1e-3, abs(dx)), (y1 - cy) / max(1e-3, abs(dy)));
+        x = cx + dx * k; y = cy + dy * k;
       }
       mk.style.display = 'block'; mk.style.left = x + 'px'; mk.style.top = y + 'px';
       mk.classList.toggle('off', !on);
@@ -373,7 +375,7 @@ Object.assign(CUR, {
   const st = document.createElement('style'); st.id = 'curcss';
   st.textContent = `
   #cur{position:fixed;inset:0;pointer-events:none;z-index:18;display:none;font-family:"Exo 2",sans-serif}
-  #cur .cbox{position:fixed;left:660px;top:8px;display:flex;align-items:flex-start;gap:8px;max-width:460px;background:rgba(10,24,32,.93);border:1px solid rgba(127,212,255,.75);border-left:4px solid #7fd4ff;padding:7px 6px 7px 9px;pointer-events:auto;box-shadow:0 4px 18px rgba(0,0,0,.5);animation:curIn .25s ease-out}
+  #cur .cbox{box-sizing:border-box;position:fixed;left:660px;top:8px;display:flex;align-items:flex-start;gap:8px;max-width:460px;background:rgba(10,24,32,.93);border:1px solid rgba(127,212,255,.75);border-left:4px solid #7fd4ff;padding:7px 6px 7px 9px;pointer-events:auto;box-shadow:0 4px 18px rgba(0,0,0,.5);animation:curIn .25s ease-out}
   #cur .cbox.ok{border-color:#8fffaa;border-left-color:#8fffaa;background:rgba(14,36,22,.93)}
   #cur .cic{font-style:normal;font-size:22px;line-height:1.1}
   #cur .ctx{flex:1;min-width:0} #cur .ctx small{display:block;font:600 10px "Exo 2";letter-spacing:.16em;color:#7fd4ff} #cur .cbox.ok .ctx small{color:#8fffaa}
@@ -391,7 +393,7 @@ Object.assign(CUR, {
   @keyframes curPulse{50%{box-shadow:0 0 0 6px rgba(127,212,255,.12),0 0 26px rgba(127,212,255,.9)}}
   @keyframes curBob{to{translate:0 4px}} @keyframes curRing{0%{scale:.75;opacity:1}100%{scale:1.35;opacity:.35}}
   @keyframes curIn{from{opacity:0;transform:translateY(-6px)}}
-  body.touch #cur .cbox{padding:5px 4px 5px 7px;gap:5px} body.touch #cur .ctx p{font-size:12px;line-height:1.25} body.touch #cur .cic{font-size:17px}
-  body.touch #cur .cbox button{width:34px;height:34px}`;
+  body.touch #cur .cbox{padding:3px 3px 3px 6px;gap:5px;align-items:center} body.touch #cur .ctx small{display:none} body.touch #cur .ctx p{margin:0;font-size:11.5px;line-height:1.22} body.touch #cur .cic{font-size:15px}
+  body.touch #cur .cbox button{width:32px;height:32px}`;
   document.head.appendChild(st);
 })();
