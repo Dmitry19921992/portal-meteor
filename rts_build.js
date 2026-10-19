@@ -339,7 +339,7 @@ function releaseBuilders(){ for (const b of S.builders) if (b.byPlayer){ b.byPla
 const IDLEB = { i: 0 };
 function selectIdleBuilder(){
   const all = teamBuilders(0);
-  if (!all.length){ feed(tr('Инженеров нет — обучи в штабе (вкладка «Войска»)', 'No builders — train one at the HQ ("Units" tab)', 'Không có kỹ sư — huấn luyện ở sở chỉ huy (thẻ “Quân”)'), '#f88'); emit('ui', { kind: 'deny' }); return; }
+  if (!all.length){ feed(tr('Инженеров нет — выбери штаб и закажи инженера', 'No builders — select the HQ and train one', 'Không có kỹ sư — chọn sở chỉ huy và huấn luyện'), '#f88'); emit('ui', { kind: 'deny' }); return; }
   const idle = all.filter(b => builderIdle(b));
   const L = idle.length ? idle : all;
   const b = L[IDLEB.i++ % L.length];
@@ -406,7 +406,7 @@ function rtsReason(action, arg){
       const site = S.buildings.find(b => b.alive && b.team === 0 && b.type === B.req);
       return no(tr(`Нужно: ${bname(B.req)}`, `Requires: ${bname(B.req)}`, `Cần: ${bname(B.req)}`), site ? tr(`${bname(B.req)} строится — ${Math.floor(site.built * 100)}%`, `${bname(B.req)} is under construction — ${Math.floor(site.built * 100)}%`, `${bname(B.req)} đang xây — ${Math.floor(site.built * 100)}%`) : tr(`Сначала постройте ${bname(B.req)} — клик поставит его чертёж`, `Build a ${bname(B.req)} first — click to place its blueprint`, `Hãy xây ${bname(B.req)} trước — nhấp để đặt bản vẽ`), site ? null : 'build:' + B.req);
     }
-    if (!teamBuilders(0).length) return no(tr('Нет инженеров', 'No builders', 'Không có kỹ sư'), tr('Обучи инженера-строителя в штабе или форпосте (вкладка «Войска», 50 руды)', 'Train a builder at the HQ or an outpost ("Units" tab, 50 ore)', 'Huấn luyện kỹ sư ở sở chỉ huy hoặc tiền đồn (thẻ “Quân”, 50 quặng)'), 'produce:builder');
+    if (!teamBuilders(0).length) return no(tr('Нет инженеров', 'No builders', 'Không có kỹ sư'), tr('Выбери штаб и закажи инженера-строителя (50 руды)', 'Select the HQ and train a builder (50 ore)', 'Chọn sở chỉ huy và huấn luyện kỹ sư (50 quặng)'), 'produce:builder');
     const why = canBuild(0, key);
     if (why){
       if (T.ore < B.cost) return no(tr('Мало руды', 'Not enough ore', 'Không đủ quặng'), oreFix(B.cost));

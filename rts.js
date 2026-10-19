@@ -664,7 +664,7 @@ function updateCard(){
       if (sky) h += `<button class="ab" data-ux="cmd:sky" data-act="sky"><i>⇑</i><b>${tr('Десант', 'Sky assault', 'Đổ bộ')}</b><kbd>Y</kbd></button>`;
       h += r61MoreHTML();
     } else if (B && prods.length && (B.cls === 'hq' || B.done)){
-      h += `<em class="note r61pn">${tr('Заказ войск и исследований — панель справа', 'Order troops and research in the right panel', 'Đặt quân và nghiên cứu ở bảng bên phải')} ▸ <kbd>F2</kbd> <kbd>F3</kbd></em>`;
+      h += `<em class="note r61pn">${tr('Производство этого здания — панель справа', 'This building\'s production — panel on the right', 'Sản xuất của công trình này — bảng bên phải')} ▸ <kbd>F2</kbd></em>`;
     }
     h += '</div>' + bxh;
     const rally = B && B.team === 0 && prods.length ? `<em class="note">${TOUCH.on ? tr('Долгий тап по земле — точка сбора', 'Long tap on the ground — rally point') : tr('ПКМ по земле — точка сбора', 'RMB on the ground — rally point')}</em>` : '';

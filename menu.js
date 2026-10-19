@@ -85,7 +85,7 @@ const MENU = {
     applySettings(); this.save();
     $('clicklock').innerHTML = `<div>${tr('Кликни, чтобы вернуться в бой', 'Click to return to the fight', 'Nhấp để quay lại trận')}</div><small>${tr('Esc — меню', 'Esc — menu', 'Esc — menu')}</small>`;
     buildSidebar(); AU.pickVoice(); updateModeUI();
-    document.title = 'Portal Meteor — v6.3';
+    document.title = 'Portal Meteor — v6.4';
   },
   // ---------------- экраны
   btn(id, text, cls){ return `<button id="m_${id}" class="${cls || ''}">${text}</button>`; },
@@ -93,7 +93,7 @@ const MENU = {
     const C = PROG.career;
     return `<div class="mcol">
       <h1>PORTAL METEOR</h1>
-      <p class="sub" style="opacity:.75;margin-top:-6px">v6.3 · ${tr('сборка', 'build', 'bản dựng')} 19.10.2026 · ${tr('одна версия для ПК и телефона', 'one build for PC and phone', 'một bản cho PC và điện thoại')} · ${tr('сейчас', 'now', 'hiện tại')}: <b>${(('ontouchstart' in window) || matchMedia('(pointer:coarse)').matches) ? tr('телефон, сенсорное управление', 'phone, touch controls', 'điện thoại, cảm ứng') : tr('ПК, клавиатура и мышь', 'PC, keyboard and mouse', 'PC, bàn phím và chuột')}</b></p>
+      <p class="sub" style="opacity:.75;margin-top:-6px">v6.4 · ${tr('сборка', 'build', 'bản dựng')} 19.10.2026 · ${tr('одна версия для ПК и телефона', 'one build for PC and phone', 'một bản cho PC và điện thoại')} · ${tr('сейчас', 'now', 'hiện tại')}: <b>${(('ontouchstart' in window) || matchMedia('(pointer:coarse)').matches) ? tr('телефон, сенсорное управление', 'phone, touch controls', 'điện thoại, cảm ứng') : tr('ПК, клавиатура и мышь', 'PC, keyboard and mouse', 'PC, bàn phím và chuột')}</b></p>
       <p class="sub">${tr('война роботов за руду метеорита · небо — это портал к врагу', 'a robot war for meteor ore · the sky is a portal to the enemy', 'cuộc chiến robot giành quặng thiên thạch · bầu trời là cánh cổng tới quân thù')}</p>
       ${this.btn('play', tr('Новый матч', 'New match', 'Trận mới'), 'big')}
       <div class="diffrow">${DIFF.map((d, i) => `<button class="dbtn ${SET.diff === i ? 'cur' : ''}" data-diff="${i}">${N2(d.n)}</button>`).join('')}</div>
