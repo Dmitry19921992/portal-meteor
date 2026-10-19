@@ -324,7 +324,7 @@ function tankInput(v, dt){
     const vv = sub(goal, v.pos), t = sub(vv, mul(Up, dot(vv, Up))), dd = len(t);
     if (dd > (v.order === 'escort' ? 6 : 9)){
       let w = norm(t);
-      if (v.target && dist(centerOf(v.target), v.pos) < 45 && v.target.cls !== 'hq') w = mul(w, 0.0);   // стоять и стрелять
+      if (v.target && dist(centerOf(v.target), v.pos) < 45 && v.target.cls !== 'hq' && !v.rush) w = mul(w, 0.0);   // стоять и стрелять (марш — стреляет на ходу)
       if (v.evadeT > 0){ v.evadeT -= dt; w = norm(cross(Up, w)); }
       for (const a of AXES){
         const m = mul(a, RM), dm = surfDist(v.pos, m);
