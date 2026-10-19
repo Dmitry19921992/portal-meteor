@@ -152,7 +152,9 @@ function update(rdt){
 
   // ---- снаряды
   for (let i = S.proj.length - 1; i >= 0; i--){
-    const p = S.proj[i]; p.life -= dt;
+    const p = S.proj[i];
+    if (p.g62 && typeof G62 !== 'undefined'){ if (G62.projStep(p, dt)) S.proj.splice(i, 1); continue; }   // v6.2: гранаты — grenade62.js
+    p.life -= dt;
     let dead = p.life <= 0, hitP = null, hitE = null, hitProp = null;
     if (p.fuse !== undefined){ p.fuse -= dt; if (p.fuse <= 0){ dead = true; hitP = p.pos; } }
     const n = max(1, Math.ceil(len(p.vel) * dt / 1.5)), h = dt / n;
