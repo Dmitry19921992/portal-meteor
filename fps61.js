@@ -123,6 +123,11 @@ const FPS61 = {
     if (act === 'prefCls'){ this.cyclePref(); return true; }
     if (act === 'third'){
       const c = ctrlEntity();
+      if (c && (c.vk === 'mlrs' || c.vk === 'cat') && SET.vehView !== 'tp'){
+        S.artFP = !S.artFP;
+        feed(S.artFP ? tr('Артиллерия: вид из кабины (V)', 'Artillery: cockpit view (V)', 'Pháo: buồng lái (V)') : tr('Артиллерия: вид снаружи с дугой (V)', 'Artillery: outside view with arc (V)', 'Pháo: nhìn ngoài (V)'), '#9cf');
+        return true;
+      }
       if (c && (c.cls === 'tank' || c.cls === 'drone')){
         SET.vehView = SET.vehView === 'tp' ? 'fp' : 'tp'; MENU.save();
         feed(SET.vehView === 'fp' ? tr('Техника: вид из кабины (V)', 'Vehicle: cockpit view (V)', 'Xe: góc nhìn buồng lái (V)') : tr('Техника: вид от 3-го лица (V)', 'Vehicle: third-person view (V)', 'Xe: góc nhìn thứ ba (V)'), '#9cf');
@@ -142,7 +147,9 @@ const FPS61 = {
     if (!c || S.mode !== 'fps' || S.attract || SET.vehView === 'tp') return false;
     if (c.cls === 'drone') return true;
     if (c.cls !== 'tank') return false;
-    return !(c.vk && (c.hiCam || (c.hiK || 0) > 0.02));   // «вид сверху» артиллерии (ПКМ) — снаружи
+    if (c.vk && (c.hiCam || (c.hiK || 0) > 0.02)) return false;   // «вид сверху» артиллерии (ПКМ) — снаружи
+    if (c.vk === 'mlrs' || c.vk === 'cat') return !!S.artFP;       // артиллерия: по умолчанию снаружи (видна дуга), V — из кабины
+    return true;
   },
   EYE: { tank: [2.15, 0.6], raider: [1.45, 0.4], mlrs: [2.3, 0.9], mortar: [2.2, 0.8], cat: [2.0, 0.6] },
   vehCam(c, dt){
@@ -238,7 +245,8 @@ const FPS61 = {
   },
   // ---------------------------------------------------------------- рисование поверх HUD
   overlay(dt){
-    if (S.attract || S.mode !== 'fps' || !S.cam || OPER.on || MENU.isOpen()) return;
+    if (S.attract || S.mode !== 'fps' || !S.cam || OPER.on || MENU.isOpen()){ const el = document.getElementById('dcard'); if (el && el.style.display !== 'none') el.style.display = 'none'; return; }
+    if (this.card && (mouseL || (TOUCH.on && TOUCH.fireT)) && S.rtime - this.card.t > 0.8) this.card.t = min(this.card.t, S.rtime - 4.4);   // начал стрелять — карточка уходит
     const g = octx, W = innerWidth, H = innerHeight, cx = W / 2, cy = H / 2, c = ctrlEntity();
     if (c && !CAMFX.busy() && this.vehFP(c)) this.drawSight(g, c, W, H, cx, cy);
     // подсказка выхода из ядра / шахты
@@ -279,9 +287,8 @@ const FPS61 = {
       for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]){ g.beginPath(); g.moveTo(cx + sx * s, cy + sy * s * 0.6); g.lineTo(cx + sx * s * 0.8, cy + sy * s * 0.6); g.moveTo(cx + sx * s, cy + sy * s * 0.6); g.lineTo(cx + sx * s, cy + sy * s * 0.45); g.stroke(); }
     }
     g.font = '600 11px "Exo 2", Consolas, sans-serif'; g.textAlign = 'left'; g.fillStyle = drone ? 'rgba(150,230,255,.8)' : 'rgba(255,210,120,.8)';
-    const hdg = Math.round((Math.atan2(c.aim[0], c.aim[2]) * 180 / PI + 360) % 360);
-    g.fillText(`${this.bodyName(c).toUpperCase()} · ${tr('КУРС', 'HDG', 'HƯỚNG')} ${hdg}° · ${Math.round(len(c.vel) * 3.6)} ${tr('км/ч', 'km/h', 'km/h')}`, cx - W * 0.16, cy - H * 0.3);
-    g.textAlign = 'right'; g.fillText(`${bk('third')} — ${tr('вид снаружи', 'outside view', 'nhìn ngoài')}`, cx + W * 0.16, cy - H * 0.3);
+    g.fillText(`${this.bodyName(c).toUpperCase()} · ${Math.round(len(c.vel) * 3.6)} ${tr('км/ч', 'km/h', 'km/h')}`, cx - W * 0.16, cy + H * 0.12);
+    g.textAlign = 'right'; g.fillText(`${bk('third')} — ${tr('вид снаружи', 'outside view', 'nhìn ngoài')}`, cx + W * 0.16, cy + H * 0.12);
     g.restore();
   },
   // карточка после гибели: класс для следующего вселения (цифры / тап)
@@ -293,13 +300,6 @@ const FPS61 = {
       el = document.createElement('div'); el.id = 'dcard'; document.body.appendChild(el);
       el.addEventListener('click', e => { const b = e.target.closest('[data-pref]'); if (b){ e.stopPropagation(); this.setPref(b.dataset.pref, true); this.card.t = S.rtime - 3.5; } });
       el.addEventListener('touchstart', e => { const b = e.target.closest('[data-pref]'); if (b){ e.preventDefault(); e.stopPropagation(); this.setPref(b.dataset.pref, true); this.card.t = S.rtime - 3.5; } }, { passive: false });
-      const st = document.createElement('style');
-      st.textContent = `#dcard{position:fixed;left:50%;top:max(104px,19%);transform:translateX(-50%);z-index:30;background:rgba(10,12,14,.8);border:1px solid rgba(232,220,184,.3);padding:6px 10px;color:#e8dcb8;font:600 12px "Exo 2",Consolas,sans-serif;text-align:center;pointer-events:auto;max-width:min(94vw,760px)}
-#dcard h5{margin:0 0 5px;font-size:13px;color:#ff8a70;letter-spacing:.05em}#dcard .pl{display:flex;flex-wrap:wrap;gap:3px;justify-content:center}
-#dcard button{background:rgba(232,220,184,.08);border:1px solid rgba(232,220,184,.3);color:#e8dcb8;font:600 11px "Exo 2",sans-serif;padding:3px 6px;cursor:pointer}#dcard button.cur{background:rgba(140,255,170,.2);border-color:#8fffaa;color:#8fffaa}
-#dcard kbd{opacity:.6;margin-right:3px}#dcard em{display:block;font-style:normal;color:#ffd27a;margin-top:5px}#dcard small{opacity:.65}
-body.touch #dcard button{padding:8px 9px;font-size:13px}#touch .v61v{font-weight:700}`;
-      document.head.appendChild(st);
     }
     const k = this.card.died ? 'd' : 'c', key = k + (SET.prefCls || 'any') + (this.card.miss || '') + LANG.cur;
     if (el._k !== key){
@@ -311,6 +311,12 @@ body.touch #dcard button{padding:8px 9px;font-size:13px}#touch .v61v{font-weight
     el.style.display = 'block';
     el.style.opacity = String(clamp(5 - (S.rtime - this.card.t), 0, 1));
   },
+  CSS: `#dcard{position:fixed;left:50%;top:max(104px,19%);transform:translateX(-50%);z-index:30;background:rgba(10,12,14,.8);border:1px solid rgba(232,220,184,.3);padding:6px 10px;color:#e8dcb8;font:600 12px "Exo 2",Consolas,sans-serif;text-align:center;pointer-events:auto;max-width:min(94vw,760px)}
+#dcard h5{margin:0 0 5px;font-size:13px;color:#ff8a70;letter-spacing:.05em}#dcard .pl{display:flex;flex-wrap:wrap;gap:3px;justify-content:center}
+#dcard button{background:rgba(232,220,184,.08);border:1px solid rgba(232,220,184,.3);color:#e8dcb8;font:600 11px "Exo 2",sans-serif;padding:3px 6px;cursor:pointer}#dcard button.cur{background:rgba(140,255,170,.2);border-color:#8fffaa;color:#8fffaa}
+#dcard kbd{opacity:.6;margin-right:3px}#dcard em{display:block;font-style:normal;color:#ffd27a;margin-top:5px}#dcard small{opacity:.65}
+body.touch #dcard{top:24%;padding:4px 8px}body.touch #dcard button{padding:6px 7px;font-size:12px}body.touch #dcard h5{font-size:12px;margin-bottom:3px}#touch .v61v{font-weight:700}
+.row.prefrow{flex-wrap:wrap}.row.prefrow .chs{display:flex;flex-wrap:wrap;gap:3px}.row.prefrow .chs button{padding:4px 7px}`,
   // ---------------------------------------------------------------- меню
   settingsRows(row, ch){
     if (SET.aimAssist === undefined || SET.aimAssist === null || SET.aimAssist < 0) SET.aimAssist = AIMA.lvl();
@@ -325,6 +331,8 @@ body.touch #dcard button{padding:8px 9px;font-size:13px}#touch .v61v{font-weight
     if (typeof CAREER !== 'undefined') CAREER.wire(name);
   },
 };
+
+(function(){ const st = document.createElement('style'); st.textContent = FPS61.CSS; document.head.appendChild(st); })();
 
 // =====================================================================
 //  ПОМОЩЬ В ПРИЦЕЛИВАНИИ (как на консолях): «трение» у цели, слабое
