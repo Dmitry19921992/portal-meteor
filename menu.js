@@ -14,7 +14,7 @@ const BIND_NAMES = {
   switch: ['Быстрая смена бойца (в бою)', 'Quick unit switch (in battle)', 'Đổi đội / xe'], rts: ['Стратегия ⇄ бой · в стратегии — вселиться в выделенного', 'Strategy ⇄ battle · in strategy — possess selection', 'Chế độ chiến thuật ⇄ nhập vai'], third: ['Вид от 3-го лица', 'Third person', 'Góc nhìn thứ ba'],
   follow: ['Режим «ведомый»', 'Follower mode', 'Chế độ đi theo'], nav: ['Линия к задаче', 'Objective line', 'Đường tới nhiệm vụ'], ai: ['ИИ-стратег вкл/выкл', 'AI strategist on/off', 'Bật/tắt chiến lược gia AI'],
 };
-const SET_DEF = { lang: 'ru', vol: 0.9, voice: true, hintsVoice: true, hintsOn: true, sens: 1, invertY: false, swapMouse: false, quality: 2, autoRes: true,
+const SET_DEF = { lang: (() => { try { const l = (navigator.language || 'en').slice(0, 2).toLowerCase(); return ['ru', 'uk', 'be', 'kk'].includes(l) ? 'ru' : l === 'vi' ? 'vi' : 'en'; } catch (e) { return 'en'; } })(), vol: 0.9, voice: true, hintsVoice: true, hintsOn: true, sens: 1, invertY: false, swapMouse: false, quality: 2, autoRes: true,
                   scale: 0.75, fov: 75, vhs: false, distort: true, bright: 1, diff: 3, grid: 1, bounces: 4, edgeScroll: true, unlockAll: false, battle: 1, endless: true, fog: true, chatter: true, bind: Object.assign({}, BIND_DEF) };
 const SET = JSON.parse(JSON.stringify(SET_DEF));
 function applySettings(){
@@ -85,7 +85,7 @@ const MENU = {
     applySettings(); this.save();
     $('clicklock').innerHTML = `<div>${tr('Кликни, чтобы вернуться в бой', 'Click to return to the fight', 'Nhấp để quay lại trận')}</div><small>${tr('Esc — меню', 'Esc — menu', 'Esc — menu')}</small>`;
     buildSidebar(); AU.pickVoice(); updateModeUI();
-    document.title = 'Portal Meteor — v6.0';
+    document.title = 'Portal Meteor — v6.1';
   },
   // ---------------- экраны
   btn(id, text, cls){ return `<button id="m_${id}" class="${cls || ''}">${text}</button>`; },
@@ -93,7 +93,7 @@ const MENU = {
     const C = PROG.career;
     return `<div class="mcol">
       <h1>PORTAL METEOR</h1>
-      <p class="sub" style="opacity:.75;margin-top:-6px">v6.0 · ${tr('сборка', 'build', 'bản dựng')} 19.10.2026 · ${tr('одна версия для ПК и телефона', 'one build for PC and phone', 'một bản cho PC và điện thoại')} · ${tr('сейчас', 'now', 'hiện tại')}: <b>${(('ontouchstart' in window) || matchMedia('(pointer:coarse)').matches) ? tr('телефон, сенсорное управление', 'phone, touch controls', 'điện thoại, cảm ứng') : tr('ПК, клавиатура и мышь', 'PC, keyboard and mouse', 'PC, bàn phím và chuột')}</b></p>
+      <p class="sub" style="opacity:.75;margin-top:-6px">v6.1 · ${tr('сборка', 'build', 'bản dựng')} 19.10.2026 · ${tr('одна версия для ПК и телефона', 'one build for PC and phone', 'một bản cho PC và điện thoại')} · ${tr('сейчас', 'now', 'hiện tại')}: <b>${(('ontouchstart' in window) || matchMedia('(pointer:coarse)').matches) ? tr('телефон, сенсорное управление', 'phone, touch controls', 'điện thoại, cảm ứng') : tr('ПК, клавиатура и мышь', 'PC, keyboard and mouse', 'PC, bàn phím và chuột')}</b></p>
       <p class="sub">${tr('война роботов за руду метеорита · небо — это портал к врагу', 'a robot war for meteor ore · the sky is a portal to the enemy', 'cuộc chiến robot giành quặng thiên thạch · bầu trời là cánh cổng tới quân thù')}</p>
       ${this.btn('play', tr('Новый матч', 'New match', 'Trận mới'), 'big')}
       <div class="diffrow">${DIFF.map((d, i) => `<button class="dbtn ${SET.diff === i ? 'cur' : ''}" data-diff="${i}">${N2(d.n)}</button>`).join('')}</div>
@@ -113,6 +113,15 @@ const MENU = {
       <p>${tr('Убито роботов', 'Robots destroyed', 'Robot đã hạ')}: <b>${C.kills}</b> · ${tr('приказов выполнено', 'orders completed', 'lệnh đã hoàn thành')}: <b>${C.tasks}</b></p>
       <p>${tr('Всего опыта', 'Total XP', 'Tổng kinh nghiệm')}: <b>${C.xp}</b> · ${tr('лучшее звание', 'best rank', 'cấp bậc cao nhất')}: <b>${PROG.rankName(C.best)}</b></p>
       ${typeof CAREER !== 'undefined' ? CAREER.mainSide() : ''}
+      <h3>${tr('Новое в v6.1', 'New in v6.1', 'Mới trong v6.1')}</h3>
+      <ul>
+        <li>${tr('Свой класс для вселения как в Battlefield (U, цифры после гибели): игра вселяет в него, если такой боец есть', 'Preferred class like in Battlefield (U, numbers after death): you respawn into it when available')}</li>
+        <li>${tr('Техника от первого лица (V — снаружи/из кабины); лёгкое автоприцеливание — в Настройках', 'Vehicles in first person (V — outside/cockpit); gentle aim assist — in Settings')}</li>
+        <li>${tr('Из ядра теперь легко выбраться: Пробел — к шахте, B — капсула на поверхность; эффекты способностей сбрасываются при гибели', 'Easy exit from the core: Space — to the shaft, B — capsule to the surface; ability effects reset on death')}</li>
+        <li>${tr('Бесконечная прокачка: генералы и Маршал ★, уровни карьеры, мастерство оружия и обвесы, медали, ежедневные контракты — экран «Карьера»', 'Endless progression: generals and Marshal ★, career levels, weapon mastery and attachments, medals, daily contracts — Career screen')}</li>
+        <li>${tr('Стратегия: плавный зум колесом, значки и подписи над юнитами (Alt — все), панель «Войска / Здания» слева', 'Strategy: smooth wheel zoom, unit icons and labels (Alt — all), Troops / Buildings panel on the left')}</li>
+        <li>${tr('ПКМ — идти и воевать по пути, 2× ПКМ — марш со стрельбой на ходу; редкие приказы — в «Ещё приказы ▾»; кнопки не дублируются', 'RMB — attack-move, double RMB — march firing on the move; rare orders in "More orders ▾"; no duplicate buttons')}</li>
+      </ul>
       <h3>${tr('Новое в v6', 'New in v6', 'Mới trong v6')}</h3>
       <ul>
         <li>${tr('Стрельба как в шутерах: мгновенные пули, автомат 720 выстр/мин, пулемёт, отдача, прицел на ПКМ, магазины и перезарядка R, метки попаданий', 'Shooter-grade guns: hitscan bullets, 720 RPM rifle, MG, recoil, RMB aim, magazines and R reload, hit markers')}</li>
