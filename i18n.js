@@ -3,6 +3,12 @@
 // =====================================================================
 const LANG = { cur: 'ru' };
 const LANGS = [['ru', 'Русский'], ['en', 'English'], ['vi', 'Tiếng Việt']];
+// флажки языков — SVG (эмодзи-флаги Windows не рисует)
+const LANG_FLAG = {
+  ru: '<svg viewBox="0 0 9 6" width="21" height="14" style="vertical-align:-2px;margin-right:6px;border-radius:2px"><rect width="9" height="2" fill="#fff"/><rect y="2" width="9" height="2" fill="#0039a6"/><rect y="4" width="9" height="2" fill="#d52b1e"/></svg>',
+  en: '<svg viewBox="0 0 60 30" width="24" height="14" style="vertical-align:-2px;margin-right:6px;border-radius:2px"><rect width="60" height="30" fill="#012169"/><path d="M0,0L60,30M60,0L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0L60,30M60,0L0,30" stroke="#C8102E" stroke-width="2.5"/><path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/><path d="M30,0v30M0,15h60" stroke="#C8102E" stroke-width="6"/></svg>',
+  vi: '<svg viewBox="0 0 30 20" width="21" height="14" style="vertical-align:-2px;margin-right:6px;border-radius:2px"><rect width="30" height="20" fill="#da251d"/><polygon fill="#ff0" points="15,4 16.76,9.43 22.47,9.43 17.85,12.79 19.61,18.21 15,14.86 10.39,18.21 12.15,12.79 7.53,9.43 13.24,9.43"/></svg>',
+};
 function tr(ru, en, vi){ const L = LANG.cur; return L === 'en' ? en : L === 'vi' ? (vi !== undefined ? vi : en) : ru; }
 function N2(pair){ const L = LANG.cur; return L === 'en' ? pair[1] : L === 'vi' ? (pair[2] !== undefined ? pair[2] : pair[1]) : pair[0]; }
 const TEAMN = [['Консорциум', 'Consortium', 'Liên minh'], ['Рой', 'Swarm', 'Bầy Đàn']];

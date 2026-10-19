@@ -105,7 +105,7 @@ const MENU = {
       ${this.btn('cinema', tr('Кино-режим: бот играет сам', 'Cinema mode: bots play by themselves', 'Chế độ điện ảnh: bot tự chơi'))}
       ${this.btn('settings', tr('Настройки', 'Settings', 'Cài đặt'))}
       ${this.btn('controls', tr('Управление и проверка клавиш', 'Controls & key test', 'Điều khiển & kiểm tra phím'))}
-      <div class="diffrow">${LANGS.map(([c, n]) => `<button class="lbtn ${SET.lang === c ? 'cur' : ''}" data-lang="${c}">${n}</button>`).join('')}</div>
+      <div class="diffrow">${LANGS.map(([c, n]) => `<button class="lbtn ${SET.lang === c ? 'cur' : ''}" data-lang="${c}">${LANG_FLAG[c] || ''}${n}</button>`).join('')}</div>
     </div>
     <div class="mcol side">
       <h3>${tr('Карьера', 'Career', 'Sự nghiệp')}</h3>
@@ -159,7 +159,7 @@ const MENU = {
       ${typeof FPS61 !== 'undefined' ? FPS61.pauseRows() : ''}
       ${this.btn('settings', tr('Настройки', 'Settings', 'Cài đặt'))}
       ${this.btn('controls', tr('Управление и проверка клавиш', 'Controls & key test', 'Điều khiển & kiểm tra phím'))}
-      <div class="diffrow">${LANGS.map(([c, n]) => `<button class="lbtn ${SET.lang === c ? 'cur' : ''}" data-lang="${c}">${n}</button>`).join('')}</div>
+      <div class="diffrow">${LANGS.map(([c, n]) => `<button class="lbtn ${SET.lang === c ? 'cur' : ''}" data-lang="${c}">${LANG_FLAG[c] || ''}${n}</button>`).join('')}</div>
       ${this.btn('restart', tr('Новый матч', 'New match', 'Trận mới'))}
       ${this.btn('menu', tr('Выйти в главное меню', 'Quit to main menu', 'Thoát ra menu chính'))}</div>`;
   },
