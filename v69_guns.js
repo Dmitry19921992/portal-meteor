@@ -557,7 +557,7 @@ WPN69.r = function(){ return this.rnd ? this.rnd() : (this._q = ((this._q || 7) 
 WPN69.onShot = function(w){
   const st = this.st, D = this.M[w], ads = S.aimK || 0;
   const k = (D ? D.kick : (w === 'hmg' ? 0.45 : w === 'rail' ? 1.6 : 1)) * (1 - 0.45 * ads);
-  st.vz -= 0.85 * k; st.vp += 6.5 * k; st.vy += (this.r() - 0.5) * 2.2 * k; st.vr += (this.r() - 0.5) * 4.5 * k;
+  st.vz -= 0.6 * k; st.vp += 3.4 * k; st.vy += (this.r() - 0.5) * 1.6 * k; st.vr += (this.r() - 0.5) * 3.5 * k;
   const now = performance.now() / 1000;
   st.shotT = now; st.flashSeed = this.r();
   st.heat[w] = min(1.25, (st.heat[w] || 0) + (W69_HEAT[w] || 0.02));
@@ -576,7 +576,7 @@ WPN69.pose = function(D, w, dt, now, c, vm3, me){
   const spr = (x, v, k, d) => { v += (-k * x - d * v) * dt; return [x + v * dt, v]; };
   [st.rz, st.vz] = spr(st.rz, st.vz, 210, 21); [st.rp, st.vp] = spr(st.rp, st.vp, 160, 17);
   [st.ry, st.vy] = spr(st.ry, st.vy, 140, 16); [st.rr, st.vr] = spr(st.rr, st.vr, 120, 14);
-  st.rz = clamp(st.rz, -0.09, 0.03); st.rp = clamp(st.rp, -0.3, 0.45);
+  st.rz = clamp(st.rz, -0.07, 0.03); st.rp = clamp(st.rp, -0.25, 0.22);
   // инерция при повороте камеры
   if (st.lastF && dt > 0){
     const d = sub(c.fwd, st.lastF), dx = dot(d, c.right), dy = dot(d, c.up);
@@ -655,7 +655,7 @@ WPN69.draw = function(c, nl, eyeSh, vm3, wk, me){
     W69_CR.set([...c.right, ...c.up, -c.fwd[0], -c.fwd[1], -c.fwd[2]]); gl.uniformMatrix3fv(U.uCR, false, W69_CR);
     gl.uniform4fv(U.uLP, LP); gl.uniform4fv(U.uLC, LC); gl.uniform1i(U.uNL, nl || 0);
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_3D, texNoise); gl.uniform1i(U.uNoise, 2);
-    const fl = ps.since < 0.05 ? 1 - ps.since / 0.05 : 0;
+    const fl = this.dbgFlash !== undefined ? this.dbgFlash : ps.since < 0.05 ? 1 - ps.since / 0.05 : 0;   // dbgFlash — для скриншотов
     const mz = M34.ap(ps.Mg, D.muz);
     gl.uniform3f(U.uFlP, mz[0], mz[1], -mz[2]);
     const team = me ? me.team : 0, glowK = (me && me.elite ? 1.3 : 1) * (K && K.incT > 0 ? 1.25 : 1);
@@ -718,8 +718,8 @@ WPN69.draw = function(c, nl, eyeSh, vm3, wk, me){
       const dir = M34.an(ps.Mg, [0, 0, 1]), sz = D.flash * (0.8 + 0.4 * st.flashSeed) * (0.5 + 0.5 * fl), ang = st.flashSeed * 6.28;
       const col = w === 'rail' ? [0.7, 1.5, 3.2] : K && K.incT > 0 ? [3.4, 1.5, 0.5] : [3.0, 1.9, 0.9];
       spr(0, add(mz, mul(dir, 0.012)), [Math.cos(ang) * sz, Math.sin(ang) * sz, 0], [-Math.sin(ang) * sz, Math.cos(ang) * sz, 0], col, fl, st.flashSeed);
-      const L = sz * 1.5, wy = mul(norm(cross(dir, norm(mz))), sz * 0.55);
-      spr(1, add(mz, mul(dir, L)), mul(dir, L), wy, col, fl * 0.9, st.flashSeed);
+      const L = sz * 0.95, wy = mul(norm(cross(dir, norm(mz))), sz * 0.38);
+      spr(1, add(mz, mul(dir, L)), mul(dir, L), wy, col, fl * 0.55, st.flashSeed);
     }
     if (rkM && ps.rk < 0.1){
       const rf = 1 - ps.rk / 0.1, tip = M34.ap(rkM, [0, 0, 0.47]), dir = M34.an(rkM, [0, 0, 1]), sz = 0.16 * (0.6 + 0.4 * rf);
