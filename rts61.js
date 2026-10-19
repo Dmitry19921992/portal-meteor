@@ -365,9 +365,11 @@ function r61Frame(dt){
   const sel = selGroups(), sig = sel.map(uixId).join(',');
   if (sig !== R61.lastSel){
     R61.lastSel = sig;
-    if (sel.length && sel.every(g => g.cls === 'builder') && SIDE.tab !== 'build'){ SIDE.tab = 'build'; buildSidebar(); }
+    // выделили только инженеров — открыть «Здания» (если игрок сам не переключил вкладку после этого)
+    if (sel.length && sel.every(g => g.cls === 'builder') && SIDE.tab !== 'build' && SIDE.tab === R61.lastTab){ SIDE.tab = 'build'; buildSidebar(); }
     if (!sel.some(g => g.cls !== 'builder')) R61.more = false;
   }
+  R61.lastTab = SIDE.tab;
 }
 const _r61UixFrame = uixFrame;
 uixFrame = function(dt){ _r61UixFrame(dt); try { r61Frame(dt); } catch (e){ if (!R61.err){ R61.err = 1; console.warn('r61', e); } } };
