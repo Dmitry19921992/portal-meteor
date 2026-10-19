@@ -31,6 +31,18 @@ const V68_CREDITS = 'Piper TTS (ryan, alan, amy; vais1000 — CC BY 4.0), Kokoro
   const al0 = MENU.applyLang;
   MENU.applyLang = function(){ al0.call(this); document.title = 'Portal Meteor — v6.8'; VOICE66.buf = {}; VOICE66.pend = {}; };
 }
+// ---- Настройки на ПК: 4 кнопки языка ужимаем в ширину прежних трёх (215 px), чтобы колонка настроек не сдвинулась
+{
+  const hs0 = MENU.html_settings;
+  if (hs0) MENU.html_settings = function(){
+    let h = hs0.apply(this, arguments);
+    if (!TOUCH.on) h = h.replace(/<span class="chs">(?=<button[^>]*data-ch="lang")/, '<span class="chs lang68">');
+    return h;
+  };
+  const st = document.createElement('style'); st.id = 'lang68';
+  st.textContent = '#screen .chs.lang68{width:215px;box-sizing:border-box} #screen .chs.lang68 button{flex:1 1 auto;min-width:0;padding-left:2px;padding-right:2px;overflow:hidden;white-space:nowrap;height:24px}';   // 24 px — как раньше (шрифт с ивритом выше)
+  document.head.appendChild(st);
+}
 // ---- иврит: направление текста. Весь документ НЕ переворачиваем (HUD стоит абсолютно — сломался бы),
 // только меню (#screen dir=rtl) и текстовые окна. Панели стратегии (#side, #card) — как были: там значки клавиш.
 function rtl68(){
