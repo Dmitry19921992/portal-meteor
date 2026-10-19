@@ -85,7 +85,7 @@ const MENU = {
     applySettings(); this.save();
     $('clicklock').innerHTML = `<div>${tr('Кликни, чтобы вернуться в бой', 'Click to return to the fight', 'Nhấp để quay lại trận')}</div><small>${tr('Esc — меню', 'Esc — menu', 'Esc — menu')}</small>`;
     buildSidebar(); AU.pickVoice(); updateModeUI();
-    document.title = 'Portal Meteor — v6.2';
+    document.title = 'Portal Meteor — v6.3';
   },
   // ---------------- экраны
   btn(id, text, cls){ return `<button id="m_${id}" class="${cls || ''}">${text}</button>`; },
@@ -93,7 +93,7 @@ const MENU = {
     const C = PROG.career;
     return `<div class="mcol">
       <h1>PORTAL METEOR</h1>
-      <p class="sub" style="opacity:.75;margin-top:-6px">v6.2 · ${tr('сборка', 'build', 'bản dựng')} 19.10.2026 · ${tr('одна версия для ПК и телефона', 'one build for PC and phone', 'một bản cho PC và điện thoại')} · ${tr('сейчас', 'now', 'hiện tại')}: <b>${(('ontouchstart' in window) || matchMedia('(pointer:coarse)').matches) ? tr('телефон, сенсорное управление', 'phone, touch controls', 'điện thoại, cảm ứng') : tr('ПК, клавиатура и мышь', 'PC, keyboard and mouse', 'PC, bàn phím và chuột')}</b></p>
+      <p class="sub" style="opacity:.75;margin-top:-6px">v6.3 · ${tr('сборка', 'build', 'bản dựng')} 19.10.2026 · ${tr('одна версия для ПК и телефона', 'one build for PC and phone', 'một bản cho PC và điện thoại')} · ${tr('сейчас', 'now', 'hiện tại')}: <b>${(('ontouchstart' in window) || matchMedia('(pointer:coarse)').matches) ? tr('телефон, сенсорное управление', 'phone, touch controls', 'điện thoại, cảm ứng') : tr('ПК, клавиатура и мышь', 'PC, keyboard and mouse', 'PC, bàn phím và chuột')}</b></p>
       <p class="sub">${tr('война роботов за руду метеорита · небо — это портал к врагу', 'a robot war for meteor ore · the sky is a portal to the enemy', 'cuộc chiến robot giành quặng thiên thạch · bầu trời là cánh cổng tới quân thù')}</p>
       ${this.btn('play', tr('Новый матч', 'New match', 'Trận mới'), 'big')}
       <div class="diffrow">${DIFF.map((d, i) => `<button class="dbtn ${SET.diff === i ? 'cur' : ''}" data-diff="${i}">${N2(d.n)}</button>`).join('')}</div>
@@ -113,6 +113,8 @@ const MENU = {
       <p>${tr('Убито роботов', 'Robots destroyed', 'Robot đã hạ')}: <b>${C.kills}</b> · ${tr('приказов выполнено', 'orders completed', 'lệnh đã hoàn thành')}: <b>${C.tasks}</b></p>
       <p>${tr('Всего опыта', 'Total XP', 'Tổng kinh nghiệm')}: <b>${C.xp}</b> · ${tr('лучшее звание', 'best rank', 'cấp bậc cao nhất')}: <b>${PROG.rankName(C.best)}</b></p>
       ${typeof CAREER !== 'undefined' ? CAREER.mainSide() : ''}
+      <h3>${tr('Новое в v6.3', 'New in v6.3', 'Mới trong v6.3')}</h3>
+      <ul></ul>
       <h3>${tr('Новое в v6.2', 'New in v6.2', 'Mới trong v6.2')}</h3>
       <ul>
         <li>${tr('Новый вид руды: рудные жилы — светящиеся изумрудные огранённые кристаллы на чёрном базальте, искры и зелёная дымка; экстрактор — шестигранный постамент, сотовый купол и вышка с зелёным огнём-маяком (полоса и вымпел — цвет команды)', 'New ore look: veins are glowing emerald faceted crystals on black basalt with sparks and green haze; the extractor is a hex pedestal with a honeycomb dome and a lattice tower topped by a green beacon (stripe and pennant in team colour)', 'Diện mạo quặng mới: mạch quặng là tinh thể ngọc lục bảo nhiều mặt phát sáng trên đá bazan đen, có tia lửa và sương xanh; máy khai thác có bệ lục giác, mái vòm tổ ong và tháp lưới với đèn hiệu xanh (dải và cờ màu đội)')}</li>

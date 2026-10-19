@@ -502,7 +502,7 @@ if (typeof UNLOCK_INFO !== 'undefined' && UNLOCK_INFO.grenade)
   const hm0 = MENU.html_main;
   MENU.html_main = function(){
     let h = hm0.call(this);
-    const m = h.match(/<h3>[^<]*v6\.2[^<]*<\/h3>\s*<ul>/);
+    const m = h.match(/<h3>[^<]*v6\.3[^<]*<\/h3>\s*<ul>/) || h.match(/<h3>[^<]*v6\.2[^<]*<\/h3>\s*<ul>/);
     if (m) return h.replace(m[0], m[0] + li());
     const i = h.search(/<h3>[^<]*v6\.1[^<]*<\/h3>/);
     if (i < 0) return h;
