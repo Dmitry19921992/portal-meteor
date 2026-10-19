@@ -215,16 +215,34 @@ const G62 = {
   },
 
   // ---- наложение: дуга, круг поражения, дистанция, рука с гранатой, предупреждения
+  // свой холст поверх HUD-панелей (иначе дугу и предупреждение закрывают плашки задач), но под меню и кнопками телефона
+  layer(){
+    if (!G62.cv){
+      const c = document.createElement('canvas'); c.id = 'g62ov';
+      c.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:12';
+      document.body.appendChild(c); G62.cv = c; G62.g = c.getContext('2d');
+    }
+    const o = octx.canvas, c = G62.cv;
+    if (c.width !== o.width || c.height !== o.height){ c.width = o.width; c.height = o.height; }
+    return G62.g;
+  },
   overlay(dt){
-    if (S.attract || S.mode !== 'fps' || !S.cam || (typeof OPER !== 'undefined' && OPER.on) || MENU.isOpen() || CAMFX.busy()) return;
-    const c = ctrlEntity(); if (!c) return;
-    const g = octx, W = innerWidth, H = innerHeight;
-    g.save();
-    if (G62.hold && G62.path && c.cls === 'inf') G62.drawArc(g, c, W, H);
-    G62.drawWarn(g, c, W, H);
-    if (c.cls === 'inf') G62.drawHand(g, W, H);
-    g.restore();
     G62.touchBtn();
+    const c = ctrlEntity();
+    const show = c && !S.attract && S.mode === 'fps' && S.cam && !(typeof OPER !== 'undefined' && OPER.on) && !MENU.isOpen() && !CAMFX.busy();
+    const warn = show && S.proj.some(p => p.g62 && p.team !== c.team && dist2(p.pos, c.pos) < (p.splash + 3.5) ** 2);
+    const hand = show && c.cls === 'inf' && (G62.hold || S.rtime - G62.last.t < 0.25);
+    const arc = show && G62.hold && G62.path && c.cls === 'inf';
+    if (!warn && !hand && !arc){ if (G62.drawn){ G62.drawn = false; const g = G62.layer(); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, G62.cv.width, G62.cv.height); } return; }
+    const g = G62.layer(), W = innerWidth, H = innerHeight;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, G62.cv.width, G62.cv.height);
+    g.setTransform(octx.getTransform());
+    G62.drawn = true;
+    g.save();
+    if (arc) G62.drawArc(g, c, W, H);
+    if (warn) G62.drawWarn(g, c, W, H);
+    if (hand) G62.drawHand(g, W, H);
+    g.restore();
   },
   drawArc(g, c, W, H){
     const P = G62.path, h = G62.hold;
@@ -289,21 +307,23 @@ const G62 = {
       g.shadowBlur = 3; g.fillStyle = `rgba(255,236,200,${a})`; g.font = '700 14px "Exo 2", sans-serif'; g.textAlign = 'center';
       g.fillText(`${Math.round(d)} ${tr('м', 'm', 'm')}`, s[0], s[1] - 18);
     }
-    // HUD у прицела: дистанция, сила, подсказка
-    const cx = W / 2, cy = H / 2, y0 = max(cy + 70, H * 0.66);   // ниже прицела, чтобы не закрывать точку падения
-    g.shadowBlur = 3; g.textAlign = 'center';
-    g.font = '700 22px "Exo 2", Consolas, sans-serif'; g.fillStyle = `rgba(255,236,200,${a})`;
-    g.fillText(`${tr('ГРАНАТА', 'GRENADE', 'LỰU ĐẠN')} ▸ ${Math.round(d)} ${tr('м', 'm', 'm')}${P.tele ? ' ↻' : ''}`, cx, y0);
-    const pw = h.under ? 0 : h.power;
-    g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(cx - 60, y0 + 8, 120, 5);
-    g.fillStyle = h.under ? 'rgba(150,225,255,.95)' : 'rgba(255,200,110,.95)'; g.fillRect(cx - 60, y0 + 8, 120 * (h.under ? 0.4 : pw), 5);
-    g.font = '600 12px "Exo 2", Consolas, sans-serif'; g.fillStyle = `rgba(230,220,190,${0.9 * a})`;
-    const tc = TOUCH.on;
-    const line = h.under ? tr('ПОД НОГИ (ПКМ)', 'UNDERHAND (RMB)', 'NÉM THẤP (chuột phải)') : `${tr('СИЛА', 'POWER', 'LỰC')} ${Math.round(pw * 100)}%`;
-    g.fillText(line + ' · ' + (tc ? tr('веди по кнопке — угол · отпусти — бросок', 'drag on the button — angle · release — throw', 'kéo trên nút — góc · thả — ném')
-      : tr('взгляд — дальность · колесо — сила · ПКМ — под ноги · отпусти — бросок', 'look — range · wheel — power · RMB — underhand · release — throw', 'nhìn — tầm xa · con lăn — lực · chuột phải — ném thấp · thả — ném')), cx, y0 + 28);
-    const K = S.kit;
-    g.fillText(`${tr('взрыв через', 'fuse', 'nổ sau')} ${G62.FUSE} ${tr('с', 's', 'giây')} · ${tr('гранат', 'grenades', 'lựu đạn')}: ${K.gren}${K.gren < G62.MAX ? ` (+1 ${tr('через', 'in', 'sau')} ${Math.ceil(K.grenCd)} ${tr('с', 's', 'giây')})` : ''}`, cx, y0 + 44);
+    // HUD слева от прицела (дуга идёт через центр и вниз — слева обычно пусто): дистанция, сила, подсказки
+    const tc = TOUCH.on, fs = tc ? 0.85 : 1;
+    const x0 = W / 2 - 44, y0 = H / 2 - 10;
+    g.shadowBlur = 3; g.textAlign = 'right';
+    g.font = `700 ${Math.round(24 * fs)}px "Exo 2", Consolas, sans-serif`; g.fillStyle = `rgba(255,236,200,${a})`;
+    g.fillText(`${Math.round(d)} ${tr('м', 'm', 'm')}${P.tele ? ' ↻' : ''}`, x0, y0);
+    const pw = h.under ? 0.4 : h.power;
+    g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(x0 - 90, y0 + 7, 90, 5);
+    g.fillStyle = h.under ? 'rgba(150,225,255,.95)' : 'rgba(255,200,110,.95)'; g.fillRect(x0 - 90 * pw, y0 + 7, 90 * pw, 5);
+    g.font = `600 ${Math.round(12 * fs)}px "Exo 2", Consolas, sans-serif`; g.fillStyle = `rgba(235,225,195,${0.92 * a})`;
+    const K = S.kit, L = [
+      h.under ? tr('ПОД НОГИ', 'UNDERHAND', 'NÉM THẤP') : `${tr('СИЛА', 'POWER', 'LỰC')} ${Math.round(h.power * 100)}%`,
+      tc ? tr('палец по G — угол', 'drag on G — angle', 'kéo trên G — góc') : tr('колесо — сила · ПКМ — под ноги', 'wheel — power · RMB — underhand', 'con lăn — lực · chuột phải — ném thấp'),
+      tr('отпусти — бросок', 'release — throw', 'thả — ném'),
+      `${tr('взрыв', 'fuse', 'nổ sau')} ${G62.FUSE} ${tr('с', 's', 'giây')} · ${tr('гранат', 'left', 'còn')} ${K.gren}`,
+    ];
+    L.forEach((t, i) => g.fillText(t, x0, y0 + 26 + i * 15 * fs));
   },
   // предупреждение о вражеской гранате рядом (как в CoD): значок у прицела по направлению + метка на самой гранате
   drawWarn(g, c, W, H){
@@ -341,8 +361,9 @@ const G62 = {
     else if (now - G62.last.t < 0.22 && now >= G62.last.t) f = (now - G62.last.t) / 0.22;
     else return;
     const sc = clamp(H / 600, 0.75, 1.6);
-    let x = W * 0.66 + 38 * k * sc, y = H - 60 * sc + 18 * k * sc, s = sc * (1 + 0.25 * k), rot = -0.5 * k;
-    if (f >= 0){ const e = f * (2 - f); x = lerp(W * 0.66 + 38 * sc, W / 2 + 20, e); y = lerp(H - 42 * sc, H / 2 + 30, e); s = sc * lerp(1.25, 0.25, e); rot = lerp(-0.5, 0.6, e); g.globalAlpha = 1 - f; }
+    const hx = W * 0.6, hy = H - 105 * sc;
+    let x = hx + 38 * k * sc, y = hy + 18 * k * sc, s = sc * (1 + 0.25 * k), rot = -0.5 * k;
+    if (f >= 0){ const e = f * (2 - f); x = lerp(hx + 38 * sc, W / 2 + 20, e); y = lerp(hy + 18 * sc, H / 2 + 30, e); s = sc * lerp(1.25, 0.25, e); rot = lerp(-0.5, 0.6, e); g.globalAlpha = 1 - f; }
     g.save(); g.translate(x, y); g.rotate(rot); g.scale(s, s);
     g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 6;
     // перчатка
