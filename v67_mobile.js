@@ -617,7 +617,7 @@ M67.css = function(){
   .m67rot i{font-style:normal;font-size:56px;animation:m67rot 2.4s ease-in-out infinite}
   .m67rot b{font:400 21px "Russo One","Exo 2",sans-serif;color:#e8dcb8;line-height:1.25}
   .m67rot small{font:14px "Exo 2",sans-serif;color:#cfc6ad;line-height:1.35}
-  #touch .m67rot button{pointer-events:auto;width:auto;min-height:50px;padding:0 24px;border-radius:12px;background:rgba(214,198,154,.15);border:1.5px solid #d6c69a;color:#f0e8d0;font:700 15px "Exo 2"}
+  .m67rot button{pointer-events:auto;cursor:pointer;width:auto;min-height:50px;padding:0 24px;border-radius:12px;background:rgba(214,198,154,.15);border:1.5px solid #d6c69a;color:#f0e8d0;font:700 15px "Exo 2"}
   @keyframes m67rot{0%,25%{transform:rotate(0)}50%,80%{transform:rotate(-90deg)}100%{transform:rotate(0)}}`;
   document.head.appendChild(st);
 };
