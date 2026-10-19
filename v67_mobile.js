@@ -611,7 +611,7 @@ M67.css = function(){
   /* меню и экраны: не под вырезом */
   body.m67 #screen{padding-left:calc(var(--sl) + 4px);padding-right:calc(var(--sr) + 4px);box-sizing:border-box}
   /* поворот: мягкая подсказка */
-  body.m67 #trot{background:rgba(0,0,0,.76);z-index:40}
+  body.m67 #trot{background:rgba(4,5,6,.9);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);z-index:40}
   body.m67rotok #trot{display:none !important}
   .m67rot{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:300px}
   .m67rot i{font-style:normal;font-size:56px;animation:m67rot 2.4s ease-in-out infinite}
