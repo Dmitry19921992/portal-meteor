@@ -30,7 +30,7 @@ const DEV = {
     PROG.career = this.devCareer();
     if (typeof CAREER !== 'undefined'){ CAREER.dirty = false; CAREER.mc = {}; }
     this.unlockAll();
-    feed(tr('🛠 Режим разработчика: всё открыто, руда без конца. Арсенал — F8 или кнопка вверху.', '🛠 Developer mode: everything unlocked, endless ore. Arsenal — F8 or the button at the top.', '🛠 Chế độ nhà phát triển: mở khóa tất cả, quặng vô hạn. Kho vũ khí — F8.'), '#ffb347');
+    feed(tr('🛠 Режим разработчика: всё открыто, руда без конца. Арсенал — F8 или кнопка «🛠 Арсенал».', '🛠 Developer mode: everything unlocked, endless ore. Arsenal — F8 or the "🛠 Arsenal" button.', '🛠 Chế độ nhà phát triển: mở khóa tất cả, quặng vô hạn. Kho vũ khí — F8.'), '#ffb347');
     buildSidebar(); this.ui();
   },
   unlockAll(){
@@ -220,7 +220,7 @@ uixFrame = function(dt){ _devUixFrame(dt); try { DEV.frame(dt); } catch (e){ if 
 (function devCSS(){
   const st = document.createElement('style'); st.id = 'devcss';
   st.textContent = `
-  #devLab{position:fixed;left:50%;bottom:4px;transform:translateX(-50%);z-index:19;display:none;align-items:center;gap:8px;background:rgba(80,20,10,.85);border:1px solid #ff8a5a;padding:2px 4px 2px 10px;font:700 11px "Exo 2";letter-spacing:.14em;color:#ffb38a;pointer-events:auto}
+  #devLab{position:fixed;right:12px;top:34px;z-index:19;display:none;align-items:center;gap:8px;background:rgba(80,20,10,.85);border:1px solid #ff8a5a;padding:2px 4px 2px 10px;font:700 11px "Exo 2";letter-spacing:.14em;color:#ffb38a;pointer-events:auto}
   #devLab button{pointer-events:auto;background:rgba(255,140,90,.18);border:1px solid #ff8a5a;color:#ffe2d0;font:700 11px "Exo 2";padding:3px 8px;cursor:pointer;letter-spacing:0}
   #devLab kbd{font-size:9px}
   #devPan{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;display:none;width:min(640px,94vw);max-height:86vh;overflow:auto;background:rgba(14,12,10,.96);border:1px solid #ff8a5a;border-left:4px solid #ff8a5a;padding:8px 12px 12px;color:#eadcc6;font-family:"Exo 2";pointer-events:auto}
@@ -229,7 +229,7 @@ uixFrame = function(dt){ _devUixFrame(dt); try { DEV.frame(dt); } catch (e){ if 
   #devPan .r{display:flex;flex-wrap:wrap;gap:5px}
   #devPan button{pointer-events:auto;background:rgba(60,40,30,.8);border:1px solid rgba(255,160,120,.5);color:#ffeadc;font:600 12.5px "Exo 2";padding:7px 10px;cursor:pointer;border-radius:3px;min-height:34px}
   #devPan button:hover{border-color:#fff}
-  body.touch #devLab{bottom:auto;top:2px;left:auto;right:6px;transform:none;font-size:9px;letter-spacing:.06em;padding:1px 3px 1px 6px} body.touch #devLab button{padding:4px 8px;font-size:11px}
+  body.touch #devLab{bottom:2px;top:auto;left:4px;right:auto;font-size:9px;letter-spacing:.06em;padding:1px 3px 1px 6px} body.touch #devLab button{padding:4px 8px;font-size:11px}
   body.touch #devPan{max-height:92vh;padding:6px 8px} body.touch #devPan button{min-height:38px;font-size:12px;padding:6px 8px}`;
   document.head.appendChild(st);
 })();

@@ -82,7 +82,8 @@ function curPlace(id, type, pri, when, text, world, cool){
       ui: ['#side [data-ux="build:' + type + '"]', '#side .tabs [data-tab="build"]'], world,
       done: c => S.place === type || CUR.since('place', type) },
     { id: id + '_put', pri: pri + 1, cool, when: c => S.place === type && when(c),
-      text: () => TOUCH.on ? curL(`Тапни место для «${bname(type)}», затем «✔ Строить».`, `Tap a spot for the ${bname(type)}, then "✔ Build".`, `Chạm chỗ đặt ${bname(type)}, rồi “✔ Xây”.`)
+      text: () => type === 'extractor' ? (TOUCH.on ? curL('Тапни по отмеченной жиле ⛏ (светящиеся кристаллы), затем «✔ Строить». Метка за краем — тапни её, камера подлетит.', 'Tap the marked vein ⛏ (glowing crystals), then "✔ Build". Mark off-screen — tap it to fly the camera there.', 'Chạm mạch quặng ⛏ đã đánh dấu, rồi “✔ Xây”.') : curL('Кликни по отмеченной жиле ⛏ — светящимся кристаллам (ПКМ/Esc — отмена). Метка за краем экрана — кликни по ней, камера подлетит.', 'Click the marked vein ⛏ — the glowing crystals (RMB/Esc — cancel). Mark off-screen — click it to fly the camera there.', 'Nhấp mạch quặng ⛏ đã đánh dấu (chuột phải/Esc — hủy).'))
+        : TOUCH.on ? curL(`Тапни место для «${bname(type)}», затем «✔ Строить».`, `Tap a spot for the ${bname(type)}, then "✔ Build".`, `Chạm chỗ đặt ${bname(type)}, rồi “✔ Xây”.`)
         : curL(`Кликни место для «${bname(type)}» (ПКМ/Esc — отмена).`, `Click a spot for the ${bname(type)} (RMB/Esc — cancel).`, `Nhấp chỗ đặt ${bname(type)} (chuột phải/Esc — hủy).`),
       ui: () => TOUCH.on && S.placeAt ? ['#placeBar [data-pb="ok"]'] : [], world,
       done: () => CUR.since('place', type) },
@@ -282,8 +283,9 @@ Object.assign(CUR, {
   place(box){
     const hbs = [...document.querySelectorAll('#hud .hb')].map(e => e.getBoundingClientRect()).filter(r => r.width > 0);
     const hudR = hbs.length ? max(...hbs.map(r => r.right)) : 0, hudB = hbs.length ? max(...hbs.map(r => r.bottom)) : 50;
-    const side = $('side'), sr = side && side.offsetParent !== null ? side.getBoundingClientRect() : null;
-    const sideL = sr && sr.width ? sr.left : innerWidth;
+    const side = $('side'), sr = side && getComputedStyle(side).display !== 'none' ? side.getBoundingClientRect() : null;
+    let sideL = sr && sr.width ? sr.left : innerWidth;
+    for (const q0 of [document.querySelector('#touch:not(.hidden) .tt'), $('devLab')]){ if (!q0 || getComputedStyle(q0).display === 'none') continue; const q = q0.getBoundingClientRect(); if (q.width && q.top < 70) sideL = min(sideL, q.left); }
     const band = sideL - hudR - 16;
     if (band >= 250){ box.style.left = (hudR + 8) + 'px'; box.style.top = (TOUCH.on ? 4 : 8) + 'px'; box.style.maxWidth = min(band, 520) + 'px'; box.style.width = ''; }
     else { box.style.left = '8px'; box.style.top = (hudB + (TOUCH.on ? 48 : 70)) + 'px'; box.style.maxWidth = min(sideL - 24, 380) + 'px'; }
@@ -303,8 +305,8 @@ Object.assign(CUR, {
       box.querySelector('[data-c="skip"]').title = tr('Пропустить совет', 'Skip this tip', 'Bỏ qua');
       box.querySelector('[data-c="off"]').title = tr('Выключить куратора', 'Turn the curator off', 'Tắt hướng dẫn');
       box.querySelector('[data-c="skip"]').style.display = cur ? '' : 'none';
-      this.place(box);
-    }
+      this.place(box); box._pt = S.rtime;
+    } else if (S.rtime - (box._pt || 0) > 0.5){ this.place(box); box._pt = S.rtime; }
     // рамка на кнопке интерфейса
     const fr = el.querySelector('.cfr');
     const ui = cur ? this.findUI(this.val(cur.s.ui, cur.c || {}, cur)) : null;

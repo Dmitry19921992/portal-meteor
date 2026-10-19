@@ -53,7 +53,6 @@ function p64Frame(dt){
   body.touch #touch .tt button{height:36px;font-size:12.5px;padding:0 10px}
   body.touch #touch .tt [data-t="map"]{display:block;background:rgba(40,90,50,.55);border-color:rgba(143,255,170,.7);color:#eaffef;font-weight:700}
   body.touch.m64rts #touch .tt [data-t="map"]{background:rgba(110,60,20,.6);border-color:rgba(255,190,120,.8);color:#fff2e0}
-  body.touch #devLab{top:auto;bottom:2px;right:auto;left:4px}
   body.touch.m64fps #kit{top:4px;right:156px;bottom:auto;transform:none}
   body.touch #obj{left:auto;right:300px;transform:none;max-width:250px}
   body.touch.m64fps #hint{top:80px;left:50%;right:auto;bottom:auto;transform:translateX(-50%);max-width:44vw;font-size:11px;padding:3px 8px}
@@ -62,9 +61,9 @@ function p64Frame(dt){
   body.touch.m64fps #feed > *:nth-last-child(n+3){display:none}
   body.touch #r61cards{top:50px}
   body.touch.m64rts #pstrip{top:84px;left:6px;max-width:calc(100vw - var(--sideW) - 40px)}
-  body.touch.m64rts.r61open #pstrip{top:104px}
+  body.touch.m64rts.r61open #pstrip{top:118px}
   body.touch.m64rts #feed{top:132px;max-width:30vw}
-  body.touch.m64rts.r61open #feed{top:150px}
+  body.touch.m64rts.r61open #feed{top:164px}
   body.touch #card .inf{min-width:160px}
   body.touch.m64rts #hint{top:128px;left:6px;right:auto;bottom:auto;transform:none;max-width:38vw}
   body.touch.m64rts.cur64 #hint{display:none !important}
@@ -82,6 +81,13 @@ function p64Frame(dt){
   body.touch.side64min #side{display:none !important}
   body.touch.side64min #sideTog{right:0;width:44px;height:48px}
   body.touch.side64min #card{right:52px}
+  body.touch #screen.scr-main h1{font-size:32px;line-height:1;margin:0 0 4px}
+  body.touch #screen .sub{font-size:11px;margin:2px 0 4px}
+  body.touch #screen .mcol > button{min-height:38px;padding:6px 12px;font-size:14px;margin:3px 0}
+  body.touch #screen .mcol > button.big{min-height:44px;font-size:17px}
+  body.touch #screen .diffrow button{min-height:34px;padding:4px 8px;font-size:12px}
+  body.touch #screen.scr-main .mcol{max-height:calc(100vh - 16px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+  body.touch #screen.scr-main .mcol.side{font-size:12px}
   @media (max-width:880px){
     body.touch #side .tabs button span{font-size:9.5px}
     body.touch #card{left:212px}
