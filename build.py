@@ -1,7 +1,7 @@
 import sys, os
 src = os.path.dirname(os.path.abspath(__file__)) + '/'
 r = lambda f: open(src + f, encoding='utf-8-sig').read()   # -sig: не тащим BOM из файлов, сохранённых PowerShell
-JS = ['world.js','i18n.js','game.js','ai.js','abil.js','tactics.js','progress.js','sim.js','vision.js','squad.js','save.js','camfx.js','tutorial.js','sidequests.js','touch.js','parkour.js','render.js','hints.js','ui.js','rts.js','uix.js','menu.js','audio.js','main.js']
+JS = ['world.js','i18n.js','game.js','ai.js','rts_build.js','abil.js','tactics.js','progress.js','sim.js','vision.js','squad.js','save.js','camfx.js','tutorial.js','sidequests.js','touch.js','parkour.js','render.js','hints.js','ui.js','rts.js','uix.js','menu.js','audio.js','main.js']
 html = r('head.html')
 html += '<script id="fs" type="x-shader/x-fragment">' + r('scene.glsl') + '</script>\n'
 html += '<script id="ps" type="x-shader/x-fragment">' + r('post.glsl') + '</script>\n<script>\n'

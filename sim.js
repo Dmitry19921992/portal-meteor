@@ -145,11 +145,6 @@ function update(rdt){
     b.seen[0] = max(0, b.seen[0] - dt); b.seen[1] = max(0, b.seen[1] - dt);
     builderStep(b, dt);
   }
-  for (const t of [0, 1]){
-    const T = S.teams[t];
-    T.builderT = max(0, T.builderT - dt);
-    if (S.builders.filter(b => b.team === t).length < 2 && T.builderT <= 0 && builderHome(t)){ makeBuilder(t); T.builderT = 20; }
-  }
   // ---- здания
   for (const b of [...S.buildings]){
     if (!b.alive) continue;
@@ -277,10 +272,11 @@ function update(rdt){
   }
   for (const t of [0, 1]){
     const T = S.teams[t];
-    T.income = (GAME.INC_BASE + GAME.INC_PT * surfOwned[t] + GAME.INC_CORE * coreOwned[t]) * GAME.INC_MUL * (t === 1 ? DK().eco : 1);
+    T.income = ecoIncome(t, surfOwned[t], coreOwned[t]);   // v6: штаб + точки + экстракторы (rts_build.js)
     T.ore += T.income * dt;
     T.cmdT = (T.cmdT || 0) + dt; if (T.cmdT > 75){ T.cmdT = 0; addCmd(t, 1); }
   }
+  ecoStep(dt);
 
   // ---- находки: склады и модули первой экспедиции (кто первым подошёл — тому руда)
   S.lootT = (S.lootT || 0) - dt;

@@ -15,7 +15,7 @@ const JET = {
 const GAME = {
   HQ_HP: 18000, MATCH: 3600, START_ORE: 450, SCRAP: 8, CAP_RATE: 0.1, RANGE: 90,
   INC_BASE: 2.3, INC_PT: 2.1, INC_CORE: 5, BASE_R: 125, CP_BUILD_R: 62,
-  MAX_SQUADS: 12, MAX_TANKS: 6, MAX_DRONES: 10, MAX_TURRETS: 10, MAX_AA: 5, MAX_OUTPOSTS: 3,
+  MAX_SQUADS: 12, MAX_TANKS: 6, MAX_DRONES: 10, MAX_TURRETS: 10, MAX_AA: 5, MAX_OUTPOSTS: 3, MAX_BUILDERS: 8,
   REINF_COST: 18, REINF_T: 6, POD_EVERY: 165, CMD_MAX: 12, INC_MUL: 1, WAVE_MUL: 1,
 };
 // масштаб боёв (настройка «Масштаб боёв»): доход, лимиты армий, капсулы, размер волн
@@ -24,10 +24,10 @@ const SCALES = [
   { n: ['Крупный', 'Large', 'Lớn'],             inc: 1.8, lim: 1.5, pod: 0.75, start: 700,  wave: 1.5 },
   { n: ['Эпичный', 'Epic', 'Hoành tráng'],      inc: 2.7, lim: 2,   pod: 0.55, start: 1000, wave: 2.2 },
 ];
-const LIM0 = { MAX_SQUADS: 12, MAX_TANKS: 6, MAX_DRONES: 10, MAX_TURRETS: 10, MAX_AA: 5, MAX_OUTPOSTS: 3 };
+const LIM0 = { MAX_SQUADS: 12, MAX_TANKS: 6, MAX_DRONES: 10, MAX_TURRETS: 10, MAX_AA: 5, MAX_OUTPOSTS: 3, MAX_BUILDERS: 8 };
 function applyScale(lvl){
   const K = SCALES[clamp(lvl | 0, 0, SCALES.length - 1)];
-  for (const k in LIM0) GAME[k] = Math.round(LIM0[k] * (k === 'MAX_OUTPOSTS' ? min(K.lim, 1.7) : K.lim));
+  for (const k in LIM0) GAME[k] = Math.round(LIM0[k] * (k === 'MAX_OUTPOSTS' ? min(K.lim, 1.7) : k === 'MAX_BUILDERS' ? min(K.lim, 1.5) : K.lim));
   GAME.INC_MUL = K.inc; GAME.START_ORE = K.start; GAME.POD_EVERY = 165 * K.pod; GAME.WAVE_MUL = K.wave;
 }
 // сложность: множители для Роя
@@ -82,6 +82,9 @@ const BTYPES = {
              d: ['Автономные боевые дроны.', 'Autonomous combat drones.', 'Drone chiến đấu tự hành.'] },
   airdock: { n: ['Аэродок', 'Airdock', 'Bến bay'],    cost: 350, time: 40, hp: 3000, rad: 7,   bound: 15,   H: 14.2, code: 10, req: 'factory', key: true,
              d: ['Небесный десант и «Ранцы II».', 'Sky troopers and "Jetpacks II".', 'Lính đổ bộ và “Ba lô phản lực II”.'] },
+  // v6: рудный экстрактор — ставится инженером только на рудную жилу (rts_build.js)
+  extractor: { n: ['Экстрактор', 'Extractor', 'Máy khai thác'], cost: 80, time: 14, hp: 900, rad: 2.4, bound: 4.6, H: 4.9, code: 12, vein: true,
+             d: ['Добывает руду на рудной жиле (светящиеся кристаллы): +60 руды/мин × масштаб боёв.', 'Mines ore on a vein (glowing crystals): +60 ore/min × battle scale.', 'Khai thác quặng trên mạch: +60 quặng/phút × quy mô.'] },
 };
 const PRODUCTS = {
   squad: { n: ['Штурмовой отряд', 'Assault squad', 'Đội xung kích'], cost: 100, time: 9,  at: ['hq', 'outpost'], icon: '◆' },
@@ -94,6 +97,9 @@ const PRODUCTS = {
   jet2:  { n: ['Ранцы II', 'Jetpacks II', 'Ba lô phản lực II'],           cost: 350, time: 70, at: ['airdock'], research: true, icon: '⇑' },
   armor:   { n: ['Броня', 'Armor', 'Giáp'],   cost: [250, 450, 700], time: [45, 70, 90], at: ['hq', 'outpost'], research: true, max: 3, icon: '⛨' },
   weapons: { n: ['Оружие', 'Weapons', 'Vũ khí'], cost: [250, 450, 700], time: [45, 70, 90], at: ['hq', 'outpost'], research: true, max: 3, icon: '✚' },
+  // v6: инженер-строитель и улучшение добычи
+  builder: { n: ['Инженер-строитель', 'Builder', 'Kỹ sư xây dựng'], cost: 50, time: 7, at: ['hq', 'outpost'], icon: '⚒' },
+  drill:   { n: ['Глубокое бурение', 'Deep drilling', 'Khoan sâu'], cost: [200, 350], time: [40, 60], at: ['hq'], research: true, max: 2, icon: '⛏' },
 };
 // множители урона: b пуля, m крупнокалиберная (турели), r ракета, s снаряд, f зенитка, g граната, a артиллерия, l рельса, x орбитальный
 const ARMOR = {
@@ -231,10 +237,13 @@ function builderHome(team){
   const op = S.buildings.find(b => b.alive && b.team === team && b.done && (b.type === 'outpost' || b.type === 'factory'));
   return op ? add(op.pos, mul(op.up, 18)) : null;
 }
-function makeBuilder(team){
-  const home = builderHome(team); if (!home) return null;
-  const e = makeBody(add(home, mul(randUnit(), 3)), 0.5);
-  Object.assign(e, { cls: 'builder', team, hp: 60, job: null, gr: RM, grT: 0, jet: null });
+// v6: инженер-строитель — наземный (парящий) юнит, которым командует игрок или ИИ (логика — rts_build.js)
+function makeBuilder(team, pos){
+  pos = pos || builderSpawn(team); if (!pos) return null;
+  const e = makeBody(surfacePoint(norm(pos), ECO.HOVER), 0.5);
+  const serial = 1 + S.builders.filter(b => b.team === team).reduce((m, b) => max(m, b.serial || 0), 0);
+  Object.assign(e, { cls: 'builder', team, hp: 120, order: 'idle', goal: null, site: null, jobs: [], abil: {}, manualUntil: 0, byPlayer: false, auto: false,
+                     serial, gr: 0, grT: 0, jet: null, work: 0, beam: null, vet: 0, focus: null, cp: null });
   e.maxhp = e.hp; e.aim = e.fwd;
   S.builders.push(e);
   return e;
@@ -264,7 +273,7 @@ function tankName(t){ return N2(TANK_NAME[t]); }
 
 // ---------- группы: отряд, танк или дрон ----------
 function isSquad(g){ return !!g && Array.isArray(g.units); }
-function groupOf(e){ if (!e) return null; if (e.cls === 'inf') return e.squad; if (e.cls === 'tank' || e.cls === 'drone') return e; return null; }
+function groupOf(e){ if (!e) return null; if (e.cls === 'inf') return e.squad; if (e.cls === 'tank' || e.cls === 'drone' || e.cls === 'builder') return e; return null; }
 function groupUnits(g){ return isSquad(g) ? g.units : (g ? [g] : []); }
 function groupAlive(g){ return isSquad(g) ? (g.units.length > 0 && S.squads.includes(g)) : !!(g && g.alive); }
 function groupsOf(team){ return [...S.squads.filter(s => s.team === team), ...S.vehicles.filter(v => v.team === team && v.alive), ...S.drones.filter(d => d.team === team && d.alive)]; }
@@ -272,6 +281,7 @@ function groupLabel(g){
   if (!g) return '';
   if (isSquad(g)) return (g.solo ? N2(ROLES[g.solo].n) : g.elite ? tr('Десант', 'Sky squad', 'Đội đổ bộ') : tr('Отряд', 'Squad', 'Đội')) + ' ' + g.id;
   if (g.cls === 'tank') return tr('Танк', 'Tank', 'Xe tăng') + ' ' + g.serial;
+  if (g.cls === 'builder') return tr('Инженер', 'Builder', 'Kỹ sư') + ' ' + (g.serial || '');
   return tr('Дрон', 'Drone', 'Drone') + ' ' + g.serial;
 }
 function groupHP(g){ let h = 0, m = 0; for (const u of groupUnits(g)){ h += max(0, u.hp); m += u.maxhp; } return m ? h / m : 0; }
@@ -422,7 +432,7 @@ function hitRadius(e){
   if (e.cls === 'inf') return e.crouch ? 0.6 : 0.8;
   if (e.cls === 'tank') return 2.4;
   if (e.cls === 'drone') return 1.1;
-  if (e.cls === 'builder') return 0.7;
+  if (e.cls === 'builder') return 0.9;
   if (e.cls === 'hq') return 14;
   return e.rad;
 }
@@ -615,8 +625,9 @@ function destroy(e, src){
     if (e === S.me){ S.me = null; }
   } else if (e.cls === 'builder'){
     fxExplosion(e.pos, 1);
-    S.builders.splice(S.builders.indexOf(e), 1);
-    S.teams[e.team].builderT = 20;
+    S.builders.splice(S.builders.indexOf(e), 1); S.sel.delete(e);
+    scrap(10);
+    if (e.team === 0 && !S.attract){ feed(tr(`Потерян ${groupLabel(e).toLowerCase()}`, `${groupLabel(e)} lost`, `Mất ${groupLabel(e)}`), '#f88'); if (S.mode === 'rts') pushAlert(e.pos); }
   } else if (e.cls === 'bld'){
     fxExplosion(bldCenter(e), e.type === 'turret' || e.type === 'aa' ? 3 : 5);
     for (let k = 0; k < 3; k++) fxSmoke(add(bldCenter(e), mul(randUnit(), e.rad * 0.5)), e.rad * 0.4, 0.15);
@@ -670,6 +681,8 @@ function keyBuildings(team){ return S.buildings.filter(b => b.alive && b.team ==
 function siteProblem(team, type, dir){
   const T = BTYPES[type];
   dir = norm(dir);
+  if (T.vein) return veinSiteProblem(team, dir);   // v6: экстрактор — только на рудной жиле
+  for (const v of veins()) if (surfDist(dir, v.dir) < 5 + T.rad) return tr('Здесь рудная жила — сюда только экстрактор', 'Ore vein here — extractors only', 'Đây là mạch quặng — chỉ đặt máy khai thác');
   const home = BASES[team];
   const dHome = RM * acos(clamp(dot(dir, home), -1, 1));
   let ok = S.hq[team].alive && dHome < GAME.BASE_R;
@@ -702,14 +715,19 @@ function canBuild(team, type){
   if (type === 'aa' && n >= GAME.MAX_AA) return tr('Лимит ПВО', 'Anti-air limit', 'Đã đạt giới hạn phòng không');
   if (type === 'outpost' && n >= GAME.MAX_OUTPOSTS) return tr('Лимит форпостов', 'Outpost limit', 'Đã đạt giới hạn tiền đồn');
   if ((type === 'factory' || type === 'hub' || type === 'airdock') && n >= (type === 'factory' ? 2 : 1)) return tr('Уже построено', 'Already built', 'Đã xây rồi');
-  if (!S.builders.some(b => b.team === team)) return tr('Нет дронов-строителей', 'No builder drones', 'Không có drone thợ xây');
+  if (!S.builders.some(b => b.team === team && b.alive)) return tr('Нет инженеров-строителей', 'No builders', 'Không có kỹ sư xây dựng');
   return null;
 }
+// ставит чертёж (стройплощадку). Строят её инженеры (rts_build.js). S.lastSite — созданная стройка
 function placeBuilding(team, type, dir){
+  let vein = null;
+  if (BTYPES[type].vein){ vein = nearestVein(dir, 14); if (vein) dir = vein.dir; }
   const why = canBuild(team, type) || siteProblem(team, type, dir);
   if (why) return why;
   S.teams[team].ore -= BTYPES[type].cost;
   const b = makeBuilding(type, team, dir);
+  if (vein) b.vein = vein.i;
+  S.lastSite = b;
   emit('place', { b });
   return null;
 }
@@ -730,6 +748,7 @@ function countProduct(team, key){
   if (key === 'squad' || key === 'elite') n += S.squads.filter(s => s.team === team).length;
   if (key === 'tank') n += S.vehicles.filter(v => v.team === team).length;
   if (key === 'drone') n += S.drones.filter(d => d.team === team).length;
+  if (key === 'builder') n += S.builders.filter(b => b.team === team && b.alive).length;
   return n;
 }
 function canProduce(team, key){
@@ -743,6 +762,7 @@ function canProduce(team, key){
   if ((key === 'squad' || key === 'elite') && S.squads.filter(s => s.team === team).length + countQueued(team, ['squad', 'elite']) >= GAME.MAX_SQUADS) return tr('Лимит отрядов', 'Squad limit', 'Đã đạt giới hạn đội');
   if (key === 'tank' && countProduct(team, 'tank') >= GAME.MAX_TANKS) return tr('Лимит танков', 'Tank limit', 'Đã đạt giới hạn xe tăng');
   if (key === 'drone' && countProduct(team, 'drone') >= GAME.MAX_DRONES) return tr('Лимит дронов', 'Drone limit', 'Đã đạt giới hạn drone');
+  if (key === 'builder' && countProduct(team, 'builder') >= GAME.MAX_BUILDERS) return tr(`Лимит инженеров (${GAME.MAX_BUILDERS})`, `Builder limit (${GAME.MAX_BUILDERS})`, `Đã đạt giới hạn kỹ sư (${GAME.MAX_BUILDERS})`);
   if (site.queue.length >= 5) return tr('Очередь заполнена', 'Queue is full', 'Hàng chờ đã đầy');
   return null;
 }
@@ -758,7 +778,9 @@ function produce(team, key){
   const why = canProduce(team, key);
   if (why) return why;
   S.teams[team].ore -= pCost(team, key);
-  productionSite(team, key).queue.push(key);
+  const q = productionSite(team, key).queue;
+  if (key === 'builder') q.splice(min(1, q.length), 0, key);   // v6: инженер — сразу после текущего заказа
+  else q.push(key);
   return null;
 }
 function cancelProduct(site, idx){
@@ -800,7 +822,10 @@ function finishProduct(site, key){
   } else if (key === 'pod'){
     launchPod(t, frontlineDir(t), false, 'buy');
     if (t === 0 && !S.attract){ feed(tr('Капсула с отрядом летит к линии фронта', 'A squad pod is falling to the front line', 'Khoang chở đội đang rơi xuống tiền tuyến'), TEAM[0].css); emit('radio', { text: tr('Орбита: капсула сброшена', 'Orbit: pod away', 'Quỹ đạo: đã thả khoang'), pri: 0 }); }
-  } else if (key === 'armor' || key === 'weapons'){
+  } else if (key === 'builder'){
+    made = makeBuilder(t, surfacePoint(norm(siteExit(site, 3)), ECO.HOVER));
+    if (made && t === 0 && !S.attract) feed(tr(`${groupLabel(made)} готов к работе`, `${groupLabel(made)} ready for work`, `${groupLabel(made)} sẵn sàng`), TEAM[0].css);
+  } else if (key === 'armor' || key === 'weapons' || key === 'drill'){
     const T = S.teams[t]; T[key] = (T[key] || 0) + 1;
     if (t === 0 && !S.attract){ feed(tr(`Исследование завершено: ${pname(key)} ${'I'.repeat(T[key])}`, `Research complete: ${pname(key)} ${'I'.repeat(T[key])}`, `Nghiên cứu xong: ${pname(key)} ${'I'.repeat(T[key])}`), TEAM[0].css); emit('radio', { text: tr(`Исследование завершено. ${pname(key)}, уровень ${T[key]}`, `Research complete. ${pname(key)}, level ${T[key]}`, `Nghiên cứu xong. ${pname(key)}, cấp ${T[key]}`), pri: 1 }); }
   } else if (key === 'jet2'){
@@ -851,7 +876,7 @@ function newMatch(opts){
   S.storm = null; S.stormT = 300 + random() * 240;
   S.sel.clear();
   S.teams = [0, 1].map(t => ({ ore: GAME.START_ORE, ai: t === 1 ? true : (opts.attract ? true : (opts.ai !== undefined ? opts.ai : true)), think: 1 + t, income: 0, jet2: false, builderT: 0,
-                               waveT: 150 + random() * 60, skyT: 0, droneGoal: null, lastAlert: -99, cmd: 2, cmdAcc: 0, podT: 90 + t * 20, powT: 30, armor: 0, weapons: 0 }));
+                               waveT: 150 + random() * 60, skyT: 0, droneGoal: null, lastAlert: -99, cmd: 2, cmdAcc: 0, podT: 90 + t * 20, powT: 30, armor: 0, weapons: 0, drill: 0, autoBuild: true }));
   S.hq = [0, 1].map(t => ({ cls: 'hq', team: t, pos: mul(BASES[t], RM + 5), hp: GAME.HQ_HP, maxhp: GAME.HQ_HP, cd: 0, alive: true,
                             queue: [], prodT: 0, seen: [0, 0], flash: 0, aim: anyTangent(BASES[t]), lastHit: -99, rally: null, up: BASES[t], fwd: anyTangent(BASES[t]) }));
   S.cps = CPD.map((d, i) => ({ i, dir: d, pos: mul(d, RM + 1), beacon: mul(d, RM + 11.5), prog: 0, owner: -1, core: false, name: 'ABCDEF'[i] }));
@@ -861,8 +886,9 @@ function newMatch(opts){
     const b = BASES[t], ta = anyTangent(b);
     const v = makeTank(surfacePoint(offsetOnSphere(b, ta, 40 * (t ? -1 : 1)), 1.5), t);
     v.fwd = tangent(sub(v.pos, mul(b, RM)), v.up); v.aim = v.fwd;
-    makeBuilder(t); makeBuilder(t);
+    makeBuilder(t); makeBuilder(t);   // v6: пара инженеров-строителей с начала боя
   }
+  ecoReset();
   ADAPT.v *= 0.6; ADAPT.t = 0; ADAPT.kills = ADAPT.deaths = ADAPT.shots = ADAPT.hits = 0; adaptCalc();
   PROG.newMatch();
   TACT.reset();

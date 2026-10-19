@@ -180,7 +180,11 @@ function uixNorm(r){
 // главный вход: объяснение для действия (ok, reason, detail[], eta, progress, fixes[] + название/значок/описание)
 function uiExplain(id){
   let r = null;
-  if (typeof rtsReason === 'function'){ try { r = uixNorm(rtsReason(id)); } catch (e){ r = null; } }
+  // v6: причины ветки rts (стройка инженерами, производство, удары) — главнее; act → кнопка-исправление
+  if (typeof rtsReason === 'function' && /^(build|prod|power):/.test(id)){
+    try { const rr = rtsReason(id.replace(/^prod:/, 'produce:'));
+      if (rr && !rr.ok){ const act = rr.act ? rr.act.replace(/^produce:/, 'prod:') : null; r = uixNorm({ ok: false, reason: rr.reason, fix: act ? [act, rr.fix].filter(Boolean) : rr.fix }); } } catch (e){ r = null; }
+  }
   if (!r) for (const p of UIX.providers){ try { r = uixNorm(p(id)); } catch (e){ r = null; } if (r) break; }
   return Object.assign({ id, ok: true, detail: [], fixes: [] }, uixInfo(id), r || {});
 }
