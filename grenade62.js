@@ -319,7 +319,7 @@ const G62 = {
     g.font = `600 ${Math.round(12 * fs)}px "Exo 2", Consolas, sans-serif`; g.fillStyle = `rgba(235,225,195,${0.92 * a})`;
     const K = S.kit, L = [
       h.under ? tr('ПОД НОГИ', 'UNDERHAND', 'NÉM THẤP') : `${tr('СИЛА', 'POWER', 'LỰC')} ${Math.round(h.power * 100)}%`,
-      tc ? tr('палец по G — угол', 'drag on G — angle', 'kéo trên G — góc') : tr('колесо — сила · ПКМ — под ноги', 'wheel — power · RMB — underhand', 'con lăn — lực · chuột phải — ném thấp'),
+      tc ? (typeof M67 !== 'undefined' && M67.active() ? tr('веди пальцем — угол', 'drag your finger — angle', 'kéo ngón — góc') : tr('палец по G — угол', 'drag on G — angle', 'kéo trên G — góc')) : tr('колесо — сила · ПКМ — под ноги', 'wheel — power · RMB — underhand', 'con lăn — lực · chuột phải — ném thấp'),
       tr('отпусти — бросок', 'release — throw', 'thả — ném'),
       `${tr('взрыв', 'fuse', 'nổ sau')} ${G62.FUSE} ${tr('с', 's', 'giây')} · ${tr('гранат', 'left', 'còn')} ${K.gren}`,
     ];

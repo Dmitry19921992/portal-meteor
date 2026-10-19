@@ -68,7 +68,7 @@ const TOUCH = {
       // стрельба с одновременным поворотом: тянем палец по кнопке огня
       if (t === 'fire') b.addEventListener('touchmove', e => {
         e.preventDefault();
-        for (const tc of e.changedTouches) if (this.fireT && tc.identifier === this.fireT.id){ lookBy((tc.clientX - this.fireT.x) * 1.4, (tc.clientY - this.fireT.y) * 1.4); this.fireT.x = tc.clientX; this.fireT.y = tc.clientY; }
+        for (const tc of e.changedTouches) if (this.fireT && tc.identifier === this.fireT.id){ lookBy((tc.clientX - this.fireT.x) * 1.4 * (this.sens || 1), (tc.clientY - this.fireT.y) * 1.4 * (this.sens || 1)); this.fireT.x = tc.clientX; this.fireT.y = tc.clientY; }
       }, { passive: false });
     });
     canvas.addEventListener('touchstart', e => this.start(e), { passive: false });
@@ -116,10 +116,15 @@ const TOUCH = {
       const x = tc.clientX, y = tc.clientY;
       if (S.mode === 'rts' && this.mmId === tc.identifier){ const d = minimapDir(x, y); if (d) rtsLookAt(d); continue; }   // палец по миникарте — камера следом
       if (this.joy && tc.identifier === this.joy.id){
-        let dx = (x - this.joy.x0) / 55, dy = (y - this.joy.y0) / 55; const l = hypot(dx, dy); if (l > 1){ dx /= l; dy /= l; }
+        let dx = (x - this.joy.x0) / 55, dy = (y - this.joy.y0) / 55; let l = hypot(dx, dy);
+        if (this.follow){   // v6.7: палец ушёл далеко — основа джойстика едет за ним (как в PUBG Mobile); мёртвая зона
+          if (l > 1.35){ const k = (l - 1.35) / l; this.joy.x0 += (x - this.joy.x0) * k; this.joy.y0 += (y - this.joy.y0) * k; dx = (x - this.joy.x0) / 55; dy = (y - this.joy.y0) / 55; l = hypot(dx, dy); }
+          if (l < 0.12){ dx = 0; dy = 0; l = 0; }
+        }
+        if (l > 1){ dx /= l; dy /= l; }
         this.move = [dx, -dy]; this.showJoy(this.joy.x0, this.joy.y0, dx, dy);
       } else if (this.look && tc.identifier === this.look.id){
-        lookBy((x - this.look.x) * 1.5, (y - this.look.y) * 1.5); this.look.x = x; this.look.y = y;
+        lookBy((x - this.look.x) * 1.5 * (this.sens || 1), (y - this.look.y) * 1.5 * (this.sens || 1)); this.look.x = x; this.look.y = y;
       } else if (this.rts && tc.identifier === this.rts.id){
         const dx = x - this.rts.x, dy = y - this.rts.y;
         this.rts.x = x; this.rts.y = y; S.mouse = [x, y];
@@ -133,7 +138,7 @@ const TOUCH = {
     e.preventDefault();
     for (const tc of e.changedTouches){
       if (this.mmId === tc.identifier) this.mmId = null;
-      if (this.joy && tc.identifier === this.joy.id){ this.joy = null; this.move = [0, 0]; $('tjoy').style.display = 'none'; }
+      if (this.joy && tc.identifier === this.joy.id){ this.joy = null; this.move = [0, 0]; if (this.fadeJoy) this.fadeJoy(); else $('tjoy').style.display = 'none'; }
       if (this.look && tc.identifier === this.look.id) this.look = null;
       if (this.rts && tc.identifier === this.rts.id){
         clearTimeout(this.longT);

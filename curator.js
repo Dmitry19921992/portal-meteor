@@ -133,9 +133,9 @@ const CUR_STEPS = [
     () => curL('Закажи «Штурмовой отряд» в панели штаба.', 'Order an "Assault squad" in the HQ panel.', 'Gọi “Đội xung kích” trong bảng sở chỉ huy.'), 60),
   // захват точек
   { id: 'cap_sel', pri: 450, cool: 90, when: c => c.myPts < 2 && !!c.cp && c.squads.length > 0 && !c.sel.length,
-    text: () => TOUCH.on ? curL('Точки дают руду. Выдели отряд — тап по нему или карточка «◆ Армия» сверху.', 'Points give ore. Select a squad — tap it or the "◆ Army" card at the top.', 'Điểm cho quặng. Chọn một đội.')
+    text: () => TOUCH.on && typeof M67 !== 'undefined' && M67.active() ? curL('Точки дают руду. Выдели отряд — тап по нему или кнопка «◈ Отряд» справа.', 'Points give ore. Select a squad — tap it or the "◈ Squad" button on the right.', 'Điểm cho quặng. Chọn một đội.') : TOUCH.on ? curL('Точки дают руду. Выдели отряд — тап по нему или карточка «◆ Армия» сверху.', 'Points give ore. Select a squad — tap it or the "◆ Army" card at the top.', 'Điểm cho quặng. Chọn một đội.')
       : curL('Точки дают руду. Выдели отряд — клик по нему или карточка в панели «◆ Армия» слева.', 'Points give ore. Select a squad — click it or its card in the "◆ Army" panel on the left.', 'Điểm cho quặng. Chọn một đội — nhấp vào đội hoặc thẻ bên trái.'),
-    ui: ['#r61cards .rc', '#r61cards .rh button'], world: c => { const L = c.squads[0] && leaderPos(c.squads[0]); return L ? { pos: L, label: groupLabel(c.squads[0]).toUpperCase() } : null; },
+    ui: ['#r61cards .rc', '#r61cards .rh button', '#m67rail .m67sq'], world: c => { const L = c.squads[0] && leaderPos(c.squads[0]); return L ? { pos: L, label: groupLabel(c.squads[0]).toUpperCase() } : null; },
     done: c => c.sel.length > 0 },
   { id: 'cap_go', pri: 451, cool: 90, when: c => c.myPts < 2 && !!c.cp && c.sel.length > 0,
     text: c => TOUCH.on ? curL(`Долгий тап по точке ${c.cp.name} — отряд пойдёт захватывать.`, `Long-tap point ${c.cp.name} — the squad goes to capture it.`, `Chạm giữ điểm ${c.cp.name} — đội sẽ đi chiếm.`)

@@ -120,13 +120,14 @@ try {
 const CUR66 = { lastVoice: -99, lastOk: -99 };
 function cur66Goal(c){
   const my = t => S.buildings.filter(b => b.alive && b.team === 0 && b.type === t);
-  if (!c.bs.length) return tr('закажи инженера в штабе (кликни по штабу)', 'train a builder at the HQ (click the HQ)', 'huấn luyện kỹ sư ở sở chỉ huy');
-  if (typeof g66Gatherers === 'function' && !g66Gatherers(0).length) return tr('отправь инженера на зелёные кристаллы ◆ — ПКМ по ним', 'send a builder to the green ◆ crystals — RMB them', 'gửi kỹ sư tới tinh thể ◆');
+  if (!c.bs.length) return TOUCH.on ? tr('закажи инженера в штабе (тапни по штабу)', 'train a builder at the HQ (tap the HQ)', 'huấn luyện kỹ sư ở sở chỉ huy') : tr('закажи инженера в штабе (кликни по штабу)', 'train a builder at the HQ (click the HQ)', 'huấn luyện kỹ sư ở sở chỉ huy');
+  if (typeof g66Gatherers === 'function' && !g66Gatherers(0).length) return TOUCH.on ? tr('отправь инженера на зелёные кристаллы ◆ — долгий тап по ним', 'send a builder to the green ◆ crystals — long-tap them', 'gửi kỹ sư tới tinh thể ◆') : tr('отправь инженера на зелёные кристаллы ◆ — ПКМ по ним', 'send a builder to the green ◆ crystals — RMB them', 'gửi kỹ sư tới tinh thể ◆');
   if (!my('barracks').length) return tr('построй Казарму ⚔ инженером — без неё нет пехоты', 'build Barracks ⚔ with a builder — no infantry without it', 'xây Doanh trại ⚔');
   if (!c.ext.length) return tr('поставь Экстрактор ⛏ на жилу — он добывает сам', 'put an Extractor ⛏ on a vein — it mines by itself', 'đặt Máy khai thác ⛏');
   if (c.squads.length < 3) return tr('закажи отряды в Казарме', 'order squads at the Barracks', 'gọi đội ở Doanh trại');
   if (!c.factory.length) return tr('построй Мехзавод ⚙ — танки и техника', 'build a Mech factory ⚙ — tanks and vehicles', 'xây Nhà máy ⚙');
   if (c.myPts < 3) return tr('захвати точки — они дают доход', 'capture points — they pay income', 'chiếm điểm');
+  if (TOUCH.on) return tr('держи точки и дави Рой; «⟳ Автономно» — пусть воюют сами', 'hold points and push the Swarm; "⟳ Autonomous" lets units fight on their own', 'giữ điểm và tấn công');
   return tr('держи точки и дави Рой; «⟳ Автономно» (O) — пусть воюют сами', 'hold points and push the Swarm; "⟳ Autonomous" (O) lets units fight on their own', 'giữ điểm và tấn công');
 }
 {
