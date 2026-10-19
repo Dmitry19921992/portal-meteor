@@ -582,7 +582,7 @@ function reinforcePoint(sq){
 }
 function reinforceStep(dt){
   for (const sq of S.squads){
-    if (sq.units.length >= 4 || sq.order === 'sky' || sq.solo) continue;
+    if (sq.units.length >= 4 || sq.order === 'sky' || sq.solo || sq.lone) continue;
     sq.reinfT = (sq.reinfT || 0) - dt;
     if (sq.reinfT > 0) continue;
     sq.reinfT = 1;
@@ -614,6 +614,10 @@ function podStep(p, dt){
   if (random() < 0.7) S.fx.push({ type: 'fire', pos: p.pos, r0: 0.9, r1: 2.2, life: 0.35, t: 0, inten: 0.8 });
   if (random() < 0.35) S.fx.push({ type: 'smoke', pos: p.pos, vel: mul(randUnit(), 0.4), r0: 1.2, r1: 4, life: 3.5, t: 0, grey: 0.25, dens: 0.9, heat: 0.4 });
   addLight(p.pos, [6, 3, 1.2], 26, 0.05, 0.01);
+  if (k >= 1 && p.carry){   // капсула переброски игрока: бойцы уже на месте, только удар о землю
+    fxExplosion(p.to, 1.8); splash(p.to, p.team, 90, 6, S.me, 'g'); S.shake = max(S.shake, 0.6);
+    p.done = true; return null;
+  }
   if (k >= 1){
     fxExplosion(p.to, 2.6);
     splash(p.to, p.team, 140, 7, null, 'g');

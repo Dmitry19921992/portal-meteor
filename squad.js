@@ -142,7 +142,7 @@ const SQUADUI = {
       return `<div class="sm ${u === S.me ? 'me' : ''} ${talk ? 'talk' : ''} ${hp < 0.35 ? 'low' : ''}"><img src="${this.portrait(u)}"><div><b>${callsign(u)} <span class="role">${roleOf(u).icon}</span>${u.elite ? ' ✦' : ''}</b><small>${st || N2(roleOf(u).n).toLowerCase()}</small><i><s style="width:${(hp * 100).toFixed(0)}%"></s></i></div></div>`;
     }).join('');
     const lines = this.lines.filter(l => now - l.t < 6).map(l => `<p><b>${l.name}:</b> ${l.text}</p>`).join('');
-    const h = `<h5>${groupLabel(sq).toUpperCase()}${sq.vet ? ' ' + '★'.repeat(sq.vet) : ''} · ${orderText(sq)}</h5>${rows}<div class="chat">${lines}</div>`;
+    const h = `<h5>${groupLabel(sq).toUpperCase()}${sq.vet ? ' ' + '★'.repeat(sq.vet) : ''} · ${orderText(sq)}</h5>${typeof MISSION !== 'undefined' ? MISSION.chip() : ''}${rows}<div class="chat">${lines}</div>`;
     if (h !== this.sig){ this.sig = h; el.innerHTML = h; }
   },
 };

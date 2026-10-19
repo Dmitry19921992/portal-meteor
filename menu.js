@@ -54,8 +54,13 @@ const MENU = {
     else if (this.cur === 'main' || this.cur === 'end') return;
     else this.close();
   },
-  pause(){ if (S.attract) return; S.paused = true; this.stack = []; this.show('pause'); AU.duck(true); },
-  resume(){ S.paused = false; this.close(); AU.duck(false); if (S.mode === 'fps') lockMouse(); },
+  pause(){ if (S.attract) return; S.paused = true; this.stack = []; this.openedAt = performance.now(); this.show('pause'); AU.duck(true); },
+  // v6: Chrome не даёт захватить мышь по нажатию Esc — тогда игра ждёт клика по оверлею «кликни, чтобы продолжить»
+  resume(){
+    this.close(); AU.duck(false);
+    if (S.mode === 'fps' && !S.attract && !TOUCH.on && !isLocked()){ S.paused = true; this.waitLock = true; lockMouse(); updateModeUI(); }
+    else S.paused = false;
+  },
   newGame(tutorial){
     S.paused = false;
     TUT.on = false; $('tut').style.display = 'none';
@@ -67,15 +72,15 @@ const MENU = {
     lockMouse();
     emit('radio', { text: tr('Связь установлена. Стратег на линии. Удачи, боец.', 'Comms online. The strategist is on the line. Good luck, trooper.', 'Liên lạc thông suốt. Chiến lược gia đang trực. Chúc may mắn, chiến binh.'), pri: 2 });
   },
-  loadGame(){
-    S.paused = false;
-    if (!SAVE.load()){ this.show(this.cur); return; }
+  loadGame(slot){
+    S.paused = false; this.waitLock = false;
+    if (!SAVE.load(slot)){ this.show(this.cur); return; }
     buildSidebar(); S.endShown = false; SAVE.lastAuto = S.time;
     this.close(); AU.duck(false);
     if (S.mode === 'fps') lockMouse();
     emit('radio', { text: tr('Связь восстановлена. Продолжаем бой.', 'Comms restored. Resuming the battle.', 'Liên lạc đã khôi phục. Tiếp tục chiến đấu.'), pri: 2 });
   },
-  toMenu(){ S.paused = false; TUT.on = false; newMatch({ attract: true }); unlockMouse(); this.stack = []; this.show('main'); AU.duck(false); },
+  toMenu(){ S.paused = false; this.waitLock = false; TUT.on = false; newMatch({ attract: true }); unlockMouse(); this.stack = []; this.show('main'); AU.duck(false); },
   applyLang(){
     applySettings(); this.save();
     $('clicklock').innerHTML = `<div>${tr('Кликни, чтобы вернуться в бой', 'Click to return to the fight', 'Nhấp để quay lại trận')}</div><small>${tr('Esc — меню', 'Esc — menu', 'Esc — menu')}</small>`;
@@ -94,6 +99,7 @@ const MENU = {
       <div class="diffrow">${[[true, tr('Бесконечный бой', 'Endless war', 'Chiến tranh bất tận')], [false, tr('Матч 60 минут', '60-minute match', 'Trận 60 phút')]].map(([v, n]) => `<button class="${SET.endless === v ? 'cur' : ''}" data-ch="endless" data-v="${v}">${n}</button>`).join('')}</div>
       <div class="diffrow">${SCALES.map((k, i) => `<button class="${SET.battle === i ? 'cur' : ''}" data-ch="battle" data-v="${i}" title="${tr('масштаб боёв', 'battle scale', 'quy mô trận')}">${N2(k.n)}</button>`).join('')}</div>
       ${SAVE.has() ? this.btn('load', tr('Продолжить сохранённый бой', 'Continue saved battle', 'Tiếp tục trận đã lưu') + ` <small style="opacity:.6">${SAVE.info()}</small>`) : ''}
+      ${this.btn('saves', tr('Сохранения: список, экспорт, импорт', 'Saves: list, export, import', 'Bản lưu: danh sách, xuất, nhập'))}
       ${this.btn('tutorial', tr('Обучение', 'Training', 'Huấn luyện'))}
       ${this.btn('cinema', tr('Кино-режим: бот играет сам', 'Cinema mode: bots play by themselves', 'Chế độ điện ảnh: bot tự chơi'))}
       ${this.btn('settings', tr('Настройки', 'Settings', 'Cài đặt'))}
@@ -126,7 +132,8 @@ const MENU = {
       <p class="sub">${PROG.rankName()} · ${PROG.xp} XP · ${tr('убито', 'kills', 'hạ')} ${PROG.matchKills} · ${fmtTime(S.time)}</p>
       ${this.btn('resume', tr('Продолжить', 'Resume', 'Tiếp tục'), 'big')}
       ${this.btn('save', tr('Сохранить бой', 'Save battle', 'Lưu trận'))}
-      ${SAVE.has() ? this.btn('load', tr('Загрузить сохранение', 'Load save', 'Tải bản lưu') + ` <small style="opacity:.6">${SAVE.info()}</small>`) : ''}
+      ${this.btn('saves', tr('Сохранения и загрузка…', 'Saves & loading…', 'Lưu & tải…'))}
+      ${typeof MISSION !== 'undefined' ? MISSION.modeRows() : ''}
       ${this.btn('settings', tr('Настройки', 'Settings', 'Cài đặt'))}
       ${this.btn('controls', tr('Управление и проверка клавиш', 'Controls & key test', 'Điều khiển & kiểm tra phím'))}
       <div class="diffrow">${LANGS.map(([c, n]) => `<button class="lbtn ${SET.lang === c ? 'cur' : ''}" data-lang="${c}">${n}</button>`).join('')}</div>
@@ -179,6 +186,9 @@ const MENU = {
       ${row(tr('Масштаб боёв (новый матч)', 'Battle scale (new match)', 'Quy mô trận (trận mới)'), ch('battle', SCALES.map((k, i) => [i, N2(k.n)])))}
       ${row(tr('Туман войны в стратегии', 'Fog of war in strategy', 'Sương mù chiến tranh'), tog('fog'))}
       ${row(tr('Переговоры отряда', 'Squad chatter', 'Đồng đội trò chuyện'), tog('chatter'))}
+      ${row(tr('Радиоэфир стратега', 'Strategist radio', 'Bộ đàm chiến lược gia'), ch('radioLvl', [[2, tr('полный', 'full', 'đầy đủ')], [1, tr('важное', 'important', 'quan trọng')], [0, tr('тишина', 'silent', 'im lặng')]]))}
+      ${row(tr('Приказы стратега', 'Strategist orders', 'Lệnh chiến lược gia'), ch('ordersFree', [[false, tr('следовать', 'follow', 'theo lệnh')], [true, tr('свобода действий', 'free play', 'tự do')]]))}
+      ${row(tr('Отряд', 'Squad', 'Đội'), ch('solo', [[false, tr('со мной', 'with me', 'đi cùng')], [true, tr('действую один', 'going solo', 'một mình')]]))}
       ${row(tr('Все способности сразу (тест)', 'All abilities unlocked (test)', 'Mở khóa mọi kỹ năng (thử nghiệm)'), tog('unlockAll'))}
       </div></div>
       ${this.btn('back', tr('Назад', 'Back', 'Quay lại'), 'big')}</div>`;
@@ -210,12 +220,14 @@ const MENU = {
     on('load', () => this.loadGame());
     on('tutorial', () => this.newGame(true));
     on('cinema', () => { AU.init(); OPER.begin({ aspect: '16:9' }); });
-    on('save', () => { const ok = SAVE.save(); feed(ok ? tr('Бой сохранён', 'Battle saved', 'Đã lưu trận') : tr('Не удалось сохранить', 'Save failed', 'Lưu thất bại'), ok ? TEAM[0].css : '#f88'); this.show('pause'); });
+    on('save', () => { const slot = SAVE.freeSlot(), ok = SAVE.save(slot); feed(ok ? tr('Бой сохранён: ', 'Battle saved: ', 'Đã lưu trận: ') + SAVE.slotName(slot) : tr('Не удалось сохранить', 'Save failed', 'Lưu thất bại'), ok ? TEAM[0].css : '#f88'); this.show('pause'); });
     on('restart', () => this.newGame());
     on('resume', () => this.resume());
     on('settings', () => this.show('settings', true));
     on('controls', () => this.show('controls', true));
-    on('menu', () => this.toMenu());
+    on('menu', () => { if (this.cur === 'pause' && typeof MISSION !== 'undefined') this.show('quit', true); else this.toMenu(); });
+    on('saves', () => this.show('saves', true));
+    if (typeof MISSION !== 'undefined') MISSION.wireMenu(name);
     on('back', () => this.back());
     el0().querySelectorAll('[data-lang]').forEach(b => b.onclick = e => { e.stopPropagation(); SET.lang = b.dataset.lang; this.applyLang(); this.show(this.cur); });
     on('resetbind', () => { SET.bind = Object.assign({}, BIND_DEF); this.save(); this.show('controls'); });

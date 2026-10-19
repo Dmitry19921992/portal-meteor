@@ -96,7 +96,7 @@ const SIDEQ = {
   skyRoute(c){
     this.sky = null;
     if (c.cls !== 'inf' || underground(c.pos)) return;
-    const goal = TACT.navPos(); if (!goal || len(goal) < 80) return;
+    const goal = (typeof MISSION !== 'undefined' && MISSION.navPos()) || TACT.navPos(); if (!goal || len(goal) < 80) return;
     const J = c.jet; if (!J || J.thrust < 10) return;     // ранец должен достать до купола
     const dNow = surfDist(c.pos, goal), dSky = surfDist(mul(c.pos, -1), goal) + 120;
     if (dNow < 420 || dSky > dNow - 220) return;
@@ -106,14 +106,15 @@ const SIDEQ = {
   card(){
     const q = this.q; if (!q) return '';
     const c = ctrlEntity(), p = this.pos();
-    const d = p && c ? Math.round(dist(p, c.pos)) : 0;
+    const d = p && c ? Math.round(surfDist(p, c.pos)) : 0;
     const extra = q.kind === 'beacon' && q.prog > 0 ? ` · ${Math.round(q.prog * 100)}%` : q.kind === 'rescue' ? ` · ${tr('врагов', 'foes', 'địch')} ${q.foes.length}` : '';
-    return `<small>${tr('ПОБОЧНАЯ ЗАДАЧА', 'SIDE TASK', 'NHIỆM VỤ PHỤ')} · +${q.xp} XP</small><b>${this.title(q)}</b><em>${d} ${tr('м', 'm', 'm')}${extra}</em>`;
+    const trk = typeof MISSION !== 'undefined' ? (MISSION.nav && MISSION.nav.mode === 'side' ? ' · ' + tr('маршрут показан', 'route shown', 'đang dẫn đường') : ` · ${bk('track')} — ${tr('маршрут', 'route', 'dẫn đường')}`) : '';
+    return `<small>${tr('ПОБОЧНАЯ ЗАДАЧА', 'SIDE TASK', 'NHIỆM VỤ PHỤ')} · +${q.xp} XP</small><b>${this.title(q)}</b><em>${d} ${tr('м', 'm', 'm')} ${p ? relDirWord(p) : ''}${extra}${trk}</em>`;
   },
   overlay(){
     const c = ctrlEntity(); if (!c) return;
     const p = this.pos();
-    if (p) edgeMarker(p, '#ffa94d', tr('ПОБОЧНАЯ', 'SIDE', 'PHỤ'), `${Math.round(dist(p, c.pos))} ${tr('м', 'm', 'm')}`);
+    if (p) edgeMarker(p, '#ffa94d', '◆ ' + tr('ПОБОЧНАЯ', 'SIDE', 'PHỤ') + (typeof MISSION !== 'undefined' && MISSION.nav && MISSION.nav.mode === 'side' ? ' ✓' : ''), `${Math.round(surfDist(p, c.pos))} ${tr('м', 'm', 'm')}`);
     if (this.sky){
       // голубые шевроны вверх над бойцом: «взлетай»
       const up = norm(c.pos), tt = performance.now() / 500;
