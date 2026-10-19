@@ -235,6 +235,7 @@ function r61CardsRender(){
     el.addEventListener('click', r61CardsClick); el.addEventListener('contextmenu', e => e.preventDefault());
     el.addEventListener('wheel', e => e.stopPropagation(), { passive: true });
   }
+  document.body.classList.toggle('r61open', !!(show && R61.pref.cards));
   if (!show){ if (el.style.display !== 'none') el.style.display = 'none'; return; }
   el.style.display = 'flex';
   if (R61.pref.cards === null) R61.pref.cards = !TOUCH.on;   // на телефоне по умолчанию свёрнута
@@ -407,6 +408,7 @@ uixFrame = function(dt){ _r61UixFrame(dt); try { r61Frame(dt); } catch (e){ if (
   #card .more61 .mi:hover{border-color:#fff;background:rgba(70,64,46,.8)} #card .more61 .mi i{grid-row:1/3;font-style:normal;font-size:18px;color:#ffd27a;text-align:center}
   #card .more61 .mi b{font-size:12.5px} #card .more61 .mi kbd{font-size:10px} #card .more61 .mi small{grid-column:2/4;font-size:10px;color:#a59d84}
   #card .more61 .mi.on,#card .ab.more.on{border-color:#8fffaa}
-  body.touch #card .more61 .mm{min-width:200px} body.touch #card .more61 .mi kbd{display:none}`;
+  body.touch #card .more61 .mm{min-width:190px;gap:2px;padding:3px} body.touch #card .more61 .mi kbd,body.touch #card .more61 .mi small{display:none} body.touch #card .more61 .mi{padding:5px 7px}
+  body.touch.r61open #pstrip{top:90px}`;
   document.head.appendChild(st);
 })();
