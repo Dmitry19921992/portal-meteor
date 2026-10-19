@@ -17,16 +17,16 @@
 //  mods — задел под обвесы (см. ATTACH и gstat)
 Object.assign(WEAPONS.rifle, { rpm: 720, dmg: 15, fall: [35, 100, 0.55], mag: 30, reload: 1.6, spread: 0.016, ads: 0.16, zoom: 1.5,
   bloom: 0.0032, bloomMax: 0.028, rec: 0.11, kick: 0.0042, kickX: 0.0016, head: 1.6, tracer: 2, range: 280, type: 'b', speed: 0,
-  bot: { burst: [3, 6], pause: [0.35, 0.75] }, mods: {} });
+  bot: { burst: [3, 6], pause: [0.8, 1.4] }, mods: {} });
 WEAPONS.smg = { n: ['Пистолет-пулемёт', 'SMG', 'Súng tiểu liên'], rpm: 900, dmg: 10.5, fall: [18, 65, 0.5], mag: 40, reload: 1.35, spread: 0.019, ads: 0.24, zoom: 1.35,
   bloom: 0.0028, bloomMax: 0.034, rec: 0.14, kick: 0.0034, kickX: 0.0024, head: 1.5, tracer: 2, range: 220, type: 'b', speed: 0,
-  bot: { burst: [4, 8], pause: [0.35, 0.7] }, mods: {} };
+  bot: { burst: [4, 8], pause: [0.7, 1.2] }, mods: {} };
 Object.assign(WEAPONS.hmg, { rpm: 850, dmg: 12, fall: [45, 130, 0.6], mag: 120, reload: 3.0, spread: 0.022, ads: 0.35, zoom: 1.3,
   bloom: 0.0011, bloomMax: 0.026, rec: 0.08, kick: 0.0029, kickX: 0.0026, head: 1.4, tracer: 2, range: 300, spin: 0.28, type: 'b', speed: 0,
-  bot: { burst: [8, 16], pause: [0.5, 0.95] }, mods: {} });
+  bot: { burst: [8, 14], pause: [1.0, 1.7] }, mods: {} });
 Object.assign(WEAPONS.rail, { rpm: 57, dmg: 72, fall: null, far: [10, 110, 0.8, 1.3], mag: 5, reload: 2.4, spread: 0.0012, ads: 0, zoom: 3.4,
   bloom: 0, bloomMax: 0, rec: 1, kick: 0.028, kickX: 0.004, head: 1.6, tracer: 0, range: 420, charge: 0.28, semi: true, type: 'l', speed: 0,
-  bot: { burst: [1, 1], pause: [1.5, 2.3] }, mods: {} });
+  bot: { burst: [1, 1], pause: [1.8, 2.6] }, mods: {} });
 // оружие техники и турелей (темп задаёт их собственный код в ai.js / sim.js)
 WEAPONS.drone  = { n: ['Курсовой пулемёт', 'Drone gun', 'Súng drone'], dmg: 7, fall: [30, 95, 0.5], spread: 0.02, head: 1.3, tracer: 2, range: 200, type: 'b', mag: 0, rpm: 375, kick: 0.002, mods: {} };
 WEAPONS.tankmg = { n: ['Спаренный пулемёт', 'Coaxial MG', 'Súng máy đồng trục'], dmg: 7, fall: [40, 120, 0.55], spread: 0.02, head: 1.3, tracer: 2, range: 220, type: 'b', mag: 0, rpm: 600, kick: 0.002, mods: {} };
@@ -369,7 +369,14 @@ function gunBotFire(u, aimDir, supp){
   const tg = u.target && u.target.alive ? u.target : null;
   // реакция: новая цель — короткая пауза «прицеливания» (видна вспышка/поворот до выстрела)
   const vsPlayer = !!tg && tg === ctrlEntity() && !S.attract;
-  if (tg && u.lastTgt !== tg){ u.lastTgt = tg; u.cd = 0.22 + random() * 0.25 + (vsPlayer ? 0.3 : 0) + (W.charge || 0); u.burst = 0; return; }
+  // (пауза только если бот давно не стрелял — смена цели посреди боя не «замораживает» его)
+  if (tg && u.lastTgt !== tg){
+    const fresh = S.time - (u.lastShotT === undefined ? -99 : u.lastShotT) > 1.5;
+    u.lastTgt = tg;
+    // по игроку — «блик» визора/ствола перед первой очередью: видно, кто сейчас откроет огонь
+    if (vsPlayer) addLight(add(u.pos, mul(u.up, RULES.EYE + 0.15)), u.team ? [7, 1.2, 0.5] : [3, 4, 7], 5, 0.35, 0.006);
+    if (fresh || vsPlayer){ u.cd = (fresh ? 0.22 + random() * 0.25 : 0.1) + (vsPlayer ? 0.3 : 0) + (W.charge || 0); u.burst = 0; return; }
+  }
   const eye = add(u.pos, mul(u.up, RULES.EYE * 0.8));
   let dir = aimDir, td = 60;
   if (tg){
@@ -378,7 +385,7 @@ function gunBotFire(u, aimDir, supp){
     if (tg.vel) c = sub(c, mul(tg.vel, 0.17));      // запаздывание за движущейся целью
     const v = sub(c, eye); td = len(v); dir = mul(v, 1 / max(td, 0.01));
   }
-  let err = W.spread * 0.4 + 0.006 + td * 0.0001;
+  let err = W.spread * 0.4 + 0.015 + td * 0.00006;
   err += u.grounded ? (u.moveAmt || 0) * 0.012 : 0.022;
   if (u.suppT > 0) err += 0.02;
   if (u.crouch) err *= 0.75;
@@ -386,7 +393,7 @@ function gunBotFire(u, aimDir, supp){
   if (u.elite) err *= 0.8;
   const g = u.squad; if (g && g.vet) err *= 1 - 0.07 * g.vet;
   if (R.rail) err *= 0.45;
-  if (vsPlayer) err *= 1.3;   // по игроку боты бьют чуть менее метко: игрок убивает бота за ~0.5 с, боты его — за 2–3 с
+  if (vsPlayer) err *= 1.1;   // по игроку боты бьют чуть менее метко: игрок убивает бота за ~0.5 с, боты его — за 2–4 с
   err += (u.burstN || 0) * 0.0025 * (W === WEAPONS.hmg ? 0.5 : 1);   // очередь «уводит» ствол
   dir = spreadDir(dir, err, true);
   const from = add(add(eye, mul(dir, 0.8)), mul(norm(cross(u.fwd, u.up)), 0.22));
@@ -445,7 +452,7 @@ function gunStep(dt, rdt){
   if (busy && F){ const k = clamp(F.t / F.dur, 0, 1); GUNS.xfer = max(0.55 + 0.45 * Math.exp(-F.t * 5), smoothstep(0.82, 1, k)); }
   else GUNS.xfer = max(0, GUNS.xfer - rdt * 4);
   S.xfer = GUNS.xfer;
-  if (busy !== GUNS.busy){ GUNS.busy = busy; document.body.classList.toggle('xfer', busy); }
+  if (busy !== GUNS.busy){ GUNS.busy = busy; document.body.classList.toggle('xfer', busy); if (!busy && me && me.cls === 'inf') gunSfx('raise'); }
 }
 function K_(act){ return !!keys[SET.bind[act]]; }
 // параметры для шейдера оружия: x — прицел, y — опущено (0..1), z — заряд, w — скрыть
