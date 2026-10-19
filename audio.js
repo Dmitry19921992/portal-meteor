@@ -355,7 +355,8 @@ const AU = {
     const tank = fps && me && me.cls === 'tank';
     const sp = tank ? len(me.vel) : 0;
     this.engG.gain.setTargetAtTime(tank ? 0.12 + sp * 0.015 : 0, t, 0.1);
-    this.engO.frequency.setTargetAtTime(32 + sp * 4, t, 0.1); this.engO2.frequency.setTargetAtTime(16 + sp * 2, t, 0.1);
+    const ek = tank && me.vk === 'raider' ? 1.9 : tank && me.vk ? 1.25 : 1;   // багги звучит выше и злее
+    this.engO.frequency.setTargetAtTime((32 + sp * 4) * ek, t, 0.1); this.engO2.frequency.setTargetAtTime((16 + sp * 2) * ek, t, 0.1);
     let nd = null, best = 60;
     for (const d of S.drones){ if (!d.alive) continue; const dd = dist(d.pos, c.pos); if (dd < best){ best = dd; nd = d; } }
     this.droneG.gain.setTargetAtTime(nd ? (nd === me ? 0.04 : 0.07) : 0, t, 0.1);
@@ -423,6 +424,7 @@ const AU = {
         case 'built': if (live && e.b.team === 0){ this.chime(true); this.radio(tr(`Построено: ${bname(e.b.type)}`, `Construction complete: ${bname(e.b.type)}`, `Xây xong: ${bname(e.b.type)}`), 0); } break;
         case 'place': if (live && e.b.team === 0) this.ui('ok'); break;
         case 'hqdown': this.boom(S.hq[e.team].pos, 8); break;
+        case 'v2': V2.sound(e); break;
         case 'over': if (live) this.radio(S.winner === 0 ? tr('Победа. Противник разгромлен', 'Victory. The enemy is crushed', 'Chiến thắng. Quân địch đã bị nghiền nát') : tr('Поражение', 'Defeat', 'Thất bại'), 3); break;
       }
     }

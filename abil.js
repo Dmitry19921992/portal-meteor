@@ -19,7 +19,7 @@ const ABIL = {
   kamikaze:  { who: 'drone', key: 'KeyR', cd: 0, range: 95, target: 'point', icon: '✸', n: ['Таран', 'Ram', 'Đâm'],
                d: ['Дрон пикирует в точку и взрывается.', 'The drone dives at a point and explodes.', 'Drone lao xuống một điểm và phát nổ.'] },
 };
-function groupKind(g){ return isSquad(g) ? 'squad' : g.cls; }
+function groupKind(g){ return isSquad(g) ? 'squad' : (g.vk || g.cls); }
 function abilList(g){ const k = groupKind(g); return Object.keys(ABIL).filter(a => ABIL[a].who === k); }
 function abilLeft(g, k){ return max(0, (g.abil[k] || 0) - S.time); }
 function useAbility(g, k, pt){
@@ -63,6 +63,7 @@ function useAbility(g, k, pt){
     }
     case 'overdrive': g.overT = 6; emit('overdrive', { pos: g.pos }); break;
     case 'kamikaze': g.kamikaze = pt; break;
+    default: if (A.fn) A.fn(g, pt);   // способности новой техники (vehicles2.js)
   }
   return null;
 }

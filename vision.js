@@ -11,6 +11,7 @@ function visRadius(e){
   return visRadius0(e) * k;
 }
 function visRadius0(e){
+  if (e.visR) return e.visR;
   if (e.cls === 'bld') return VIS_R[e.type] || 45;
   if (e.cls === 'inf') return e.role === 'scout' ? 115 : e.elite ? 62 : VIS_R.inf;
   return VIS_R[e.cls] || 40;
