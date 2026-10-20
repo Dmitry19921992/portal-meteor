@@ -100,7 +100,8 @@ const DEF72 = {
   selType: { mode: 'rts', init(T){ S.sel.clear(); S.selB = null; const P = T72pair(isSquad); T.tg = P ? P[0] : T72sq(0); T.tg2 = P ? P[1] : null;
       if (P){ const a = leaderPos(P[0]), b = leaderPos(P[1]); S.rts.hT = clamp(max(S.rts.h, dist(a, b) * 1.6 + 30), RTS_HMIN, 110); flyCamTo(norm(add(a, b))); } },
     check: T => T.since('selType') && selGroups().length >= 2, mark: T => [T72gp(T.tg, T72W.sel)].filter(Boolean) },
-  box: { mode: 'rts', init(T){ S.sel.clear(); S.selB = null; T.tg = T72pair(); }, check: T => T.since('box') && selGroups().filter(g => g.cls !== 'builder').length >= 2,
+  box: { mode: 'rts', init(T){ S.sel.clear(); S.selB = null; T.tg = T72pair();
+      if (T.tg){ const a = leaderPos(T.tg[0]), b = leaderPos(T.tg[1]); S.rts.hT = clamp(max(S.rts.h, dist(a, b) * 1.6 + 30), RTS_HMIN, 110); flyCamTo(norm(add(a, b))); } }, check: T => T.since('box') && selGroups().filter(g => g.cls !== 'builder').length >= 2,
     mark: T => { const P = T.tg && T.tg.map(g => leaderPos(g)).filter(Boolean); if (!P || P.length < 2) return []; return [{ p: surfacePoint(norm(add(P[0], P[1])), 0.5), label: L72(T72W.box), col: '#ffd23f' }]; } },
   groups: { mode: 'rts', check: T => T.cnt('h:ctlgroup') >= 2 },
   radial: { mode: 'rts', init(T){ S.sel.clear(); S.selB = null; const g = T72sq(0), L = g && leaderPos(g); T.goal = L ? T72fromBase(L, 16) : null; }, check: T => T.since('radItem'),
@@ -305,7 +306,7 @@ DEF72.groups.init = () => { if (!selGroups().length){ const g = T72sq(0); if (g)
 CTL72.schemes.v71.acts.aim = { g: 'tap', el: () => [{ sel: '#touch [data-s="R3"]' }], h: ['Тапни «Прицел» — приближение. Ещё тап — обратно.', 'Tap "Aim" to zoom in. Tap again to zoom out.', 'Chạm “Ngắm” để phóng to. Chạm lại để thu nhỏ.', 'הקש „כוונת" לזום. הקשה נוספת — חזרה.'] };
 CTL72.schemes.v71.acts.squad = { g: 'tap', el: () => MENU.cur === 'pause' ? [{ sel: '#screen [data-mm2^="solo"]' }] : M67.open ? [{ sel: '#m67sheet .pz' }] : [{ sel: '#touch .tt .m67m' }],
   h: ['Отряд идёт за тобой. Открой ☰ → «Пауза» → плитка «Отряд со мной» — станет «Действую один».', 'Your squad follows you. Open ☰ → "Pause" → the "Squad with me" tile — it becomes "Going solo".', 'Đội đi theo bạn. Mở ☰ → “Tạm dừng” → ô “Đội đi cùng” — thành “Một mình”.', 'החוליה הולכת אחריך. פתח ☰ ← „השהיה" ← „החוליה איתי" — יהפוך ל„לבד".'] };
-const T72FLY = new Set(['select', 'order', 'box', 'radial', 'builder', 'build', 'construct', 'produce', 'gather']);
+const T72FLY = new Set(['select', 'order', 'radial', 'builder', 'build', 'construct', 'produce', 'gather']);
 // «добыча»: на телефоне ещё и кнопка «◆ Добывать кристаллы» в карточке инженера
 CTL72.schemes.v71.acts.gather.h = ['Инженер выбран — тапни «◆ Добывать кристаллы» в его карточке внизу (или тапни по зелёным кристаллам).', 'The builder is selected — tap "◆ Mine crystals" on its card below (or tap the green crystals).', 'Đã chọn kỹ sư — chạm “◆ Khai thác tinh thể” trên thẻ bên dưới (hoặc chạm tinh thể xanh).', 'המהנדס נבחר — הקש „◆ כריית גבישים" בכרטיס למטה (או הקש על הגבישים הירוקים).'];
 CTL72.schemes.v71.acts.gather.el = () => [{ sel: '#card [data-gather]' }];
@@ -569,7 +570,7 @@ try { T72.others = !!localStorage.getItem('pm_t72others'); } catch (e){}
   #t72p .wr{margin:4px 0 0;padding:3px 7px;border-left:3px solid #ff9a5a;color:#ffd0b0;font-size:13px;background:rgba(255,120,60,.12)}
   #t72p .bar{height:4px;margin-top:6px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden} #t72p .bar s{display:block;height:100%;width:0;background:#8fffaa;transition:width .15s}
   #t72p .ft{margin:4px 0 0;font-size:11px;color:#95a3b2}
-  html[lang=he] #t72p .how,html[lang=he] #t72p h4,html[lang=he] #t72p .wr{direction:rtl;unicode-bidi:plaintext}
+  html[lang=he] #t72p .how,html[lang=he] #t72p h4,html[lang=he] #t72p .wr{direction:rtl;unicode-bidi:plaintext} html[lang=he] #t72p .how{gap:10px} #t72p .ms,#t72p .gic{flex:none}
   /* подсветка: всё остальное затемнено, нужный элемент — в жёлтой пульсирующей рамке */
   #t72sp{position:fixed;display:none;z-index:16;pointer-events:none;border:3px solid #ffd23f;border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.5),0 0 18px 4px rgba(255,210,63,.8);animation:t72p 1s ease-in-out infinite}
   #t72sp.lite{box-shadow:0 0 0 9999px rgba(0,0,0,.28),0 0 18px 4px rgba(255,210,63,.8)}
