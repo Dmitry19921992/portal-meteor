@@ -505,7 +505,7 @@ Object.assign(M71, {
     { k: 'look', m: 'fps', g: 'swipe', at: () => [innerWidth * 0.72, innerHeight * 0.42], t: ['Свайп справа — обзор', 'Swipe on the right — look', 'Vuốt bên phải — nhìn', 'החלקה מימין — מבט'] },
     { k: 'jet', m: 'fps', g: 'hold', inf: 1, sel: '[data-s="LJ"]', t: ['Держи — полёт', 'Hold — fly', 'Giữ — bay', 'החזק — טיסה'] },
     { k: 'auto', m: 'fps', g: 'tap', sel: '#m71auto', t: ['АВТО — захват цели', 'AUTO — target lock', 'TỰ ĐỘNG — khóa mục tiêu', 'אוטו — נעילת מטרה'] },
-    { k: 'frame', m: 'fps', g: 'tap', A: 1, lock: 1, at: () => M71.fr.rect ? [(M71.fr.rect[0] + M71.fr.rect[2]) / 2, M71.fr.rect[3] + 26] : null, t: ['Тап по рамке — ракета', 'Tap the frame — rocket', 'Chạm khung — tên lửa', 'הקשה על המסגרת — רקטה'] },
+    { k: 'frame', m: 'fps', g: 'tap', A: 1, lock: 1, at: () => M71.fr.rect ? [(M71.fr.rect[0] + M71.fr.rect[2]) / 2, M71.fr.rect[1] - 24] : null, t: ['Тап по рамке — ракета', 'Tap the frame — rocket', 'Chạm khung — tên lửa', 'הקשה על המסגרת — רקטה'] },
     { k: 'gswipe', m: 'fps', g: 'swipe', A: 1, lock: 1, inf: 1, sel: '.g62b', t: ['Свайп вверх — граната в цель', 'Swipe up — grenade at target', 'Vuốt lên — lựu đạn', 'החלקה למעלה — רימון'] },
     { k: 'pinch', m: 'fps', g: 'pinch', B: 1, lock: 1, at: () => [innerWidth * 0.7, innerHeight * 0.55], t: ['Щипок — граната / ракета / прицел', 'Pinch — grenade / rocket / zoom', 'Chụm — lựu đạn / tên lửa', 'צביטה — רימון / רקטה / זום'] },
     { k: 'dtap', m: 'fps', g: 'dtap', inf: 1, reflex: 1, at: () => [innerWidth * 0.66, innerHeight * 0.3], t: ['2× тап справа — рефлекс', 'Double tap right — reflex', 'Chạm 2 lần — phản xạ', 'הקשה כפולה מימין — רפלקס'] },
@@ -753,7 +753,7 @@ Object.assign(M71, {
       ];
     }
     const R = this.rad, n = items.length, rr = n > 5 ? 84 : 74, s = M67.safe;
-    const cx = clamp(x, s.l + rr + 34, innerWidth - s.r - rr - 34), cy = clamp(y, rr + 40, innerHeight - s.b - rr - 34);
+    const cx = clamp(x, s.l + rr + 34, innerWidth - s.r - rr - 34), cy = clamp(y, rr + 84, innerHeight - s.b - rr - 34);
     R.innerHTML = ''; R.style.left = cx + 'px'; R.style.top = cy + 'px';
     items.forEach((it, i) => {
       const a = -PI / 2 + i * 2 * PI / n;
@@ -1090,7 +1090,7 @@ M71.css = function(){
   body.m71 #m71hudb.act{opacity:.6}
   body.m71.m64fps #hud{left:calc(var(--sl) + 54px)}
   body.m71.m71hudoff.m64fps #m67mm, body.m71.m71hudoff.m64fps #sq, body.m71.m71hudoff.m64fps #feed, body.m71.m71hudoff.m64fps #hud, body.m71.m71hudoff.m64fps #devLab, body.m71.m71hudoff.m64fps #cur{display:none!important}
-  body.m71.m71sk.m64fps #sq{display:none!important}
+  body.m71.m71sk.m64fps #sq, body.m71.m71sk.m64fps #hint{display:none!important}
   body.m71 #dcard{display:none!important}
   #m71rj{position:absolute;width:110px;height:110px;border-radius:50%;border:2px solid rgba(214,198,154,.35);background:rgba(214,198,154,.06);pointer-events:none}
   #m71rj i{position:absolute;left:35px;top:35px;width:40px;height:40px;border-radius:50%;background:rgba(214,198,154,.32)}
@@ -1124,7 +1124,7 @@ M71.css = function(){
   #m67sheet.m71 .row{min-height:46px} #m67sheet.m71 .row span{font-size:11.5px} #touch #m67sheet.m71 .row button{height:40px;width:auto;min-width:58px;padding:0 8px}
   #m67sheet.m71 .row:has([data-o="left"]){display:none}
   #m67sheet.m71 .p70sec .p70g{grid-template-columns:repeat(3,1fr)!important;gap:4px}
-  #touch #m67sheet.m71 .p70w button{min-height:40px} #touch #m67sheet.m71 .p70w .p70a,#touch #m67sheet.m71 .p70w .p70x{width:32px}
+  #touch #m67sheet.m71 .p70w button{min-height:40px} #touch #m67sheet.m71 .p70w .p70a,#touch #m67sheet.m71 .p70w .p70x{width:34px}
   #m67sheet.m71 .p70w small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .g71grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
   .g71c{display:flex;align-items:center;gap:7px;padding:3px 7px;border:1px solid rgba(214,198,154,.22);border-radius:9px;background:rgba(214,198,154,.05);font:600 10.5px "Exo 2";color:#e8e2d0;line-height:1.15;min-height:36px}

@@ -119,10 +119,12 @@ if (typeof DEV !== 'undefined'){
   const ht0 = DEV.html;
   DEV.html = function(){
     const b = (a, t, on) => `<button data-dv71="${a}" class="${on ? 'p71on' : ''}">${t}</button>`;
-    return ht0.call(this) + `<h5>v7.1 — ${tr('полигон', 'polygon', 'trường bắn', 'פוליגון')}</h5><div class="r">` +
+    const h = ht0.call(this), i = h.indexOf('</h4>') + 5;
+    const sec = `<h5>v7.1 — ${tr('полигон', 'polygon', 'trường bắn', 'פוליגון')}</h5><div class="r">` +
       b('poly', '⚔ ' + tr('Полигон', 'Polygon', 'Trường bắn', 'פוליגון') + ': ' + (POLY71.on ? tr('ВКЛ', 'ON', 'BẬT', 'פועל') : tr('ВЫКЛ', 'OFF', 'TẮT', 'כבוי')), POLY71.on) +
       b('go', '▶ ' + tr('Вселиться на полигоне', 'Possess at the Polygon', 'Nhập vai ở trường bắn', 'השתלט בפוליגון')) +
       b('cam', '◎ ' + tr('Камера на полигон', 'Camera to the Polygon', 'Camera tới trường bắn', 'מצלמה לפוליגון')) + `</div>`;
+    return i > 4 ? h.slice(0, i) + sec + h.slice(i) : h + sec;
   };
   const pn0 = DEV.panel;
   DEV.panel = function(){
