@@ -14,7 +14,7 @@ if (SET.curator === undefined) SET.curator = true;
 const CUR = {
   cur: null, doneN: 0, evalT: 0, lastDone: -99, cool: {}, done: {}, E: {}, flash: null, rtsT: 0, enterT: -99, seen: false,
   once: (() => { try { return JSON.parse(localStorage.getItem('pm_curator') || '{}'); } catch (e){ return {}; } })(),
-  enabled(){ return SET.curator !== false; },
+  enabled(){ return SET.curator !== false && SET.hintsOn !== false; },   // v7.3: «Подсказки» выкл — куратор тоже молчит
   toggle(on){
     SET.curator = on === undefined ? !this.enabled() : !!on;
     try { MENU.save(); } catch (e){}

@@ -423,9 +423,10 @@ if (TOUCH.on){
   // миникарта шутера: меньше, слева вверху, сворачивается тапом
   { const dm0 = drawMinimap; drawMinimap = function(){
       if (!M67.active()) return dm0();
-      if (!M67.pref.mm) return;
+      const m73 = typeof M73 !== 'undefined' && M73.act();   // v7.3: миникарта — в самом углу, без кнопки скрытия
+      if (!M67.pref.mm && !m73) return;
       const R0 = 82, R = 48, k = R / R0, s = M67.safe;
-      octx.save(); octx.translate(s.l + 8 + R, 50 + R); octx.scale(k, k); octx.translate(-(18 + R0), -(innerHeight - 18 - R0));
+      octx.save(); octx.translate(s.l + 8 + R, (m73 ? s.t + 6 : 50) + R); octx.scale(k, k); octx.translate(-(18 + R0), -(innerHeight - 18 - R0));
       try { dm0(); } finally { octx.restore(); }
     }; }
   // стрелка к цели у края экрана — не под вырезом (копия edgeMarker из ui.js с отступами safe area)

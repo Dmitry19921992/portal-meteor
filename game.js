@@ -36,6 +36,10 @@ function applyScale(lvl){
   const K = SCALES[clamp(lvl | 0, 0, SCALES.length - 1)];
   for (const k in LIM0) GAME[k] = Math.round(LIM0[k] * (k === 'MAX_OUTPOSTS' ? min(K.lim, 1.7) : k === 'MAX_BUILDERS' ? min(K.lim, 1.5) : K.lim));
   GAME.INC_MUL = K.inc; GAME.START_ORE = K.start; GAME.POD_EVERY = 165 * K.pod; GAME.WAVE_MUL = K.wave;
+  if (typeof LITE73 !== 'undefined' && LITE73.on){   // v7.3: лёгкий режим — вдвое меньше ботов
+    for (const k in LIM0) GAME[k] = max(1, Math.round(GAME[k] * LITE73.bots));
+    GAME.WAVE_MUL *= LITE73.bots;
+  }
 }
 // сложность: множители для Роя
 const DIFF = [
@@ -899,7 +903,7 @@ function newMatch(opts){
   S.cps = CPD.map((d, i) => ({ i, dir: d, pos: mul(d, RM + 1), beacon: mul(d, RM + 11.5), prog: 0, owner: -1, core: false, name: 'ABCDEF'[i] }));
   S.cps.push({ i: 6, dir: [0,0,0], pos: [0,0,0], beacon: [0,0,0], prog: 0, owner: -1, core: true, name: 'Core' });
   for (const t of [0, 1]){
-    for (let k = 0; k < 3; k++) spawnSquad(t);
+    for (let k = 0, nsq = LITE73.on ? (opts.attract ? 1 : 2) : 3; k < nsq; k++) spawnSquad(t);
     const b = BASES[t], ta = anyTangent(b);
     const v = makeTank(surfacePoint(offsetOnSphere(b, ta, 40 * (t ? -1 : 1)), 1.5), t);
     v.fwd = tangent(sub(v.pos, mul(b, RM)), v.up); v.aim = v.fwd;

@@ -697,7 +697,8 @@ S.newMarks = true;
     const r = nm(opts);
     GUNS.lastMe = null; GUNS.raise = 0; GUNS.xfer = 0; for (const T of TRACERS) T.on = false;
     if (!S.attract){
-      if (typeof TOUCH !== 'undefined' && TOUCH.on && typeof M67 !== 'undefined' && M67.active()) feed(M67.pref.simple ? tr('Простой огонь: наведи прицел на врага — стреляет сам. ◎ — прицел, ⟳ — перезарядка', 'Simple fire: aim at an enemy and it fires. ◎ — aim, ⟳ — reload', 'Bắn đơn giản: ngắm vào địch là tự bắn') : tr('● — огонь, ◎ — прицел, ⟳ — перезарядка', '● — fire, ◎ — aim, ⟳ — reload', '● — bắn, ◎ — ngắm, ⟳ — nạp đạn'), '#9cf');
+      if (typeof M73 !== 'undefined' && M73.act()) feed(M73.introText(), '#9cf');   // v7.3: новая раскладка телефона
+      else if (typeof TOUCH !== 'undefined' && TOUCH.on && typeof M67 !== 'undefined' && M67.active()) feed(M67.pref.simple ? tr('Простой огонь: наведи прицел на врага — стреляет сам. ◎ — прицел, ⟳ — перезарядка', 'Simple fire: aim at an enemy and it fires. ◎ — aim, ⟳ — reload', 'Bắn đơn giản: ngắm vào địch là tự bắn') : tr('● — огонь, ◎ — прицел, ⟳ — перезарядка', '● — fire, ◎ — aim, ⟳ — reload', '● — bắn, ◎ — ngắm, ⟳ — nạp đạn'), '#9cf');
       else if (typeof TOUCH !== 'undefined' && TOUCH.on) feed(tr('◎ — прицел, R — перезарядка, » — рывок ранцем', '◎ — aim, R — reload, » — jet dash', '◎ — ngắm, R — nạp đạn, » — lướt'), '#9cf');
       else feed(tr(`ПКМ — прицел · ${bk('reload')} — перезарядка · ${bk('down')} стоя — пригнуться · ${bk('dash')} или 2×${bk('run')} в воздухе — рывок`, `RMB — aim · ${bk('reload')} — reload · ${bk('down')} standing — crouch · ${bk('dash')} or 2×${bk('run')} in the air — dash`, `Chuột phải — ngắm · ${bk('reload')} — nạp · ${bk('down')} khi đứng — cúi · ${bk('dash')} hoặc 2×${bk('run')} trên không — lướt`), '#9cf');
     }

@@ -3,12 +3,14 @@
 // =====================================================================
 let lastT = performance.now(), navTimer = 0, hudTimer = 0, panelTimer = 0, fpsT0 = performance.now(), fpsN = 0;
 function frame(now){
+  if (LITE73.on && now - lastT < LITE73.minMs){ requestAnimationFrame(frame); return; }   // v7.3: лёгкий режим — не чаще 30 кадров/с
   const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
   update(dt);
   fpsN++;
   if (now - fpsT0 > 1000){
     fpsVal = fpsN * 1000 / (now - fpsT0); fpsN = 0; fpsT0 = now;
-    if (S.autoRes && document.visibilityState === 'visible'){
+    if (LITE73.on) LITE73.adapt(fpsVal);
+    else if (S.autoRes && document.visibilityState === 'visible'){
       if (fpsVal < 44 && S.scale > 0.5){ S.scale = +(S.scale - 0.125).toFixed(3); resize(); }
       else if (fpsVal > 58 && S.scale < 1){ S.scale = +(S.scale + 0.125).toFixed(3); resize(); }
     }

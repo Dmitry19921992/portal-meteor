@@ -411,7 +411,7 @@ Object.assign(M71, {
     for (const tc of e.changedTouches){
       const id = tc.identifier, x = tc.clientX, y = tc.clientY;
       const joy = !!(TOUCH.joy && TOUCH.joy.id === id);
-      this.tp[id] = { x0: x, y0: y, x, y, t0: performance.now(), joy, right: x >= innerWidth * 0.42, tr: 0 };
+      this.tp[id] = { x0: x, y0: y, x, y, t0: performance.now(), joy, right: x >= innerWidth * (TOUCH.split || 0.42), tr: 0 };
       if (TOUCH.look && TOUCH.look.id === id){ TOUCH.look.x0 = x; TOUCH.look.y0 = y; this.flick = [0, 0]; this.flickArm = true; }
     }
     const nj = Object.keys(this.tp).filter(k => !this.tp[k].joy);
@@ -438,7 +438,7 @@ Object.assign(M71, {
       const x = tc.clientX, y = tc.clientY, P = this.tp[L.id];
       if (P && P.tr > 60) this.used('look');
       const locked = this.pref.auto && this.lock;
-      if (this.pref.look === 'joy'){
+      if (this.lookJoy()){
         let dx = (x - L.x0) / 55, dy = (y - L.y0) / 55; const l = hypot(dx, dy); if (l > 1){ dx /= l; dy /= l; }
         this.rj = l < 0.14 ? [0, 0] : [dx, dy]; this.rjShow(L.x0, L.y0, dx, dy);
         if (locked){ if (l > 0.6 && this.flickArm){ this.flickArm = false; this.flickTo(dx, dy); } else if (l < 0.3) this.flickArm = true; this.rj = [0, 0]; }
@@ -456,9 +456,11 @@ Object.assign(M71, {
     for (const tc of e.changedTouches){
       const P = this.tp[tc.identifier]; delete this.tp[tc.identifier];
       if (TOUCH.look && TOUCH.look.id === tc.identifier){ this.rjHide(); this.flickArm = true; }
-      if (!P || P.joy || !P.right || this.pinch) continue;
+      const m73 = typeof M73 !== 'undefined' && M73.act();   // v7.3: тап по врагу — ракета / граната, 2 тапа — рефлекс, 3 — артудар
+      if (!P || this.pinch || (!m73 && (P.joy || !P.right))) continue;
       const tap = now - P.t0 < 260 && P.tr < 16;
       if (!tap) continue;
+      if (m73){ M73.onTap(tc.clientX, tc.clientY, now, P.joy); continue; }
       const x = tc.clientX, y = tc.clientY, R = this.fr.rect;
       // вариант A: тап по красной рамке — ракета в цель
       if (this.pref.gest === 'A' && R && x >= R[0] && x <= R[2] && y >= R[1] && y <= R[3] && this.target()){ this.rocketAt(this.target()); this.used('frame'); this.tapL = null; continue; }
@@ -483,7 +485,7 @@ Object.assign(M71, {
     if (m === 'gren' && this.ctx() === 'inf') this.grenadeAt(t); else this.rocketAt(t);
   },
   look(dt){
-    if (!this.rj || !TOUCH.look || this.pref.look !== 'joy') return;
+    if (!this.rj || !TOUCH.look || !this.lookJoy()) return;
     const [dx, dy] = this.rj, l = hypot(dx, dy); if (l <= 0) return;
     const k = Math.pow(l, 1.6) * (TOUCH.sens || 1);
     lookBy(dx / l * k * 950 * dt, dy / l * k * 560 * dt);
@@ -916,7 +918,7 @@ const P71M = {
       this.tile('id="m_settings"', 'gear', H('Настройки', 'Settings', 'Cài đặt', 'הגדרות')),
       this.tile('data-p71go="lang"', 'lang', H('Язык', 'Language', 'Ngôn ngữ', 'שפה'), this.flag(SET.lang)),
       `<button data-mm2="free:${!SET.ordersFree}" class="p71t ${SET.ordersFree ? 'on' : ''}">${IC71('flag')}<b>${SET.ordersFree ? H('Свобода действий', 'Free play', 'Tự do', 'חופש פעולה') : H('Следовать приказам', 'Follow orders', 'Theo lệnh', 'ציות לפקודות')}</b></button>`,
-      `<button data-mm2="solo:${!SET.solo}" class="p71t ${SET.solo ? 'on' : ''}">${IC71('army')}<b>${SET.solo ? H('Действую один', 'Going solo', 'Một mình', 'לבד') : H('Отряд со мной', 'Squad with me', 'Đội đi cùng', 'החוליה איתי')}</b></button>`,
+
       typeof DEV !== 'undefined' ? this.tile('id="m_devtog"', 'tool', H('Разработчик', 'Developer', 'Nhà phát triển', 'מפתח'), L71(DEV.on ? 'on' : 'off'), DEV.on ? 'on' : '') : '',
       typeof DEV !== 'undefined' && DEV.match ? this.tile('id="m_devars"', 'tool', H('Арсенал', 'Arsenal', 'Kho vũ khí', 'נשקייה')) : '',
       this.tile('id="m_restart"', 'restart', H('Новый матч', 'New match', 'Trận mới', 'משחק חדש')),
@@ -934,9 +936,9 @@ const P71M = {
   sec(k){
     const H = tr, S_ = this.SECS.find(s => 's_' + s[0] === k), T = S_ ? S_[2] : ['', '', '', ''];
     let rows = [];
-    if (k === 's_snd') rows = [this.step('vol', H('Громкость', 'Volume', 'Âm lượng', 'עוצמה')), this.tog('voice', H('Голос рации', 'Radio voice', 'Giọng bộ đàm', 'קול קשר')), this.tog('hintsOn', H('Подсказки', 'Hints', 'Gợi ý', 'רמזים')),
+    if (k === 's_snd') rows = [this.step('vol', H('Громкость', 'Volume', 'Âm lượng', 'עוצמה')), this.tog('voice', H('Голос рации', 'Radio voice', 'Giọng bộ đàm', 'קול קשר')), this.tog('hintsOn', H('Подсказки и куратор', 'Hints and curator', 'Gợi ý và người hướng dẫn', 'רמזים ומדריך')),
       this.tog('hintsVoice', H('Озвучивать подсказки', 'Voice the hints', 'Đọc gợi ý', 'הקראת רמזים')), this.tog('chatter', H('Переговоры отряда', 'Squad chatter', 'Đồng đội nói chuyện', 'שיחות חוליה')), this.step('radioLvl', H('Радиоэфир стратега', 'Strategist radio', 'Bộ đàm', 'קשר אסטרטג'))];
-    else if (k === 's_gfx') rows = [this.step('quality', H('Качество', 'Quality', 'Chất lượng', 'איכות')), this.tog('autoRes', H('Авторазрешение', 'Auto resolution', 'Tự động độ phân giải', 'רזולוציה אוטומטית')),
+    else if (k === 's_gfx') rows = [this.tog('lite', H('Лёгкий режим', 'Lite mode', 'Chế độ nhẹ', 'מצב קל')), this.step('quality', H('Качество', 'Quality', 'Chất lượng', 'איכות')), this.tog('autoRes', H('Авторазрешение', 'Auto resolution', 'Tự động độ phân giải', 'רזולוציה אוטומטית')),
       this.step('scale', H('Масштаб разрешения', 'Resolution scale', 'Tỷ lệ phân giải', 'קנה מידה')), this.step('bright', H('Яркость', 'Brightness', 'Độ sáng', 'בהירות')),
       this.tog('distort', H('Искажения', 'Distortion', 'Méo', 'עיוות')), this.tog('vhs', H('VHS-фильтр', 'VHS filter', 'Bộ lọc VHS', 'מסנן VHS')), this.step('grid', H('Сияние портала', 'Portal aurora', 'Cực quang', 'זוהר השער')), this.step('bounces', H('Отражения портала', 'Portal depth', 'Độ sâu cổng', 'עומק השער'))];
     else if (k === 's_ctl') rows = [`<div class="p71s"><button data-p71o="m67sens" data-d="-1">${IC71('minus')}</button><span><small>${H('Обзор пальцем', 'Finger look speed', 'Độ nhạy nhìn', 'רגישות מבט')}</small><b>${(M67.pref.sens || 1).toFixed(1)}</b></span><button data-p71o="m67sens" data-d="1">${IC71('plus')}</button></div>`, this.tog('invertY', H('Инверсия Y', 'Invert Y', 'Đảo Y', 'היפוך Y')),
@@ -946,7 +948,7 @@ const P71M = {
       this.opt('v71:pinch', H('Щипок', 'Pinch', 'Chụm', 'צביטה'), { zoom: H('прицел', 'zoom', 'ngắm', 'זום'), gren: H('граната', 'grenade', 'lựu đạn', 'רימון'), rocket: H('ракета', 'rocket', 'tên lửa', 'רקטה') }[M71.pref.pinch])];
     else if (k === 's_game') rows = [this.step('diff', H('Сложность (новый матч)', 'Difficulty (new match)', 'Độ khó', 'קושי')), this.step('battle', H('Масштаб боёв', 'Battle scale', 'Quy mô', 'היקף')),
       this.step('endless', H('Бой', 'Battle', 'Trận', 'קרב')), this.tog('fog', H('Туман войны', 'Fog of war', 'Sương mù', 'ערפל קרב')), this.step('ordersFree', H('Приказы стратега', 'Strategist orders', 'Lệnh', 'פקודות')),
-      this.step('solo', H('Отряд', 'Squad', 'Đội', 'חוליה')), this.tog('unlockAll', H('Всё открыто (тест)', 'All unlocked (test)', 'Mở khóa tất cả', 'הכל פתוח'))];
+      this.tog('unlockAll', H('Всё открыто (тест)', 'All unlocked (test)', 'Mở khóa tất cả', 'הכל פתוח'))];
     else if (k === 's_phone') rows = [this.opt('m67simple', H('Простой огонь: прицел на враге — стреляет сам', 'Simple fire: fires when aimed at an enemy', 'Bắn đơn giản', 'ירי פשוט'), L71(M67.pref.simple ? 'on' : 'off'), M67.pref.simple),
       this.opt('m67mm', H('Миникарта в бою', 'Minimap in battle', 'Bản đồ nhỏ', 'מפה בקרב'), L71(M67.pref.mm ? 'on' : 'off'), M67.pref.mm), this.opt('m67cam', H('Живой портрет в стратегии', 'Live portrait in strategy', 'Ảnh trực tiếp', 'דיוקן חי'), L71(M67.pref.cam ? 'on' : 'off'), M67.pref.cam),
       this.opt('v71:box2', H('Рамка двумя пальцами', 'Two-finger box', 'Khung hai ngón', 'מסגרת בשתי אצבעות'), L71(M71.pref.box2 ? 'on' : 'off'), M71.pref.box2),

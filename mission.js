@@ -310,8 +310,9 @@ const MISSION = {
     feed(tr(`${groupLabel(sq)} снова с тобой.`, `${groupLabel(sq)} is with you again.`, `${groupLabel(sq)} lại đi cùng bạn.`), '#8fffaa');
     if (typeof SQUADUI !== 'undefined'){ SQUADUI.lastT = -99; SQUADUI.say('possess', null, null, 5); }
   },
-  setSolo(v){
-    SET.solo = v; MENU.save();
+  setSolo(v){   // v7.3: действовать в одиночку нельзя — отряд всегда с тобой
+    if (v){ SET.solo = false; return; }
+    SET.solo = false; MENU.save();
     if (!v){ this.recallTried = false; if (S.me && S.me.squad && S.me.squad.lone) this.callBack(); }
     feed(v ? tr('Режим: действую один', 'Mode: going solo', 'Chế độ: một mình') : tr('Режим: отряд со мной', 'Mode: squad with me', 'Chế độ: đội đi cùng'), '#9cf');
   },
@@ -325,10 +326,9 @@ const MISSION = {
   },
   // пресеты одной клавишей (F2): Солдат → Свободный → Одиночка
   cyclePreset(){
-    const cur = SET.ordersFree ? (SET.solo ? 2 : 1) : 0, nx = (cur + 1) % 3;
+    const cur = SET.ordersFree ? 1 : 0, nx = (cur + 1) % 2;
     if (!!SET.ordersFree !== (nx > 0)) this.setFree(nx > 0);
-    if (!!SET.solo !== (nx === 2)) this.setSolo(nx === 2);
-    feed([tr('Солдат: приказы стратега, отряд с тобой', 'Soldier: strategist orders, squad with you', 'Lính: lệnh chiến lược gia, đội đi cùng'), tr('Свободный: приказы — тихие подсказки, отряд с тобой', 'Free: orders become quiet suggestions, squad with you', 'Tự do: lệnh thành gợi ý, đội đi cùng'), tr('Одиночка: без приказов и без отряда', 'Lone wolf: no orders, no squad', 'Sói đơn độc: không lệnh, không đội')][nx], '#9cf');
+        feed([tr('Солдат: приказы стратега, отряд с тобой', 'Soldier: strategist orders, squad with you', 'Lính: lệnh chiến lược gia, đội đi cùng'), tr('Свободный: приказы — тихие подсказки, отряд с тобой', 'Free: orders become quiet suggestions, squad with you', 'Tự do: lệnh thành gợi ý, đội đi cùng'), tr('Одиночка: без приказов и без отряда', 'Lone wolf: no orders, no squad', 'Sói đơn độc: không lệnh, không đội')][nx], '#9cf');
   },
   // ---------------------------------------------------------------------
   //  ПЕРЕБРОСКА: капсула к цели (с отрядом) или прыжок в гущу боя
@@ -582,7 +582,7 @@ const MISSION = {
   chip(){
     const free = this.free(), solo = !!SET.solo;
     const rec = this.recall ? ` · ${tr('идут к тебе', 'coming', 'đang tới')}` : '';
-    return `<div class="mm"><span data-mm="free" class="${free ? 'free' : ''}">${free ? tr('Свобода', 'Free play', 'Tự do') : tr('Приказы', 'Orders', 'Theo lệnh')} <kbd>${bk('freeplay')}</kbd></span><span data-mm="solo" class="${solo ? 'free' : ''}">${solo ? tr('Один', 'Solo', 'Một mình') + rec : tr('Отряд со мной', 'Squad with me', 'Đội đi cùng')} <kbd>${bk('solo')}</kbd></span></div>`;
+    return `<div class="mm"><span data-mm="free" class="${free ? 'free' : ''}">${free ? tr('Свобода', 'Free play', 'Tự do') : tr('Приказы', 'Orders', 'Theo lệnh')} <kbd>${bk('freeplay')}</kbd></span></div>`;   // v7.3: режима «действую один» больше нет
   },
   addTouch(){
     const box = document.querySelector('#touch .tf.fps'); if (!box) return;
@@ -633,7 +633,7 @@ body:has(#screen[style*="flex"]) #hint{display:none !important}
 MISSION.modeRows = function(){
   const b = (k, v, txt) => `<button data-mm2="${k}:${v}" class="${(k === 'free' ? !!SET.ordersFree : !!SET.solo) === v ? 'cur' : ''}">${txt}</button>`;
   return `<div class="diffrow">${b('free', false, tr('Следовать приказам', 'Follow orders', 'Theo lệnh'))}${b('free', true, tr('Свобода действий', 'Free play', 'Tự do hành động'))}</div>
-    <div class="diffrow">${b('solo', false, tr('Отряд со мной', 'Squad with me', 'Đội đi cùng'))}${b('solo', true, tr('Действую один', 'Going solo', 'Một mình'))}</div>`;
+`;
 };
 MENU.html_quit = function(){
   return `<div class="mcol"><h2>${tr('ВЫЙТИ ИЗ БОЯ?', 'LEAVE THE BATTLE?', 'RỜI TRẬN?')}</h2>

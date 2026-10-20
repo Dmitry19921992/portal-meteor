@@ -312,7 +312,8 @@ function gatherParticles(){
   const rts = S.mode !== 'fps' && !S.attract;
   let n = 0;
   const near = (p, r) => rts || min(dist(p, cam), dist(p, anti)) < (r || 320);
-  const push = (a, ra, b, ty) => { if (n >= MAXP) return; PAR.set([a[0], a[1], a[2], ra, b[0], b[1], b[2], ty], n * 8); n++; };
+  const pmax = LITE73.on ? LITE73.maxP : MAXP;   // v7.3: лёгкий режим — минимум частиц
+  const push = (a, ra, b, ty) => { if (n >= pmax) return; PAR.set([a[0], a[1], a[2], ra, b[0], b[1], b[2], ty], n * 8); n++; };
   // яркие лучи — первыми
   for (const s of S.strikes){
     if (s.type !== 'orb') continue;
@@ -406,7 +407,7 @@ function gatherLights(){
     add2(sub(u.pos, mul(u.up, 0.3)), [3, 1.4, 0.4], 7, 0.002);
   }
   C.sort((a, b) => b.score - a.score);
-  const n = min(16, C.length);
+  const n = min(LITE73.on ? LITE73.maxL : 16, C.length);
   for (let i = 0; i < n; i++){
     const l = C[i];
     LP.set([l.pos[0], l.pos[1], l.pos[2], l.rad], i * 4);
@@ -542,7 +543,7 @@ function render(dt, now){
   gl.uniform4fv(P.uWave, WAVE); gl.uniform1i(P.uNW, nw);
   gl.uniform4fv(P.uTrc, TRC); gl.uniform1i(P.uNT, nt);
   gl.uniform1f(P.uSlow, S.slow);
-  gl.uniform1f(P.uDist, SET.distort ? 1 : 0);
+  gl.uniform1f(P.uDist, SET.distort && !LITE73.on ? 1 : 0);
   gl.uniform1f(P.uXfer, S.attract ? 0 : (S.xfer || 0));
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }

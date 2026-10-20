@@ -87,7 +87,7 @@ const TOUCH = {
     for (const tc of e.changedTouches){
       const x = tc.clientX, y = tc.clientY;
       if (S.mode === 'fps' && !S.attract){
-        if (x < innerWidth * 0.42 && !this.joy){ this.joy = { id: tc.identifier, x0: x, y0: y }; this.showJoy(x, y, 0, 0); }
+        if (x < innerWidth * (this.split || 0.42) && !this.joy){ this.joy = { id: tc.identifier, x0: x, y0: y }; this.showJoy(x, y, 0, 0); }
         else if (!this.look) this.look = { id: tc.identifier, x, y };
       } else if (S.mode === 'rts'){
         if (minimapClick(x, y, this.orderMode ? 2 : 0)){ if (!this.orderMode) this.mmId = tc.identifier; continue; }

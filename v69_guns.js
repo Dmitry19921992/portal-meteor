@@ -427,6 +427,7 @@ void main(){
   vec3 p = uCamW + uCR * vV;
   vec3 up = normalize(p);
   float m = vC.a, team = uP.z;
+  if (m > 6.5 && m < 7.5) discard;   // v7.3: стекло оптики / коллиматора — прозрачное (видно цель)
   vec3 alb = vC.rgb, em = vec3(0.0); float sp = 0.3;
   vec3 glow = team < 0.5 ? vec3(0.35, 1.0, 0.5) * 2.4 : vec3(1.0, 0.1, 0.05) * 3.2;
   float n1 = texture(uNoise, vG * 2.4).r, n2 = texture(uNoise, vG * 9.0 + 0.37).r;

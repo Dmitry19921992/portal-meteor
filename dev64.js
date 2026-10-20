@@ -142,7 +142,7 @@ Object.assign(DEV, {
   html(){
     const b = (a, v, t) => `<button data-dv="${a}" data-v="${v}">${t}</button>`;
     const W = ['rifle', 'smg', 'rail', 'hmg'].filter(w => WEAPONS[w]);
-    return `<h4>🛠 ${tr('Арсенал', 'Arsenal', 'Kho vũ khí')}<button data-dv="close">✕</button></h4>
+    return `<h4>🛠 ${tr('Арсенал', 'Arsenal', 'Kho vũ khí')}<button data-dv="min" title="${tr('Свернуть / развернуть', 'Collapse / expand', 'Thu gọn / mở')}">${this.pmin ? '▸' : '▾'}</button><button data-dv="close">✕</button></h4>
       <h5>${tr('Оружие', 'Weapons', 'Vũ khí')}</h5><div class="r">${W.map(w => b('w', w, N2(WEAPONS[w].n))).join('')}${b('refill', '', '↻ ' + tr('Пополнить всё', 'Refill all', 'Nạp đầy'))}</div>
       <h5>${tr('Класс (новый отряд рядом, вселиться)', 'Class (new squad nearby, possess)', 'Lớp (đội mới, nhập vai)')}</h5><div class="r">${Object.keys(ROLES).map(r => b('c', r, ROLES[r].icon + ' ' + N2(ROLES[r].n))).join('')}</div>
       <h5>${tr('Техника (появится рядом, сесть)', 'Vehicles (spawn nearby, board)', 'Xe (xuất hiện gần, lên xe)')}</h5><div class="r">${b('v', 'tank', '■ ' + tr('Танк', 'Tank', 'Xe tăng'))}${Object.keys(VK).map(k => b('v', k, VK[k].icon + ' ' + V2.cname(k, 0))).join('')}${b('v', 'drone', '▲ ' + tr('Дрон', 'Drone', 'Drone'))}</div>
@@ -156,12 +156,13 @@ Object.assign(DEV, {
       const go = e => { const t = e.target.closest('[data-dl]'); if (!t) return; e.preventDefault(); e.stopPropagation(); AU.init(); DEV.panel(); };
       lab.addEventListener('mousedown', go); lab.addEventListener('touchstart', go, { passive: false });
     }
-    const h = `<b>${tr('РЕЖИМ РАЗРАБОТЧИКА', 'DEVELOPER MODE', 'CHẾ ĐỘ NHÀ PHÁT TRIỂN')}${this.on ? '' : ' · ' + tr('выкл', 'off', 'tắt')}</b><button data-dl="1">🛠 ${tr('Арсенал', 'Arsenal', 'Kho')}${TOUCH.on ? '' : ' <kbd>F8</kbd>'}</button>`;
+    const h = this.arsOff ? `<button data-dl="1">🛠 ${tr('Арсенал: выкл', 'Arsenal: off', 'Kho: tắt')}</button>` : `<b>${tr('РЕЖИМ РАЗРАБОТЧИКА', 'DEVELOPER MODE', 'CHẾ ĐỘ NHÀ PHÁT TRIỂN')}${this.on ? '' : ' · ' + tr('выкл', 'off', 'tắt')}</b><button data-dl="1">🛠 ${tr('Арсенал', 'Arsenal', 'Kho')}${TOUCH.on ? '' : ' <kbd>F8</kbd>'}</button>`;
     if (lab._h !== h){ lab._h = h; lab.innerHTML = h; }
     lab.style.display = 'flex';
     const p = $('devPan'); if (p) p.style.display = this.open ? 'block' : 'none';
   },
   panel(on){
+    if (this.arsOff){ this.arsOff = false; on = true; }   // v7.3: Арсенал можно выключить (⏻) и включить обратно кнопкой у метки / F8
     this.open = on === undefined ? !this.open : !!on;
     let p = $('devPan');
     if (!p){
@@ -170,6 +171,8 @@ Object.assign(DEV, {
         const t = e.target.closest('button'); e.stopPropagation(); if (!t) return; e.preventDefault(); AU.init();
         const a = t.dataset.dv, v = t.dataset.v;
         if (a === 'close'){ DEV.panel(false); return; }
+        if (a === 'off'){ DEV.arsOff = true; DEV.panel(false); return; }
+        if (a === 'min'){ DEV.pmin = !DEV.pmin; p.classList.toggle('min', DEV.pmin); p.innerHTML = DEV.html(); return; }
         if (a === 'w') DEV.weapon(v); else if (a === 'c') DEV.cls(v); else if (a === 'v') DEV.veh(v);
         else if (a === 'refill') DEV.refill(); else if (a === 'dummy') DEV.dummy();
         else if (a === 'instant') DEV.instant = !DEV.instant;
@@ -182,7 +185,7 @@ Object.assign(DEV, {
       p.addEventListener('click', go);
       p.addEventListener('touchstart', e => { e.stopPropagation(); }, { passive: true });
     }
-    p.innerHTML = this.html();
+    p.innerHTML = this.html(); p.classList.toggle('min', !!this.pmin);
     if (this.open && S.mode === 'fps' && !TOUCH.on) unlockMouse();
     if (!this.open && S.mode === 'fps' && !TOUCH.on && !MENU.isOpen()) lockMouse();
     this.ui();
@@ -223,8 +226,8 @@ uixFrame = function(dt){ _devUixFrame(dt); try { DEV.frame(dt); } catch (e){ if 
   #devLab{position:fixed;right:12px;top:34px;z-index:19;display:none;align-items:center;gap:8px;background:rgba(80,20,10,.85);border:1px solid #ff8a5a;padding:2px 4px 2px 10px;font:700 11px "Exo 2";letter-spacing:.14em;color:#ffb38a;pointer-events:auto}
   #devLab button{pointer-events:auto;background:rgba(255,140,90,.18);border:1px solid #ff8a5a;color:#ffe2d0;font:700 11px "Exo 2";padding:3px 8px;cursor:pointer;letter-spacing:0}
   #devLab kbd{font-size:9px}
-  #devPan{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;display:none;width:min(640px,94vw);max-height:86vh;overflow:auto;background:rgba(14,12,10,.96);border:1px solid #ff8a5a;border-left:4px solid #ff8a5a;padding:8px 12px 12px;color:#eadcc6;font-family:"Exo 2";pointer-events:auto}
-  #devPan h4{margin:0 0 4px;display:flex;align-items:center;font:400 17px "Russo One";color:#ffb38a} #devPan h4 button{margin-left:auto;width:34px;height:30px}
+  #devPan{position:fixed;right:8px;top:62px;z-index:30;display:none;width:min(310px,40vw);max-height:calc(100vh - 80px);overflow:auto;background:rgba(14,12,10,.96);border:1px solid #ff8a5a;border-left:4px solid #ff8a5a;padding:8px 12px 12px;color:#eadcc6;font-family:"Exo 2";pointer-events:auto}
+  #devPan h4{margin:0 0 4px;display:flex;align-items:center;font:400 17px "Russo One";color:#ffb38a} #devPan h4 button{width:30px;height:28px;padding:0} #devPan h4 button:first-of-type{margin-left:auto} #devPan.min{width:auto} #devPan.min h5,#devPan.min .r{display:none}
   #devPan h5{margin:8px 0 4px;font:600 10.5px "Exo 2";letter-spacing:.14em;text-transform:uppercase;color:#c9a990}
   #devPan .r{display:flex;flex-wrap:wrap;gap:5px}
   #devPan button{pointer-events:auto;background:rgba(60,40,30,.8);border:1px solid rgba(255,160,120,.5);color:#ffeadc;font:600 12.5px "Exo 2";padding:7px 10px;cursor:pointer;border-radius:3px;min-height:34px}

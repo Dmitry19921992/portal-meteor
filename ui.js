@@ -28,6 +28,8 @@ document.addEventListener('pointerlockchange', () => {
     if (!wantUnlock && S.mode === 'fps' && !S.attract && !S.over && !MENU.isOpen()){ if (MENU.waitLock){ MENU.waitLock = false; } MENU.pause(); }
     wantUnlock = false;
   } else if (MENU.waitLock){ MENU.waitLock = false; S.paused = false; AU.duck(false); }   // мышь снова захвачена — продолжаем
+  // v7.3: в стратегии мышь захватывать не нужно (запрос на захват из «Новой игры» мог дойти уже после перехода в стратегию → пропадал курсор)
+  if (isLocked() && S.mode === 'rts'){ wantUnlock = true; try { document.exitPointerLock(); } catch (e) {} }
   updateModeUI();
 });
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -357,7 +359,7 @@ function helpFPS(c){
   row(bk('switch'), tr('быстрая смена бойца, не выходя из боя (Shift — назад)', 'quick unit switch, staying in battle (Shift — back)', 'đổi nhanh đơn vị (Shift — lùi lại)'));
   if (SET.bind.redeploy){
     row(bk('redeploy'), tr('переброска капсулой к цели (Shift — в гущу боя)', 'drop pod to the objective (Shift — into the fight)', 'khoang tới mục tiêu (Shift — vào trận)')); row(bk('track'), tr('за какой целью вести маршрут', 'which objective the route leads to', 'chọn mục tiêu dẫn đường'));
-    row(`${bk('freeplay')} · ${bk('solo')} · F2`, tr('приказы/свобода · отряд/один · пресеты', 'orders/free · squad/solo · presets', 'lệnh/tự do · đội/một mình · cài sẵn'));
+    row(`${bk('freeplay')} · F2`, tr('приказы/свобода · пресеты', 'orders/free · presets', 'lệnh/tự do · cài sẵn'));
   }
   row(bk('rts'), tr('стратегия (там та же клавиша — вселиться в выделенного)', 'strategy (the same key there possesses the selection)', 'chiến thuật')); row(bk('third'), tr('3-е лицо', '3rd person', 'góc nhìn 3')); row(bk('follow'), tr('ведомый', 'follower', 'đi theo')); row(bk('ai'), tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI'));
   row('M', tr('звук', 'sound', 'âm thanh')); row('O', tr('качество', 'quality', 'chất lượng')); row('Esc', tr('меню', 'menu', 'menu'));

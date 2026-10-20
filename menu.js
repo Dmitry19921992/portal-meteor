@@ -14,7 +14,7 @@ const BIND_NAMES = {
   switch: ['Быстрая смена бойца (в бою)', 'Quick unit switch (in battle)', 'Đổi đội / xe'], rts: ['Стратегия ⇄ бой · в стратегии — вселиться в выделенного', 'Strategy ⇄ battle · in strategy — possess selection', 'Chế độ chiến thuật ⇄ nhập vai'], third: ['Вид от 3-го лица', 'Third person', 'Góc nhìn thứ ba'],
   follow: ['Режим «ведомый»', 'Follower mode', 'Chế độ đi theo'], nav: ['Линия к задаче', 'Objective line', 'Đường tới nhiệm vụ'], ai: ['ИИ-стратег вкл/выкл', 'AI strategist on/off', 'Bật/tắt chiến lược gia AI'],
 };
-const SET_DEF = { lang: (() => { try { const l = (navigator.language || 'en').slice(0, 2).toLowerCase(); return ['ru', 'uk', 'be', 'kk'].includes(l) ? 'ru' : l === 'vi' ? 'vi' : (l === 'he' || l === 'iw') ? 'he' : 'en'; } catch (e) { return 'en'; } })(), vol: 0.9, voice: true, hintsVoice: true, hintsOn: true, sens: 1, invertY: false, swapMouse: false, quality: 2, autoRes: true,
+const SET_DEF = { lang: (() => { try { const l = (navigator.language || 'en').slice(0, 2).toLowerCase(); return ['ru', 'uk', 'be', 'kk'].includes(l) ? 'ru' : l === 'vi' ? 'vi' : (l === 'he' || l === 'iw') ? 'he' : 'en'; } catch (e) { return 'en'; } })(), vol: 0.9, voice: true, hintsVoice: true, hintsOn: true, sens: 1, invertY: false, swapMouse: false, quality: 2, autoRes: true, lite: null,
                   scale: 0.75, fov: 75, vhs: false, distort: true, bright: 1, diff: 3, grid: 1, bounces: 4, edgeScroll: true, unlockAll: false, battle: 1, endless: true, fog: true, chatter: true, bind: Object.assign({}, BIND_DEF) };
 const SET = JSON.parse(JSON.stringify(SET_DEF));
 function applySettings(){
@@ -24,6 +24,7 @@ function applySettings(){
   PROG.allUnlocked = SET.unlockAll;
   AU.setVol(SET.vol);
   document.documentElement.lang = SET.lang;
+  if (typeof LITE73 !== 'undefined') LITE73.apply();   // v7.3: «Лёгкий режим» (телефон — по умолчанию)
 }
 const el0 = () => $('screen');
 const MENU = {
@@ -192,7 +193,7 @@ const MENU = {
       ${row(tr('Язык', 'Language', 'Ngôn ngữ'), ch('lang', LANGS))}
       ${row(tr('Громкость', 'Volume', 'Âm lượng'), sl('vol', 0, 1, 0.05))}
       ${row(tr('Голос рации', 'Radio voice', 'Giọng bộ đàm'), tog('voice'))}
-      ${row(tr('Подсказки', 'Hints', 'Gợi ý'), tog('hintsOn'))}
+      ${row(tr('Подсказки (всплывающие и куратор)', 'Hints (pop-ups and curator)', 'Gợi ý (cửa sổ và người hướng dẫn)'), tog('hintsOn'))}
       ${row(tr('Озвучивать подсказки', 'Voice the hints', 'Đọc gợi ý thành tiếng'), tog('hintsVoice'))}
       <h4>${tr('Мышь и камера', 'Mouse & camera', 'Chuột & camera')}</h4>
       ${row(tr('Чувствительность', 'Sensitivity', 'Độ nhạy'), sl('sens', 0.3, 3, 0.05))}
@@ -203,6 +204,7 @@ const MENU = {
       </div><div>
       <h4>${tr('Графика', 'Graphics', 'Đồ họa')}</h4>
       ${row(tr('Качество', 'Quality', 'Chất lượng'), ch('quality', [[0, tr('низкое', 'low', 'thấp')], [1, tr('среднее', 'medium', 'trung bình')], [2, tr('высокое', 'high', 'cao')]]))}
+      ${row(tr('Лёгкий режим (для слабых телефонов)', 'Lite mode (for weak phones)', 'Chế độ nhẹ (cho điện thoại yếu)'), tog('lite'))}
       ${row(tr('Авторазрешение', 'Auto resolution', 'Độ phân giải tự động'), tog('autoRes'))}
       ${row(tr('Масштаб разрешения', 'Resolution scale', 'Tỷ lệ độ phân giải'), sl('scale', 0.25, 1.5, 0.125))}
       ${row(tr('Яркость', 'Brightness', 'Độ sáng'), sl('bright', 0.6, 1.6, 0.05))}
@@ -217,14 +219,14 @@ const MENU = {
       ${row(tr('Переговоры отряда', 'Squad chatter', 'Đồng đội trò chuyện'), tog('chatter'))}
       ${row(tr('Радиоэфир стратега', 'Strategist radio', 'Bộ đàm chiến lược gia'), ch('radioLvl', [[2, tr('полный', 'full', 'đầy đủ')], [1, tr('важное', 'important', 'quan trọng')], [0, tr('тишина', 'silent', 'im lặng')]]))}
       ${row(tr('Приказы стратега', 'Strategist orders', 'Lệnh chiến lược gia'), ch('ordersFree', [[false, tr('следовать', 'follow', 'theo lệnh')], [true, tr('свобода действий', 'free play', 'tự do')]]))}
-      ${row(tr('Отряд', 'Squad', 'Đội'), ch('solo', [[false, tr('со мной', 'with me', 'đi cùng')], [true, tr('действую один', 'going solo', 'một mình')]]))}
+      <!-- v7.3: режим «действую один» убран -->
       ${row(tr('Все способности сразу (тест)', 'All abilities unlocked (test)', 'Mở khóa mọi kỹ năng (thử nghiệm)'), tog('unlockAll'))}
       ${typeof FPS61 !== 'undefined' ? FPS61.settingsRows(row, ch) : ''}
       </div></div>
       ${this.btn('back', tr('Назад', 'Back', 'Quay lại'), 'big')}</div>`;
   },
   html_controls(){
-    const acts = Object.keys(BIND_DEF);
+    const acts = Object.keys(BIND_DEF).filter(a => a !== 'solo');   // v7.3: «действую один» убран
     const rows = acts.map(a => `<div class="brow"><label>${N2(BIND_NAMES[a])}</label><button class="kb ${this.rebind === a ? 'wait' : ''}" data-bind="${a}">${this.rebind === a ? tr('нажми клавишу…', 'press a key…', 'nhấn một phím…') : keyLabel(SET.bind[a])}</button></div>`).join('');
     const kbRows = [
       ['Backquote', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'],
@@ -264,7 +266,7 @@ const MENU = {
     on('resetbind', () => { SET.bind = Object.assign({}, BIND_DEF); this.save(); this.show('controls'); });
     const el = $('screen');
     el.querySelectorAll('[data-diff]').forEach(b => b.onclick = e => { e.stopPropagation(); SET.diff = +b.dataset.diff; applySettings(); this.save(); this.show(this.cur); });
-    el.querySelectorAll('[data-tog]').forEach(b => b.onclick = e => { e.stopPropagation(); const k = b.dataset.tog; SET[k] = !SET[k]; applySettings(); this.save(); if (k === 'autoRes' || k === 'scale') resize(); this.show(this.cur); });
+    el.querySelectorAll('[data-tog]').forEach(b => b.onclick = e => { e.stopPropagation(); const k = b.dataset.tog; SET[k] = !SET[k]; applySettings(); this.save(); if (k === 'autoRes' || k === 'scale' || k === 'lite') resize(); this.show(this.cur); });
     el.querySelectorAll('[data-ch]').forEach(b => b.onclick = e => {
       e.stopPropagation(); const k = b.dataset.ch; const v = b.dataset.v; SET[k] = v === 'true' ? true : v === 'false' ? false : isNaN(+v) ? v : +v;
       if (k === 'lang') this.applyLang(); else { applySettings(); this.save(); }
