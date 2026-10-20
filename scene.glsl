@@ -32,6 +32,8 @@ uniform vec3  uGP[92];   // v6.2: центры граней м-ка Гольдб
 uniform vec4  uVein[20]; uniform int uNV;   // v6.2: рудные жилы (центр на грунте) — тёмный базальт и изумрудная крошка вокруг
 uniform float uStorm;   // пылевая буря 0..1    // всегда 0: не даёт компилятору D3D разворачивать циклы (иначе компиляция идёт минутами)
 #define ZERO uZero      // штабы живы (1) или в руинах (0)
+uniform float uG72;      // v7.2gfx: новая графика (0 — как в v7.1, всё ниже под этим флагом)
+uniform vec4  uScor[8];  uniform float uScorH[8]; uniform int uNSc;   // v7.2gfx: опалины от взрывов (центр, радиус; жар 0..1)
 out vec4 frag;
 
 /*CONSTS*/
@@ -171,6 +173,12 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
     alb = mix(dust, rock, smoothstep(0.32, 0.62, big + slope * 1.6));
     alb = mix(alb, dark, smoothstep(0.55, 0.85, mid) * 0.55);
     alb *= 0.82 + 0.36 * fine;
+    if (uG72 > 0.5){   // v7.2gfx: тёплая охра / холодный базальт, слоистость склонов, темнее в складках
+      float hue = fbm3(p * (1.0 / 95.0) + 3.7);
+      alb *= mix(vec3(1.07, 0.98, 0.86), vec3(0.88, 0.94, 1.03), smoothstep(0.38, 0.62, hue));
+      float strata = smoothstep(0.55, 0.95, abs(sin(dot(p, vec3(0.11, 0.37, 0.19)) + 6.0 * big)));
+      alb *= (1.0 - 0.22 * strata * smoothstep(0.1, 0.5, slope)) * (0.86 + 0.14 * smoothstep(0.2, 0.8, mid));
+    }
     float depth = clamp((RM - r) / 30.0, 0.0, 1.0);
     alb = mix(alb, vec3(0.10, 0.095, 0.11), depth);
     // площадки баз
@@ -244,6 +252,18 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
       float ice = smoothstep(1.5, 7.0, low) * (1.0 - smoothstep(0.15, 0.5, slope)) * smoothstep(0.35, 0.6, nz(p * 0.08) + 0.25);
       alb = mix(alb, vec3(0.40, 0.47, 0.55) * (0.85 + 0.3 * fine), ice * 0.85);
       sp = mix(sp, 0.7, ice); gBump *= 1.0 - 0.7 * ice;
+      if (uG72 > 0.5) em += vec3(0.5, 0.65, 0.8) * ice * smoothstep(0.93, 0.99, nz(p * 2.3)) * exp(-gDist * 0.05) * 0.25;   // искры инея
+    }
+    if (uG72 > 0.5){   // v7.2gfx: опалины от взрывов, свежие — с тлеющими углями
+      for (int i = ZERO; i < 8; i++){
+        if (i >= uNSc) break;
+        vec3 dv = p - uScor[i].xyz; float dd = dot(dv, dv), rr = uScor[i].w;
+        if (dd > rr * rr * 2.4) continue;
+        float e = sqrt(dd) / rr + (nz(p * 0.35 + float(i) * 0.37) - 0.5) * 0.6;
+        float k = 1.0 - smoothstep(0.5, 1.25, e);
+        alb *= 1.0 - 0.8 * k; sp *= 1.0 - 0.7 * k; gBump *= 1.0 - 0.4 * k;
+        em += vec3(1.8, 0.4, 0.06) * uScorH[i] * smoothstep(0.55, 0.95, k) * smoothstep(0.55, 0.8, nz(p * 1.4 + float(i) * 0.71));
+      }
     }
   }
   else if (m < 3.5){
@@ -1294,11 +1314,12 @@ void traceParticles(vec3 o, vec3 d, inout float bestT, inout vec3 bE, inout int 
   for (int i = ZERO; i < 160; i++){
     if (i >= uNP) break;
     vec4 b = texelFetch(uPar, ivec2(1, i), 0);
-    if (b.w > 9.5) continue;
+    if (b.w > 9.5 && b.w < 11.5) continue;
     vec4 a = texelFetch(uPar, ivec2(0, i), 0);
     float rr = max(a.w, length(a.xyz - o) * 0.0012);
     float t = hitCapsule(o, d, a.xyz, b.xyz, rr);
-    if (t > 0.0 && t < bestT){ bestT = t; bE = parColor(b.w); kind = 3; }
+    // v7.2gfx: тип 12+f — обломок породы (тёмный, с тлеющей кромкой f = жар 0..1)
+    if (t > 0.0 && t < bestT){ bestT = t; bE = b.w > 11.5 ? vec3(0.018, 0.016, 0.014) + vec3(3.0, 0.9, 0.2) * fract(b.w) * fract(b.w) : parColor(b.w); kind = 3; }
   }
 }
 vec3 tracerGlow(vec3 o, vec3 d, float tMax){
@@ -1340,6 +1361,29 @@ vec4 volumes(vec3 o, vec3 d, float tMax){
     float prof = max(1.0 - dist2 / (r*r), 0.0);
     vec3 mp = o + d * clamp(-bb, t0, t1);
     float nn = nz(mp * 0.06 + vec3(0.0, uTime * 0.04, float(i) * 0.137));
+    if (b.w > 11.5) continue;   // v7.2gfx: обломки — не объём
+    if (uG72 > 0.5){   // v7.2gfx: клубящийся огонь с горячим ядром и копотью, дым с освещённой и теневой стороной
+      float n2 = fbm3(mp * (0.55 / max(r, 0.6)) + vec3(0.0, -uTime * 0.35, float(i) * 0.21));
+      if (b.w < 10.5){
+        float age = b.x;
+        float hot = clamp(prof * 1.25 - age * 0.9 + (n2 - 0.5) * 0.7, 0.0, 1.0);
+        vec3 fc = mix(vec3(0.9, 0.18, 0.03), vec3(7.5, 4.2, 1.6), hot) * (1.0 - age) * b.y;
+        fc += vec3(3.4, 2.7, 1.8) * pow(hot, 3.0) * (1.0 - age) * (1.0 - age) * b.y;
+        float tau = L / r * prof * (0.25 + 1.6 * n2) * 1.9;
+        float al = 1.0 - exp(-tau);
+        add += T * fc * al; T *= 1.0 - al * mix(0.85, 0.35, hot);
+      } else {
+        vec3 up = c / max(length(c), 1.0);
+        vec3 nrm = normalize(mp - c + up * r * 0.3);
+        vec3 sunl = C1 * max(dot(up, SUN1), 0.0) * (0.35 + 0.65 * max(dot(nrm, SUN1), 0.0)) + C2 * max(dot(up, SUN2), 0.0) * (0.35 + 0.65 * max(dot(nrm, SUN2), 0.0));
+        float under = clamp(0.5 - 0.5 * dot(nrm, up), 0.0, 1.0);
+        vec3 sc = vec3(b.y) * (vec3(0.03) + sunl * 0.2) * (0.75 + 0.5 * n2) + b.z * vec3(1.4, 0.5, 0.12) * (0.4 + under);
+        float tau = L / r * prof * b.x * (0.1 + 1.6 * n2 * n2 + 0.3 * nn);
+        float al = 1.0 - exp(-tau);
+        add += T * sc * al; T *= 1.0 - al;
+      }
+      continue;
+    }
     if (b.w < 10.5){
       float age = b.x;
       vec3 fc = mix(vec3(7.0, 3.6, 1.3), vec3(1.8, 0.4, 0.08), smoothstep(0.0, 0.55, age)) * (1.0 - age) * b.y;
@@ -1452,6 +1496,11 @@ vec3 shade(vec3 p, vec3 n, vec3 v, vec3 alb, float sp, float ao, float shOverrid
   col += pointLights(p, n, v, alb, sp);
   float cd = length(p - uCam);
   col += alb * uLamp * max(dot(n, v), 0.0) * vec3(1.0, 0.96, 0.9) * 0.3 * exp(-cd * 0.04);
+  if (uG72 > 0.5){   // v7.2gfx: в шахтах — холодный отражённый свет от световых колец (не чёрная дыра)
+    float rp = length(p);
+    float shf = step(min(length(p.yz), length(p.xy)), TUN_R + 3.0) * smoothstep(RM - 6.0, RM - 26.0, rp) * step(CORE_R, rp);
+    col += alb * ao * vec3(0.13, 0.21, 0.34) * shf * (0.6 + 0.4 * hemi);
+  }
   return col;
 }
 
@@ -1642,6 +1691,18 @@ void main(){
         }
         c = shade(p, bN, -d, bA, bS, bAO, -1.0) + bE;
       }
+      if (uG72 > 0.5 && b == 0){   // v7.2gfx: высотная пылевая дымка, подсвеченная солнцами (воздушная перспектива; только прямой луч)
+        float h0 = length(o) - RM, h1 = length(p) - RM;
+        float hz = 0.55 * exp(-max(min(h0, h1), 0.0) / 22.0) + 0.45 * exp(-max(0.5 * (h0 + h1), 0.0) / 22.0);
+        float sky = clamp((h1 + 14.0) / 14.0, 0.0, 1.0);
+        vec3 up = p / length(p);
+        vec3 sunl = C1 * max(dot(up, SUN1) + 0.15, 0.0) + C2 * max(dot(up, SUN2) + 0.15, 0.0);
+        vec3 hc = vec3(0.5, 0.46, 0.4) * sunl * (0.05 + 0.08 * pow(max(dot(d, SUN1), 0.0), 6.0) + 0.05 * pow(max(dot(d, SUN2), 0.0), 6.0));
+        hc = mix(vec3(0.012, 0.012, 0.016), hc, sky);
+        float fk = fogK() + 0.0045 * hz * (0.35 + 0.65 * sky);
+        float tr = exp(-bestT * fk) * exp(-(total - bestT) * fogK());
+        acc += thr * mix(mix(fogCol(d), hc, hz), c, tr);
+      } else
       acc += thr * mix(fogCol(d), c, exp(-total * fogK()));
       done = true;
       break;
@@ -1649,6 +1710,7 @@ void main(){
     vec3 P = o + d * tExit;
     total += tExit;
     pend = thr * portalGlow(P, d) * exp(-total * 0.0006);
+    if (uG72 > 0.5) pend += thr * vec3(0.06, 0.2, 0.17) * pow(1.0 - abs(dot(d, P / uR)), 5.0) * 0.05 * uGrid * (0.8 + 0.4 * nz(P * 0.004 + uTime * 0.01));   // v7.2gfx: дымка шва портала
     thr *= vec3(0.88, 0.92, 0.97);
     o = -P + d * 0.01;
   }

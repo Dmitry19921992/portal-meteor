@@ -58,8 +58,9 @@ function finishProgram(h, names){
   return { p: h.p, U };
 }
 const SCENE_U = ['uRes','uCam','uRot','uR','uBounces','uGrid','uSelf','uTiles','uFov','uTime','uQ','uMe','uObj','uNO','uPar','uNP','uNoise',
-                 'uLP','uLC','uNL','uCP','uVM','uVM2','uLamp','uHQ','uZero','uStorm','uVM3','uVein','uNV','uGP'];
-const POST_U = ['uTex','uRes','uTime','uExpo','uFlash','uDmg','uVhs','uBloom','uWave','uNW','uTrc','uNT','uSlow','uDist','uXfer'];
+                 'uLP','uLC','uNL','uCP','uVM','uVM2','uLamp','uHQ','uZero','uStorm','uVM3','uVein','uNV','uGP',
+                 'uG72','uScor','uScorH','uNSc'];   // v7.2gfx (v72_gfx.js)
+const POST_U = ['uTex','uRes','uTime','uExpo','uFlash','uDmg','uVhs','uBloom','uWave','uNW','uTrc','uNT','uSlow','uDist','uXfer','uG72'];
 let SCENE = null, POST = null;
 let texObj, texPar, texNoise;
 const MAXO = 160, MAXP = 200;
@@ -353,6 +354,7 @@ function gatherParticles(){
     if (!b.alive || !b.beam || !near(b.pos, 250)) continue;
     if (random() < 0.85) push(add(b.pos, mul(b.up, -0.15)), 0.04, add(b.beam, mul(randUnit(), 0.6)), 4);
   }
+  if (typeof GFX72 !== 'undefined') GFX72.particles(push, near);   // v7.2gfx: обломки и пыль попаданий
   return n;
 }
 const LP = new Float32Array(16 * 4), LC = new Float32Array(16 * 4);
@@ -505,6 +507,7 @@ function render(dt, now){
   if (!GP_U) GP_U = new Float32Array(gpNormals().flat());
   gl.uniform3fv(U.uGP, GP_U);
   gl.uniform1f(U.uStorm, (S.storm ? S.storm.k : 0) * (fpsLike ? 1 : 0.12));
+  if (typeof GFX72 !== 'undefined') GFX72.sceneU(U); else gl.uniform1f(U.uG72, 0);   // v7.2gfx
   const me = S.me;
   const showVM = S.mode === 'fps' && !S.attract && me && me.cls === 'inf' && !S.third && !S.freecam;
   const wk = S.kit ? S.kit.w : 'rifle';
@@ -544,5 +547,6 @@ function render(dt, now){
   gl.uniform1f(P.uSlow, S.slow);
   gl.uniform1f(P.uDist, SET.distort ? 1 : 0);
   gl.uniform1f(P.uXfer, S.attract ? 0 : (S.xfer || 0));
+  gl.uniform1f(P.uG72, typeof GFX72 !== 'undefined' ? GFX72.postK() : 0);   // v7.2gfx: 1 — всё, 0.5 — только цвет (телефон), 0 — v7.1
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
