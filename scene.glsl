@@ -33,6 +33,7 @@ uniform vec4  uVein[20]; uniform int uNV;   // v6.2: рудные жилы (це
 uniform float uStorm;   // пылевая буря 0..1    // всегда 0: не даёт компилятору D3D разворачивать циклы (иначе компиляция идёт минутами)
 #define ZERO uZero      // штабы живы (1) или в руинах (0)
 uniform float uG72;      // v7.2gfx: новая графика (0 — как в v7.1, всё ниже под этим флагом)
+uniform vec4  uDen;      // v7.5 «Денди»: ступенчатый свет — x вкл (0 — как раньше), y/z уровни полутона/света, w добавка рассеянного
 uniform vec4  uScor[8];  uniform float uScorH[8]; uniform int uNSc;   // v7.2gfx: опалины от взрывов (центр, радиус; жар 0..1)
 out vec4 frag;
 
@@ -1494,6 +1495,10 @@ vec3 pointLights(vec3 p, vec3 n, vec3 v, vec3 alb, float sp){
     float att = f * f / (1.0 + dd * 0.04);
     float nl = max(dot(n, lv), 0.0);
     col += uLC[i].rgb * att * (alb * nl + sp * pow(max(dot(n, normalize(lv + v)), 0.0), 30.0) * 0.5);
+    if (uDen.x > 0.5){   // v7.5 «Денди»: свет ступенями (поправка к обычному свету — сам обычный не меняется)
+      float sq = pow(max(dot(n, normalize(lv + v)), 0.0), 30.0);
+      col += uLC[i].rgb * (alb * (floor(att * nl * 4.0 + 0.5) * 0.25 - att * nl) + att * sp * (step(0.6, sq) - sq) * 0.5);
+    }
   }
   return col;
 }
@@ -1508,12 +1513,18 @@ vec3 shade(vec3 p, vec3 n, vec3 v, vec3 alb, float sp, float ao, float shOverrid
   else if (sh > 0.01) sh *= shadow(p + n * 0.04, L);
   vec3 h = normalize(L + v);
   vec3 col = LC * dl * sh * (alb + sp * pow(max(dot(n, h), 0.0), 48.0) * 0.7);
+  if (uDen.x > 0.5){   // v7.5 «Денди»: солнце в 3 ступени (тень / полутон / свет), жёсткий блик
+    float lk = dl * sh;
+    lk = lk < 0.12 ? 0.0 : (lk < 0.5 ? uDen.y : uDen.z);
+    col = LC * lk * (alb + sp * step(0.55, pow(max(dot(n, h), 0.0), 48.0)) * 0.7);
+  }
   float hemi = 0.5 + 0.5 * dot(n, up);
   // рассеянный: тёплый/холодный отражённый свет от освещённой стороны метеорита
   float side = dot(up, SUN1);
   vec3 bounce = mix(C2, C1, 0.5 + 0.5 * side) * 0.012;
   vec3 amb = mix(vec3(0.016, 0.015, 0.014), vec3(0.03, 0.036, 0.05), hemi) + bounce * (1.0 - hemi * 0.5);
   col += alb * ao * amb;
+  if (uDen.x > 0.5) col += alb * ao * amb * uDen.w;   // v7.5: в тени не чёрная дыра (после 3 ступеней света)
   col += pointLights(p, n, v, alb, sp);
   float cd = length(p - uCam);
   col += alb * uLamp * max(dot(n, v), 0.0) * vec3(1.0, 0.96, 0.9) * 0.3 * exp(-cd * 0.04);

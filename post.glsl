@@ -16,6 +16,7 @@ uniform float uSlow;     // рефлекс (замедление времени)
 uniform float uDist;     // искажения вкл/выкл
 uniform float uXfer;     // v6: «передача сигнала» при перелёте камеры между бойцами
 uniform float uG72;      // v7.2gfx: новая пост-обработка (0 — как в v7.1)
+uniform float uDen;      // v7.5 «Денди»: без зерна плёнки (иначе пиксели палитры мерцают каждый кадр)
 out vec4 frag;
 
 vec3 aces(vec3 x){
@@ -125,7 +126,7 @@ void main(){
     col = col * 0.965 + 0.022;
     // зерно плёнки: сильнее в тенях и полутонах, крупнее VHS-шума
     float gr = hash(floor(gl_FragCoord.xy * 0.7) + fract(uTime * 23.1) * 517.0) - 0.5;
-    col += gr * 0.05 * (1.0 - l * 0.7);
+    if (uDen < 0.5) col += gr * 0.05 * (1.0 - l * 0.7);
   }
 
   float vig = smoothstep(1.05, 0.3, length(cc * vec2(1.25, 1.0)));
@@ -134,7 +135,7 @@ void main(){
   col = mix(col, vec3(1.0), uFlash);
 
   float g = hash(gl_FragCoord.xy + fract(uTime * 13.7) * 311.0) - 0.5;
-  col += g * (0.035 + uVhs * 0.05 + uSlow * 0.02);
+  if (uDen < 0.5) col += g * (0.035 + uVhs * 0.05 + uSlow * 0.02);
   if (uVhs > 0.5) col *= 0.9 + 0.1 * sin(gl_FragCoord.y * 3.14159);
   if (uXfer > 0.0){
     float l2 = dot(col, vec3(0.3, 0.55, 0.15));
