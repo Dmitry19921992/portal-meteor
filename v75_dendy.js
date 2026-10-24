@@ -15,7 +15,8 @@
 //  Хуки в чужом коде: только scene.glsl/post.glsl (uDen) и строка в build.py. Остальное — обёртки здесь:
 //  resize, render, gatherObjects, gatherParticles, HV65.animate, WPN69.draw, CAM66.glRect, applySettings, меню.
 // =====================================================================
-for (const [k, v] of [['denStyle', 0], ['denRows', 0], ['denChop', 12], ['denOut', true], ['denDith', true], ['denSnap', true]]){
+// denUser — стиль выбрал сам игрок (меню / ?dendy=): авто-Денди его больше не трогает; denAuto — стиль включён автоматически ('igpu' | 'fps')
+for (const [k, v] of [['denStyle', 0], ['denRows', 0], ['denChop', 12], ['denOut', true], ['denDith', true], ['denSnap', true], ['denUser', false], ['denAuto', 0]]){
   if (SET_DEF[k] === undefined) SET_DEF[k] = v;
   if (SET[k] === undefined) SET[k] = v;
 }
@@ -30,7 +31,10 @@ const DEN75 = {
   M: 1, k: 1, R: 180, tick: -1, newTick: true, nowQ: 0, adv: false, uSet: false, failed: false, anchor: null,
   sx: 0, sy: 0, wpn: false, key: '', stats: { ms: 0, w: 0, h: 0 },
   style(){ return SET.denStyle | 0; },
-  active(){ return this.style() > 0 && !S.fixedRes && !this.failed; },
+  // v7.5 релиз: в кино (S.fixedRes) Денди работает только в 16:9 (сплитскрин / обычный оператор) и только если стиль выбрал
+  // сам игрок — авто-Денди слабой графики не портит запись девлогов; 9:16 — всегда обычный стиль
+  cine(){ return typeof OPER !== 'undefined' && OPER.on && OPER.aspect === '16:9' && !!SET.denUser; },
+  active(){ return this.style() > 0 && (!S.fixedRes || this.cine()) && !this.failed; },
   rows(){ const r = SET.denRows | 0; return r === 120 || r === 180 || r === 240 ? r : (this.style() === 2 ? 240 : 180); },
   chopOn(){ return this.active() && (SET.denChop | 0) > 0; },
   CH(){
@@ -132,8 +136,9 @@ void main(){
     const R = this.R = this.rows(), m = this.M = SET.denSnap !== false ? 1 : 0;
     const W = max(64, innerWidth), H = max(36, innerHeight), px = H / R;   // CSS-пикселей на один «денди-пиксель»
     const w = Math.ceil(W / px - 1e-6) + 2 * m, h = R + 2 * m;           // + поля по 1 px: под сдвиг привязки к сетке
+    const fr = S.fixedRes;   // кино: вернуть разрешение оператора (по нему кино понимает, что оно включено)
     S.fixedRes = [w, h];
-    try { rs0(); } finally { S.fixedRes = null; }
+    try { rs0(); } finally { S.fixedRes = fr; }
     this.px = px; this.w = w; this.h = h;
     this.build(w, h);
     this.css(true);
@@ -259,14 +264,14 @@ void main(){
     gl.viewport(0, 0, canvas.width, canvas.height);
     this.stats.ms = this.stats.ms * 0.95 + (performance.now() - t0) * 0.05;
   },
-  keyNow(){ return [this.active(), this.rows(), SET.denSnap !== false, innerWidth, innerHeight, devicePixelRatio].join(); },
+  keyNow(){ return [this.active(), this.rows(), SET.denSnap !== false, innerWidth, innerHeight, devicePixelRatio, !!S.fixedRes].join(); },
   sync(){
     if (!fbo) return;   // ещё загрузка: resize() вызовет boot
     if ((this.active() || this.st.w || this.cssOn) && this.keyNow() !== this.key) resize();   // «Обычный» без перемен — лишнего resize нет
     if (!this.active() && SCENE) this.uniforms(0);
   },
   set(style, o){   // для тестов и консоли: DEN75.set(1, { denRows: 120 })
-    SET.denStyle = style | 0; if (o) Object.assign(SET, o);
+    SET.denStyle = style | 0; SET.denUser = true; SET.denAuto = 0; if (o) Object.assign(SET, o);
     applySettings(); MENU.save();
   },
 };
@@ -292,7 +297,10 @@ void main(){
     try {
       D.uniforms(1);
       D.clock(now);
-      const cam = S.cam; S.cam = D.snapCam(cam);
+      // кино-сплитскрин: у каждой половины своя камера (CINE75.views) — привязку к сетке и сдвиг canvas не делаем
+      const split = typeof CINE75 !== 'undefined' && CINE75.on();
+      const cam = S.cam; S.cam = split ? cam : D.snapCam(cam);
+      if (split) D.shift(0, 0);
       D.wpn = false; D.frameOn = true;
       try { r0(dt, D.chopOn() ? D.nowQ : now); } finally { S.cam = cam; D.frameOn = false; }
       D.pass();
@@ -345,14 +353,80 @@ if (typeof CAM66 !== 'undefined' && CAM66.glRect){   // живой портре�
     const r = ld0.apply(this, arguments);
     try {
       const q = new URLSearchParams(location.search), d = q.get('dendy'), rw = q.get('rows');
-      if (d === '0' || d === '1' || d === '2') SET.denStyle = +d;
+      if (d === '0' || d === '1' || d === '2'){ SET.denStyle = +d; SET.denUser = true; SET.denAuto = 0; }
       if (rw === '120' || rw === '180' || rw === '240') SET.denRows = +rw;
     } catch (e){}
+    try { DEN75.autoBoot(); } catch (e){ console.warn('DEN75 auto', e); }
     return r;
   }; }
+// ---------------------------------------------------------------- v7.5 релиз: авто-«Денди» на слабых устройствах
+// Игрок сам не выбирал стиль (SET.denUser = false) и:
+//  • ПК со встроенной графикой (Intel UHD/HD/Iris, APU Radeon Graphics, программный рендер) — «Денди» сразу при загрузке
+//    (SET.denAuto = 'igpu'; если видеокарта снова мощная — напр. заработала RTX — при следующей загрузке вернётся «Обычный»);
+//  • любой ПК/телефон, где FPS < 20 держится 8 с подряд при уже минимальном разрешении (лёгкий режим: LITE73.adapt дошёл
+//    до масштаба 0.35 и «глубокой» экономии; ПК: авторазрешение на 0.5) — «Денди» (телефон / лёгкий — 120 строк), SET.denAuto = 'fps'.
+// Любой выбор стиля игроком в меню (или ?dendy=) ставит denUser = true — авто больше не вмешивается; выбор запоминается.
+// ?autodendy=0 — выключить авто (и снять авто-стиль), ?autodendy=1 — считать устройство слабым (проверка).
+DEN75.gpu = function(){
+  if (this._gpu !== undefined) return this._gpu;
+  let s = '';
+  try { const e = gl.getExtension('WEBGL_debug_renderer_info'); s = String((e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) || ''); } catch (e){}
+  return (this._gpu = s);
+};
+DEN75.weakGPU = function(){
+  if (typeof TOUCH !== 'undefined' && TOUCH.on) return false;   // телефоны и планшеты — только по FPS
+  const s = this.gpu();
+  if (/nvidia|geforce|quadro|rtx|gtx|\barc\b|radeon ?(rx|pro|vii|r9)/i.test(s)) return false;
+  return /intel|uhd graphics|hd graphics|iris|swiftshader|llvmpipe|basic render|radeon\(tm\) graphics|radeon graphics|vega \d/i.test(s);
+};
+DEN75.autoBoot = function(){
+  let q = null; try { q = new URLSearchParams(location.search).get('autodendy'); } catch (e){}
+  this.autoOff = q === '0';
+  if (SET.denUser){ SET.denAuto = 0; return; }
+  if (this.autoOff){ if (SET.denAuto){ SET.denStyle = 0; SET.denAuto = 0; } return; }
+  const weak = q === '1' || this.weakGPU();
+  if (SET.denAuto === 'igpu' && !weak){ SET.denStyle = 0; SET.denAuto = 0; return; }
+  if (!SET.denAuto && weak && (SET.denStyle | 0) === 0){ SET.denStyle = 1; SET.denAuto = 'igpu'; }
+};
+DEN75.fpsLow = 0;
+DEN75.autoFps = function(f, lite){
+  if (S.attract || S.paused || MENU.cur || document.visibilityState !== 'visible' || this.autoOff) return;
+  this.tell();
+  if (SET.denUser || this.style() > 0 || this.failed){ this.fpsLow = 0; return; }
+  const minimal = lite ? (LITE73.sc <= 0.351 && !!LITE73.deep) : (!S.autoRes || S.scale <= 0.5);
+  if (f < 20 && minimal) this.fpsLow++; else this.fpsLow = 0;
+  if (this.fpsLow < 8) return;
+  this.fpsLow = 0;
+  SET.denStyle = 1; SET.denAuto = 'fps';
+  if (lite || (typeof TOUCH !== 'undefined' && TOUCH.on)) SET.denRows = 120;   // на телефоне выигрыш даёт только 120 строк (REPORT_dendy)
+  applySettings(); MENU.save();
+  this.told = false; this.tell();
+};
+DEN75.tell = function(){   // один раз за сессию — в ленту боя
+  if (this.told || !SET.denAuto || this.style() === 0 || S.attract || MENU.cur) return;
+  this.told = true;
+  feed(tr('Слабая графика: включён стиль «Денди» — так быстрее. Обычный: Настройки → Графика → «Стиль графики»',
+          'Weak graphics: the Dendy style is on — it runs faster. Normal: Settings → Graphics → "Graphics style"',
+          'Đồ họa yếu: đã bật kiểu Dendy cho nhanh hơn. Kiểu thường: Cài đặt → Đồ họa → “Phong cách đồ họa”',
+          'גרפיקה חלשה: הופעל סגנון Dendy — מהיר יותר. רגיל: הגדרות → גרפיקה → „סגנון גרפיקה"'), '#ffd27a');
+};
+if (typeof LITE73 !== 'undefined' && LITE73.adapt){   // лёгкий режим (телефон): после понижения разрешения — авто-«Денди»
+  const ad0 = LITE73.adapt;
+  LITE73.adapt = function(f){ const r = ad0.apply(this, arguments); try { DEN75.autoFps(f, true); } catch (e){} return r; };
+}
+// выбор стиля игроком (ПК: кнопки data-ch, телефон: − / + data-p71c) — раньше обработчика меню, который сохранит настройки
+document.addEventListener('click', e => {
+  const b = e.target && e.target.closest ? e.target.closest('[data-ch="denStyle"],[data-p71c="denStyle"]') : null;
+  if (b){ SET.denUser = true; SET.denAuto = 0; }
+}, true);
+// запись видео из кино: пиксели «Денди» не размывать при растяжке до 1920×1080
+if (typeof REC !== 'undefined' && REC.frame){
+  const rf0 = REC.frame;
+  REC.frame = function(){ if (this.g) this.g.imageSmoothingEnabled = !DEN75.cssOn; return rf0.apply(this, arguments); };
+}
 // ---------------------------------------------------------------- меню: «Стиль графики» на виду, детали — в «Расширенных»
 DEN75.labels = () => ({
-  style: tr('Стиль графики', 'Graphics style', 'Phong cách đồ họa', 'סגנון גרפיקה'),
+  style: tr('Стиль графики', 'Graphics style', 'Phong cách đồ họa', 'סגנון גרפיקה') + (SET.denAuto && DEN75.style() > 0 ? ' · ' + tr('авто: слабая графика', 'auto: weak graphics', 'tự động: đồ họa yếu', 'אוטו: גרפיקה חלשה') : ''),
   adv: tr('Расширенные: пиксель, анимация, обводка', 'Advanced: pixels, animation, outline', 'Nâng cao: điểm ảnh, hoạt ảnh, viền', 'מתקדם: פיקסלים, אנימציה, קווי מתאר'),
   rows: tr('Размер пикселя (строк на экран)', 'Pixel size (lines per screen)', 'Cỡ điểm ảnh (số dòng)', 'גודל פיקסל (שורות)'),
   chop: tr('Рубленая анимация (юниты и эффекты)', 'Choppy animation (units and effects)', 'Hoạt ảnh giật (lính và hiệu ứng)', 'אנימציה קטועה (יחידות ואפקטים)'),

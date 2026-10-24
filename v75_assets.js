@@ -22,7 +22,9 @@ const AS75 = {
     try { const el = document.getElementById('as75cat'); if (el && el.textContent.length > 10) this.cat = JSON.parse(el.textContent); } catch (e){ this.err = 'каталог: ' + e.message; }
   },
 };
-if (SET_DEF.as75 === undefined) SET_DEF.as75 = true;
+// v7.5 релиз: модели пробные (Дмитрий счёл большинство «смазанной полигональной кашей»; в приложении оценок ни одна из 34
+// не набрала 4–5, нужно было ≥ 8) — по умолчанию ВЫКЛ; включить: Настройки → Графика; выбор игрока запоминается (pm_settings)
+if (SET_DEF.as75 === undefined) SET_DEF.as75 = false;
 if (SET.as75 === undefined) SET.as75 = SET_DEF.as75;
 window.PM3D_reg = (k, b64) => { AS75.pend.push([k, b64]); };
 

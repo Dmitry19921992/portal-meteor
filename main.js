@@ -14,6 +14,7 @@ function frame(now){
       if (fpsVal < 44 && S.scale > 0.5){ S.scale = +(S.scale - 0.125).toFixed(3); resize(); }
       else if (fpsVal > 58 && S.scale < 1){ S.scale = +(S.scale + 0.125).toFixed(3); resize(); }
     }
+    if (!LITE73.on && typeof DEN75 !== 'undefined') try { DEN75.autoFps(fpsVal, false); } catch (e){}   // v7.5: авто-«Денди» (лёгкий режим — внутри LITE73.adapt)
   }
   if (S.mode === 'rts' && !S.attract) updateRTSCamera(dt);
   S.flashT = max(0, S.flashT - dt); S.hitT = max(0, S.hitT - dt); S.dmgT = max(0, S.dmgT - dt * 1.5);

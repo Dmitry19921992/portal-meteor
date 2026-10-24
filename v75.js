@@ -248,6 +248,14 @@ const V75_NEWS = [
    'Training: phones show phone trainings only, PCs — PC only. All 4 are in the "🛠 Developer" menu. Developer mode and the Arsenal are one menu now (in battle — "🛠 Menu" at the top right, F8 on PC).',
    'Huấn luyện theo thiết bị; cả 4 bài — trong menu “🛠 Nhà phát triển”. Chế độ nhà phát triển và Kho vũ khí gộp thành một menu.',
    'אימון לפי מכשיר; כל 4 — בתפריט „🛠 מפתח". מצב מפתח והנשקייה מאוחדים לתפריט אחד.'],
+  ['Стиль графики «Денди (8-бит)» и «16-бит»: Настройки → Графика → «Стиль графики» (детали — кнопка ⚙). На слабой графике (встроенная видеокарта ПК или телефон с низким FPS) «Денди» включается сам — так быстрее; твой выбор в меню всегда важнее и запоминается.',
+   'Graphics styles "Dendy (8-bit)" and "16-bit": Settings → Graphics → "Graphics style" (details — the ⚙ button). On weak graphics (integrated PC GPU or a phone with low FPS) Dendy turns on by itself — it runs faster; your own choice in the menu always wins and is remembered.',
+   'Kiểu đồ họa “Dendy (8-bit)” và “16-bit”: Cài đặt → Đồ họa → “Phong cách đồ họa”. Trên đồ họa yếu Dendy tự bật cho nhanh hơn; lựa chọn của bạn luôn được ưu tiên và ghi nhớ.',
+   'סגנונות גרפיקה „Dendy (8-bit)" ו-„16-bit": הגדרות → גרפיקה → „סגנון גרפיקה". בגרפיקה חלשה Dendy נדלק לבד — מהיר יותר; הבחירה שלך תמיד קודמת ונשמרת.'],
+  ['Пробные 3D-модели окружения (руины, техника, укрепления, камни и кристаллы) — по умолчанию выключены; включить: Настройки → Графика → «Новые 3D-модели окружения».',
+   'Experimental 3D environment models (ruins, wrecks, fortifications, rocks and crystals) — off by default; turn on: Settings → Graphics → "New 3D environment models".',
+   'Mô hình 3D môi trường thử nghiệm — mặc định tắt; bật: Cài đặt → Đồ họa.',
+   'מודלים תלת-ממדיים ניסיוניים של הסביבה — כבויים כברירת מחדל; הפעלה: הגדרות → גרפיקה.'],
 ];
 {
   const hm0 = MENU.html_main;
