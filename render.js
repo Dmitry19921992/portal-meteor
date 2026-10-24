@@ -17,7 +17,19 @@ const float DET_F = ${DET_F.toFixed(6)}; const float DET_A = ${DET_A.toFixed(3)}
 const vec3 BASES[2] = vec3[2](${BASES.map(d => `vec3(${f5(d)})`).join(',')});
 const vec3 CPD[6] = vec3[6](${CPD.map(d => `vec3(${f5(d)})`).join(',')});
 const vec4 CRAT[8] = vec4[8](${CRATERS.map(c => `vec4(${f5(c)})`).join(',')});
-float hgt(vec3 q){ return ${NK.map(([a,k1,k2]) => `${a.toFixed(3)}*cos(dot(q,vec3(${f5(k1)})))*cos(dot(q,vec3(${f5(k2)})))`).join(' + ')}; }`;
+const float TER74 = ${TER74 ? '1.0' : '0.0'};
+const vec3 TKA = vec3(${f5(TK.A)}); const vec3 TKB = vec3(${f5(TK.B)}); const vec3 TKC = vec3(${f5(TK.C)});
+const vec3 TKD = vec3(${f5(TK.D)}); const vec3 TKE = vec3(${f5(TK.E)}); const vec3 TKF = vec3(${f5(TK.F)}); const vec3 TKG = vec3(${f5(TK.G)});
+float relief74(vec3 q){   // v7.4: каньоны, останцы, впадины (= relief74 в world.js)
+  if (TER74 < 0.5) return 0.0;
+  float s = cos(dot(q, TKA)) + 0.7 * cos(dot(q, TKB));
+  float can = -8.0 * (1.0 - smoothstep(0.06, 0.42, abs(s)));
+  float m = cos(dot(q, TKC)) * cos(dot(q, TKD));
+  float b = cos(dot(q, TKE)) * cos(dot(q, TKF));
+  float w = smoothstep(0.62, 0.95, b) * smoothstep(0.15, 0.55, cos(dot(q, TKG)));
+  return can + 7.0 * smoothstep(0.5, 0.95, m) - min(8.0 * w, 4.5);
+}
+float hgt(vec3 q){ return ${NK.map(([a,k1,k2]) => `${a.toFixed(3)}*cos(dot(q,vec3(${f5(k1)})))*cos(dot(q,vec3(${f5(k2)})))`).join(' + ')} + relief74(q); }`;
 }
 let GP_U = null;   // v6.2: передаётся юниформом uGP (константный массив в шейдере компилируется в D3D минутами)
 // v6.2: центры граней многогранника Гольдберга GP(3,0) = вершины геодезической сферы частоты 3:

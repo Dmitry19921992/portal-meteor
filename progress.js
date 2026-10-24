@@ -107,7 +107,8 @@ const PROG = {
     const K = S.kit, c = ctrlEntity();
     const opts = [];
     if (c && c.cls === 'inf'){
-      opts.push('hmg', 'inc', 'rockets');
+      if (!(typeof CLS74 !== 'undefined' && CLS74.on())) opts.push('hmg');   // v7.4: классы — пулемёт только у пулемётчиков
+      opts.push('inc', 'rockets');
       if (this.has('reflex') && K.reflex < 0.8) opts.push('reflex');
       opts.push('strike');
       if (c.squad && c.squad.units.length < 4) opts.push('squad');

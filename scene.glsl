@@ -179,6 +179,27 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
       float strata = smoothstep(0.55, 0.95, abs(sin(dot(p, vec3(0.11, 0.37, 0.19)) + 6.0 * big)));
       alb *= (1.0 - 0.22 * strata * smoothstep(0.1, 0.5, slope)) * (0.86 + 0.14 * smoothstep(0.2, 0.8, mid));
     }
+    if (TER74 > 0.5 && r > RM - 25.0){   // v7.4: озёра на дне впадин (лёд / метан / лава), тёмные останцы
+      vec3 q = rn * RM;
+      float lb = smoothstep(0.62, 0.95, cos(dot(q, TKE)) * cos(dot(q, TKF))) * smoothstep(0.15, 0.55, cos(dot(q, TKG)));
+      float pm = 1.0;
+      for (int i = 0; i < 2; i++) pm = min(pm, 1.0 - smoothstep(PAD_B0 - 0.004, PAD_B0, dot(rn, BASES[i])));
+      float lake = smoothstep(0.5, 0.58, lb) * pm * (1.0 - smoothstep(0.05, 0.2, slope));
+      if (lake > 0.001){
+        float kind = cos(dot(q, vec3(-0.0049, 0.0071, 0.0038)));
+        float cr = smoothstep(0.42, 0.5, abs(nz(q * 0.045) - 0.5));
+        vec3 iceC = mix(vec3(0.36, 0.44, 0.52), vec3(0.55, 0.62, 0.7), nz(q * 0.08));
+        vec3 metC = vec3(0.05, 0.12, 0.12) + 0.04 * nz(q * 0.1);
+        vec3 lavC = vec3(0.06, 0.035, 0.03);
+        vec3 la = kind > 0.35 ? iceC : kind < -0.35 ? lavC : metC;
+        alb = mix(alb, la, lake);
+        sp = mix(sp, kind < -0.35 ? 0.05 : 0.45, lake);
+        if (kind < -0.35) em += vec3(2.4, 0.7, 0.12) * cr * lake * (0.7 + 0.3 * sin(uTime * 1.3 + dot(q, vec3(0.3))));
+        gBump *= 1.0 - 0.8 * lake;
+      }
+      float rk = smoothstep(0.62, 0.9, cos(dot(q, TKC)) * cos(dot(q, TKD)));
+      alb = mix(alb, alb * vec3(0.72, 0.68, 0.66), rk * smoothstep(0.08, 0.3, slope));
+    }
     float depth = clamp((RM - r) / 30.0, 0.0, 1.0);
     alb = mix(alb, vec3(0.10, 0.095, 0.11), depth);
     // площадки баз
@@ -247,7 +268,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
     sp = 0.03 + 0.05 * (1.0 - slope);
     sp = mix(sp, 0.12, smoothstep(0.0, 0.45, vk));   // v6.2: базальт у жил блестит холодным
     // иней и лёд в низинах кратеров
-    float low = RM - r;
+    float low = RM - r - TER74 * 5.0;   // v7.4: каньоны глубже — иней только на самом дне
     if (low > 1.5 && low < 30.0 && min(length(p.yz), length(p.xy)) > TUN_R + 2.0){
       float ice = smoothstep(1.5, 7.0, low) * (1.0 - smoothstep(0.15, 0.5, slope)) * smoothstep(0.35, 0.6, nz(p * 0.08) + 0.25);
       alb = mix(alb, vec3(0.40, 0.47, 0.55) * (0.85 + 0.3 * fine), ice * 0.85);

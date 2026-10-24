@@ -19,6 +19,23 @@ const NK = [
   [5,   [0.031, -0.022, 0.017], [0.019, 0.027, -0.024]],
   [0.6, [0.13, 0.09, -0.11],    [-0.08, 0.14, 0.10]],
 ];
+// v7.4: рельеф интереснее — каньоны (извилистые линии нуля поля), скальные останцы-столовые горы, впадины с
+// плоским дном (озёра льда / метана / лавы — цвет в шейдере). Та же формула в шейдере (render.js → shaderConsts).
+// Выключить: localStorage pm_ter74 = '0' (нужен перезапуск страницы).
+const TER74 = (() => { try { return localStorage.getItem('pm_ter74') !== '0'; } catch (e){ return true; } })();
+const TK = { A: [0.0105, -0.0042, 0.0063], B: [-0.0051, 0.0097, -0.0068], C: [0.024, 0.014, -0.019], D: [-0.017, 0.025, 0.013], E: [0.019, -0.012, 0.015], F: [-0.011, 0.021, 0.013], G: [0.0061, 0.0043, -0.0057] };
+const TKd = (k, x, y, z) => x * k[0] + y * k[1] + z * k[2];
+function relief74(x, y, z){
+  if (!TER74) return 0;
+  const s = Math.cos(TKd(TK.A, x, y, z)) + 0.7 * Math.cos(TKd(TK.B, x, y, z));
+  const can = -8 * (1 - smoothstep(0.06, 0.42, Math.abs(s)));
+  const m = Math.cos(TKd(TK.C, x, y, z)) * Math.cos(TKd(TK.D, x, y, z));
+  const rock = 7 * smoothstep(0.5, 0.95, m);
+  const b = Math.cos(TKd(TK.E, x, y, z)) * Math.cos(TKd(TK.F, x, y, z));
+  const w = smoothstep(0.62, 0.95, b) * smoothstep(0.15, 0.55, Math.cos(TKd(TK.G, x, y, z)));   // впадины — не везде
+  const bas = -Math.min(8 * w, 4.5);
+  return can + rock + bas;
+}
 
 // ---------- векторы ----------
 const { sin, cos, tan, hypot, max, min, abs, sqrt, acos, asin, atan2, random, floor, round, PI } = Math;
@@ -108,7 +125,7 @@ function sdCylZ(x,y,z,r,h){ const dx = hypot(x,y)-r, dy = abs(z)-h; return min(m
 function hgt(qx,qy,qz){
   let h = 0;
   for (const [a,k1,k2] of NK) h += a * cos(qx*k1[0]+qy*k1[1]+qz*k1[2]) * cos(qx*k2[0]+qy*k2[1]+qz*k2[2]);
-  return h;
+  return h + relief74(qx, qy, qz);
 }
 // статичный мир: рельеф, туннели, ядро, штабы, маяки
 function mapStatic(x,y,z){
