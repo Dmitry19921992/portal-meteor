@@ -1,0 +1,1 @@
+{"v": 1, "updated": "2026-10-25 00:04", "rule": "rated, avg>=4, no 1, no flag, not banned", "source": "ratings.json 2026-10-24 23:40:02", "allow": ["barracks_255553835", "buggy_1310892599", "crates_1599852408", "deploy_cover_850046286", "floodlight_55650499", "mech_894579150", "outpost_1739388569", "sandbags_1617038676", "sandbags_2136300680", "wall_segment_1503486080"]}

@@ -24,6 +24,9 @@ for lg in ('en', 'vi', 'he'):
 cat3d = src + 'assets/catalog3d.json'
 if os.path.exists(cat3d):
     html += '<script id="as75cat" type="application/json">' + open(cat3d, encoding='utf-8').read().replace('</', '<\\/') + '</script>\n'
+    # v7.5 final: allowlist from Dmitry's ratings (tools3d/allow3d.py) - only these models are loaded; missing file = none
+    al3d = src + 'assets/allow3d.json'
+    html += '<script id="as75allow" type="application/json">' + (open(al3d, encoding='utf-8').read() if os.path.exists(al3d) else '{"allow":[]}').replace('</', '<\\/') + '</script>\n'
     a3 = src + 'assets3d/'
     o3 = os.path.join(os.path.dirname(src[:-1]), 'dist', 'assets3d')
     os.makedirs(o3, exist_ok=True)

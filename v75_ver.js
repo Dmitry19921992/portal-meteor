@@ -7,7 +7,9 @@
 //  Архив собирает tools\mkitch75.py (он же включает VER75_ARCHIVE). Без архива меню честно об этом пишет.
 // =====================================================================
 const VER75 = {
-  archive: typeof VER75_ARCHIVE !== 'undefined' && VER75_ARCHIVE,
+  // v7.5 final: old versions not inside this build open from the full archive on Cloudflare Pages (VER75_REMOTE)
+  archive: (typeof VER75_ARCHIVE !== 'undefined' && VER75_ARCHIVE) || (typeof VER75_REMOTE !== 'undefined' && !!VER75_REMOTE),
+  url(id){ const loc = typeof VER75_LOCAL !== 'undefined' && VER75_ARCHIVE && VER75_LOCAL.indexOf(id) >= 0; return loc ? 'versions/' + id + '.html' : VER75_REMOTE + 'versions/' + id; },   // Pages serves /versions/<id> (".html" → 308)
   cur: 'v7_5',
   // mb — вес файла (замер 24.10.2026); n — коротко «что нового» [ru, en]
   L: [
@@ -28,7 +30,7 @@ const VER75 = {
     if (typeof STATS75 !== 'undefined'){ STATS75.ev('version', { to: id }); STATS75.flush(true); }
     if (id === this.cur){ MENU.show('main'); return; }
     if (!this.archive){ feed(tr('Старые версии есть только в itch-архиве игры', 'Old versions are only in the itch build', 'Bản cũ chỉ có trong bản itch', 'גרסאות ישנות רק בגרסת itch'), '#ffb347'); return; }
-    location.href = 'versions/' + id + '.html';
+    location.href = this.url(id);
   },
 };
 MENU.html_ver75 = function(){

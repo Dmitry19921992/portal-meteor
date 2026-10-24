@@ -5,7 +5,10 @@
 <title>Portal Meteor — v7.5</title>
 <script>/* v7.5: архив версий (itch). Выбрана старая версия — открываем её сразу, до загрузки этой (?ver=latest — не перенаправлять) */
 var VER75_ARCHIVE = /*VER75_ARCHIVE*/false;
-try { var c75 = localStorage.getItem('pm_ver75'); if (VER75_ARCHIVE && c75 && c75 !== 'latest' && /^v[0-9_]+$/.test(c75) && !/[?&](ver=latest|versions=)/.test(location.search)) location.replace('versions/' + c75 + '.html'); } catch (e){}
+/* v7.5 final: versions inside this build (VER75_LOCAL) open from versions/; all others — from the full archive on Cloudflare Pages */
+var VER75_LOCAL = /*VER75_LOCAL*/[];
+var VER75_REMOTE = 'https://portal-meteor.pages.dev/';
+try { var c75 = localStorage.getItem('pm_ver75'); if (VER75_ARCHIVE && c75 && c75 !== 'latest' && /^v[0-9_]+$/.test(c75) && VER75_LOCAL.indexOf(c75) >= 0 && !/[?&](ver=latest|versions=)/.test(location.search)) location.replace('versions/' + c75 + '.html'); } catch (e){}
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">

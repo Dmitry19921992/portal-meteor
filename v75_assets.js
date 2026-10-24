@@ -20,11 +20,21 @@ const AS75 = {
   fail(e){ this.failed = true; this.colOn = false; this.err = String(e && e.message || e); try { console.warn('AS75: 3D-модели окружения отключены —', this.err); } catch (_){} },
   init(){
     try { const el = document.getElementById('as75cat'); if (el && el.textContent.length > 10) this.cat = JSON.parse(el.textContent); } catch (e){ this.err = 'каталог: ' + e.message; }
+    // v7.5 релиз: только модели с хорошими оценками Дмитрия (allowlist собирается при сборке: tools3d/allow3d.py —
+    // есть оценка, среднее ≥ 4, ни одной 😡, без флага проблемы). Остальные не грузятся вовсе. Пустой список — модели выкл.
+    try {
+      const al = document.getElementById('as75allow'), A = al ? JSON.parse(al.textContent).allow : null;
+      if (this.cat && Array.isArray(A)){ const s = new Set(A); this.cat.items = this.cat.items.filter(e => s.has(e.n)); }
+      if (this.cat && !this.cat.items.length) this.cat = null;
+    } catch (e){ this.cat = null; this.err = 'allowlist: ' + e.message; }
+    // модели лежат на Cloudflare Pages (все, чтобы список мог расти без перезаливки); рядом со страницей — если есть.
+    // ?as3d=local — брать из папки assets3d/ рядом со страницей. Недоступно (6 ошибок подряд) — тихо без моделей.
+    try { const q = new URLSearchParams(location.search).get('as3d'); if (q !== 'local') this.base = AS75_CDN; } catch (e){ this.base = AS75_CDN; }
   },
 };
-// v7.5 релиз: модели пробные (Дмитрий счёл большинство «смазанной полигональной кашей»; в приложении оценок ни одна из 34
-// не набрала 4–5, нужно было ≥ 8) — по умолчанию ВЫКЛ; включить: Настройки → Графика; выбор игрока запоминается (pm_settings)
-if (SET_DEF.as75 === undefined) SET_DEF.as75 = false;
+const AS75_CDN = 'https://portal-meteor.pages.dev/assets3d/';
+// v7.5 релиз: модели ВКЛ по умолчанию (только одобренные оценками); выключить: Настройки → Графика; выбор игрока запоминается
+if (SET_DEF.as75 === undefined) SET_DEF.as75 = true;
 if (SET.as75 === undefined) SET.as75 = SET_DEF.as75;
 window.PM3D_reg = (k, b64) => { AS75.pend.push([k, b64]); };
 
