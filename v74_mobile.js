@@ -93,7 +93,7 @@ Object.assign(M74, {
     const e = this.sel;
     if (!e || !(e.alive || e.cls === 'hq')) return null;
     if (e.cls === 'builder'){
-      const L = Object.keys(BTYPES).map(k => ({ id: 'build:' + k, ic: UIX_ICON.b[k] || BICON[k] || '▣', n: bname(k), c: BTYPES[k].cost, f: () => { if (!selBuilders().length){ S.sel.clear(); S.sel.add(e); } startPlace(k); feed(tr(`${bname(k)}: тапни место на карте, затем «Строить»`, `${bname(k)}: tap a spot, then "Build"`, `${bname(k)}: chạm vị trí rồi “Xây”`, `${bname(k)}: הקש מקום ואז „בנה"`), '#9cf'); } }));
+      const L = Object.keys(BTYPES).map(k => ({ id: 'build:' + k, ic: UIX_ICON.b[k] || BICON[k] || '▣', n: bname(k), c: BTYPES[k].cost, f: () => { if (!selBuilders().length){ S.sel.clear(); S.sel.add(e); } startPlace(k); } }));
       L.push({ id: 'prod:builder', ic: '⚒', n: pname('builder'), c: pCost(0, 'builder'), f: () => uiProduce('builder'), key: 'builder' });
       return { t: `⚒ ${groupLabel(e)} — ${tr('что строить?', 'what to build?', 'xây gì?', 'מה לבנות?')}`, L };
     }
@@ -131,7 +131,8 @@ Object.assign(M74, {
     const L = this.cards(); this.cardL = L;
     const ch = L.map((o, i) => `<button class="c ${o.e === this.sel ? 'cur' : ''}" data-i="${i}"><i>${o.ic}</i><span><b>${uixEsc(o.n)}</b><small>${uixEsc(o.st)}</small></span></button>`).join('');
     if (ch !== this.cardSig){ this.cardSig = ch; document.getElementById('m74L').innerHTML = ch; }
-    // нижняя панель
+    // нижняя панель (во время стройки прячется — внизу кнопки «Строить» / «Отмена»)
+    document.getElementById('m74B').style.display = S.place ? 'none' : '';
     const it = this.items(); this.itL = it ? it.L : [];
     const ore = S.teams[0].ore;
     const bh = it ? it.L.map((o, j) => { const x = uiExplain(o.id), n = o.key ? countQueued(0, [o.key]) : 0; return `<button class="it ${x.ok ? '' : 'off'}" data-j="${j}"><i>${o.ic}</i><b>${uixEsc(o.n)}</b><em>◆${o.c}</em>${n ? `<q>×${n}</q>` : ''}${!x.ok && x.short ? `<small>${uixEsc(x.short)}</small>` : ''}</button>`; }).join('') : '';
