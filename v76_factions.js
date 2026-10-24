@@ -219,12 +219,12 @@ MENU.html_fac76 = function(){
     const L = f === 0 ? {
       t: T('КОНСОРЦИУМ', 'CONSORTIUM', 'LIÊN MINH', 'הקונסורציום'),
       s: T('Тяжёлая пехота в силовой броне. Броня и артиллерия.', 'Heavy power-armoured infantry. Armour and artillery.', 'Bộ binh giáp nặng. Giáp và pháo binh.'),
-      p: [T('пехота +15 % прочности', 'infantry +15% toughness', 'bộ binh +15% bền'), T('танк «Бульдог» 1400, «Град» с 5:00', '"Bulldog" tank 1400, "Grad" from 5:00', 'xe tăng 1400, "Grad" từ 5:00'), T('уникально: танк «Носорог», «Керамитовые плиты»', 'unique: "Rhino" tank, "Ceramite plates"', 'riêng: xe tăng "Rhino", "Giáp ceramite"')],
+      p: [T('пехота +12 % прочности', 'infantry +12% toughness', 'bộ binh +12% bền'), T('танк «Бульдог» 1400, «Град» с 5:00', '"Bulldog" tank 1400, "Grad" from 5:00', 'xe tăng 1400, "Grad" từ 5:00'), T('уникально: танк «Носорог», «Керамитовые плиты»', 'unique: "Rhino" tank, "Ceramite plates"', 'riêng: xe tăng "Rhino", "Giáp ceramite"')],
       m: [T('медленнее (−7 %)', 'slower (−7%)', 'chậm hơn (−7%)')] } : {
       t: T('РОЙ', 'SWARM', 'BẦY ĐÀN', 'הנחיל'),
       s: T('Быстрые машины, стаи дронов, тяжёлые одиночные выстрелы с искажением.', 'Fast machines, drone packs, heavy single shots with distortion.', 'Nhanh, bầy drone, phát bắn nặng.'),
       p: [T('пехота +10 % скорости, ранцы +20 %', 'infantry +10% speed, jetpacks +20%', 'bộ binh +10% tốc độ'), T('дроны −25 % цены, лимит ×1.5; пушки и рельсы +20 %', 'drones −25% cost, limit ×1.5; cannons & rails +20%', 'drone −25% giá; pháo +20%'), T('уникально: «Стая дронов», «Фазовые ранцы»', 'unique: "Drone pack", "Phase jetpacks"', 'riêng: "Bầy drone", "Ba lô pha"')],
-      m: [T('пехота −10 % прочности, техника легче', 'infantry −10% toughness, lighter vehicles', 'bộ binh −10% bền')] };
+      m: [T('пехота −8 % прочности, техника легче', 'infantry −8% toughness, lighter vehicles', 'bộ binh −8% bền')] };
     return `<button class="f76c f76c${f} ${cur === f ? 'cur' : ''}" data-fac76="${f}"><i></i><b>${L.t}</b><small>${L.s}</small><ul>${L.p.map(x => `<li class="pl">+ ${x}</li>`).join('')}${L.m.map(x => `<li class="mi">− ${x}</li>`).join('')}</ul></button>`;
   };
   return `<div class="f76"><h2>${T('ВЫБОР ФРАКЦИИ', 'CHOOSE YOUR FACTION', 'CHỌN PHE', 'בחר צד')}</h2>
