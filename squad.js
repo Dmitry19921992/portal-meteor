@@ -114,7 +114,7 @@ const SQUADUI = {
     g.fill();
     g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1.5; g.stroke();
     // визор
-    const visor = u.team ? '#ff3020' : v === 2 ? '#ffd040' : '#9fdcff';
+    const visor = FI76(u.team) ? '#ff3020' : v === 2 ? '#ffd040' : '#9fdcff';
     g.shadowColor = visor; g.shadowBlur = 10; g.fillStyle = visor;
     if (v === 1){ g.fillRect(19, 26, 9, 5); g.fillRect(36, 26, 9, 5); }               // два «глаза»
     else if (v === 3){ g.fillRect(20, 27, 24, 3); }                                       // тонкая щель

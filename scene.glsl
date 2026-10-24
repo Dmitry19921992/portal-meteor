@@ -34,7 +34,9 @@ uniform float uStorm;   // пылевая буря 0..1    // всегда 0: н
 #define ZERO uZero      // штабы живы (1) или в руинах (0)
 uniform float uG72;      // v7.2gfx: новая графика (0 — как в v7.1, всё ниже под этим флагом)
 uniform vec4  uDen;      // v7.5 «Денди»: ступенчатый свет — x вкл (0 — как раньше), y/z уровни полутона/света, w добавка рассеянного
-uniform vec4  uScor[8];  uniform float uScorH[8]; uniform int uNSc;   // v7.2gfx: опалины от взрывов (центр, радиус; жар 0..1)
+uniform vec4  uScor[8];  uniform float uScorH[8]; uniform int uNSc;
+uniform vec4  uCr76[12]; uniform float uCr76D[12]; uniform int uNCr76;   // v7.6: воронки (центр на грунте, радиус; глубина)
+uniform float uFac76;    // v7.6: 1 — игрок за Рой (верхняя база в цветах Роя)   // v7.2gfx: опалины от взрывов (центр, радиус; жар 0..1)
 out vec4 frag;
 
 /*CONSTS*/
@@ -87,6 +89,11 @@ vec2 map(vec3 p){
   for (int i = 0; i < 2; i++) mask = min(mask, 1.0 - smoothstep(PAD_B0, PAD_B1, dot(n, BASES[i])));
   for (int i = 0; i < 6; i++) mask = min(mask, 1.0 - smoothstep(PAD_C0, PAD_C1, dot(n, CPD[i])));
   float d = r - RM - hgt(n * RM) * mask;
+  for (int i = ZERO; i < 12; i++){   // v7.6: воронки (= CR76.dent в v76_craters.js)
+    if (i >= uNCr76) break;
+    vec4 c = uCr76[i]; vec3 q = n * length(c.xyz) - c.xyz; float s2 = dot(q, q);
+    if (s2 < c.w * c.w * 2.9){ float s = sqrt(s2) / c.w, b = max(0.0, 1.0 - s * s), e = s - 1.0; d += uCr76D[i] * (b * b - 0.3 * exp(-e * e * 9.0)); }
+  }
   for (int i = 0; i < 8; i++) d = max(d, -(length(p - CRAT[i].xyz) - CRAT[i].w));
   float tun = min(min(length(p.yz) - TUN_R, length(p.xy) - TUN_R), r - CORE_R);
   d = max(d, -tun);
@@ -100,7 +107,7 @@ vec2 map(vec3 p){
   vec3 b = vec3(p.x, abs(p.y) - RM, p.z);
   float hqAlive = p.y > 0.0 ? uHQ.x : uHQ.y;
   if (hqAlive < 0.5 && length(b) - 20.0 < res.x){
-    float team = p.y > 0.0 ? 0.0 : 1.0;
+    float team = abs((p.y > 0.0 ? 0.0 : 1.0) - uFac76);
     vec2 bx = abs(b.xz);
     float oct = max(max(bx.x, bx.y), (bx.x + bx.y) * 0.70710678);
     float plat = max(oct - 16.0, abs(b.y - 0.2) - 1.4);
@@ -109,7 +116,7 @@ vec2 map(vec3 p){
     if (ruin < res.x) res = vec2(ruin, 20.0);
   }
   if (hqAlive > 0.5 && length(b) - 48.0 < res.x){
-    float team = p.y > 0.0 ? 0.0 : 1.0;
+    float team = abs((p.y > 0.0 ? 0.0 : 1.0) - uFac76);
     vec2 bx = abs(b.xz);
     float oct = max(max(bx.x, bx.y), (bx.x + bx.y) * 0.70710678);
     float plat = max(oct - 16.0, abs(b.y - 0.2) - 1.4);
@@ -155,6 +162,7 @@ vec3 calcNormal(vec3 p){
 }
 
 vec3 teamGlow(float pr){
+  pr = mix(pr, -pr, uFac76);
   return pr >= 0.0 ? mix(vec3(0.5), teamE(0.0) * 0.7, pr) : mix(vec3(0.5), teamE(1.0) * 0.55, -pr);
 }
 
@@ -201,6 +209,11 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
       float rk = smoothstep(0.62, 0.9, cos(dot(q, TKC)) * cos(dot(q, TKD)));
       alb = mix(alb, alb * vec3(0.72, 0.68, 0.66), rk * smoothstep(0.08, 0.3, slope));
     }
+    for (int i = ZERO; i < 12; i++){   // v7.6: дно воронки — тёмный раздробленный грунт, светлые выбросы на валу
+      if (i >= uNCr76) break;
+      vec3 q = rn * length(uCr76[i].xyz) - uCr76[i].xyz; float s = length(q) / uCr76[i].w;
+      if (s < 1.6){ float k = 1.0 - smoothstep(0.55, 1.0, s + (mid - 0.5) * 0.25); alb *= 1.0 - 0.45 * k; alb = mix(alb, dust * 1.15, 0.35 * smoothstep(0.9, 1.05, s) * (1.0 - smoothstep(1.15, 1.6, s))); }
+    }
     float depth = clamp((RM - r) / 30.0, 0.0, 1.0);
     alb = mix(alb, vec3(0.10, 0.095, 0.11), depth);
     // площадки баз
@@ -213,7 +226,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
         float seam = smoothstep(0.46, 0.5, max(g.x, g.y));
         vec3 conc = vec3(0.27, 0.265, 0.255) * (0.85 + 0.3 * mid) * (1.0 - 0.5 * seam);
         float rr = length(xz);
-        float t = float(i);
+        float t = abs(float(i) - uFac76);
         float stripe = step(0.5, fract(atan(xz.y, xz.x) * 9.549 + rr * 0.0));
         float haz = smoothstep(17.6, 17.8, rr) * (1.0 - smoothstep(19.0, 19.2, rr));
         conc = mix(conc, mix(vec3(0.03), teamB(t) * 1.2, stripe), haz);

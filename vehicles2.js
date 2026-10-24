@@ -24,7 +24,7 @@ const VK = {
             hp: [620, 560], walk: [6.5, 7.2], turn: 1.2, rad: 1.4, hitR: 2.2, armor: 'medium', vis: 45,
             bcY: 1.7, br: 3.7, sr: 1.5, camB: 12, camH: 6.5, reload: [4.6, 6.5], rmin: [30, 20], rmax: 115, safe: 8 },
 };
-function vkv(x, team){ return Array.isArray(x) ? x[team ? 1 : 0] : x; }
+function vkv(x, team){ return Array.isArray(x) ? x[FI76(team) ? 1 : 0] : x; }
 // броня лёгкой и средней техники (к таблице ARMOR из game.js)
 ARMOR.light  = { b: 0.6,  m: 0.75,  r: 1.15, s: 1.1, f: 0.5, g: 0.9,  a: 1, l: 1,   x: 1 };
 ARMOR.medium = { b: 0.3,  m: 0.55, r: 1.05, s: 1,   f: 0.4, g: 0.75, a: 1, l: 0.9, x: 1 };
@@ -59,10 +59,10 @@ function isEcoTarget(e){ return e.cls === 'builder' || e.cls === 'harvester' || 
 const V2 = {
   arcs: new WeakMap(),
   K(e){ return VK[e.vk]; },
-  name(e){ return N2(VK[e.vk].n[e.team ? 1 : 0]); },
-  cname(vk, team){ return N2(VK[vk].cls[team ? 1 : 0]); },
+  name(e){ return N2(VK[e.vk].n[FI76(e.team) ? 1 : 0]); },
+  cname(vk, team){ return N2(VK[vk].cls[FI76(team) ? 1 : 0]); },
   label(e){ return V2.cname(e.vk, e.team) + ' ' + e.serial; },
-  reload(v){ return vkv(VK[v.vk].reload, v.team) * (v.team === 1 ? 0.95 : 1); },
+  reload(v){ return vkv(VK[v.vk].reload, v.team) * (FI76(v.team) === 1 ? 0.95 : 1); },
   rmin(v){ return vkv(VK[v.vk].rmin || 0, v.team); },
   limit(vk){ const k = GAME.MAX_TANKS / 6; return Math.max(1, Math.round((vk === 'raider' ? 4 : 2) * k)); },
   // ---------------- создание
@@ -72,7 +72,7 @@ const V2 = {
     TANK_SERIAL[team]--;                       // номера танков не тратим
     const T = S.teams[team]; T.v2ser = T.v2ser || {};
     T.v2ser[vk] = (T.v2ser[vk] || 0) + 1;
-    Object.assign(e, { vk, rad: KK.rad, hitR: KK.hitR, armor: KK.armor, visR: KK.vis, hp: KK.hp[team], maxhp: KK.hp[team], walk: KK.walk[team],
+    Object.assign(e, { vk, rad: KK.rad, hitR: KK.hitR, armor: KK.armor, visR: KK.vis, hp: KK.hp[FI76(team)], maxhp: KK.hp[FI76(team)], walk: KK.walk[FI76(team)],
                        serial: T.v2ser[vk], cd: 1 + random(), load: 0.5, salvoN: 0, salvoT: 0, elev: 0.3, arm: 0, loaded: true, fireAt: null, swingT: 9 });
     return e;
   },
@@ -116,7 +116,7 @@ const V2 = {
     const m = V2.muzzle(v, k), up = v.up;
     const flat = tangent(sub(tp, v.pos), up);
     const dir = norm(add(add(mul(flat, 0.58), mul(up, 0.81)), mul(randUnit(), 0.06)));
-    const d = dist(tp, v.pos), hive = v.team === 1 && !smoke;   // «Улей» Роя: 6 мелких ракет, разброс сильнее
+    const d = dist(tp, v.pos), hive = FI76(v.team) === 1 && !smoke;   // «Улей» Роя: 6 мелких ракет, разброс сильнее
     const spr = V2.spread(v, d, smoke);
     const off = mul(tangent(randUnit(), norm(tp)), spr * sqrt(random()));
     S.proj.push({ pos: m, org: m, vel: mul(dir, 24), team: v.team, life: 10, dmg: smoke ? 8 : hive ? 42 : 80, splash: smoke ? 2 : hive ? 4.6 : 5.5, from: v, type: 'r',
@@ -127,8 +127,8 @@ const V2 = {
     emit('v2', { k: 'salvo', pos: m, src: v });
     if (v === ctrlEntity()) S.shake = max(S.shake, 0.25);
   },
-  spread(v, d, smoke){ return smoke ? 3 : v.team === 1 ? 3 + d * 0.035 : 2.5 + d * 0.035; },
-  lobT(v, D){ return v.team === 0 ? 3 + D / 45 : 2.4 + D / 32; },
+  spread(v, d, smoke){ return smoke ? 3 : FI76(v.team) === 1 ? 3 + d * 0.035 : 2.5 + d * 0.035; },
+  lobT(v, D){ return FI76(v.team) === 0 ? 3 + D / 45 : 2.4 + D / 32; },
   // навесная траектория с поправкой на кривизну метеорита: тяжесть всегда к центру, поэтому
   // простая парабола промахивается на 5–8 м — уточняем точку прицеливания двумя прогонами
   lobPath(m, tp, T, wantPts){
@@ -149,7 +149,7 @@ const V2 = {
     return { v0, pts };
   },
   lob(v, tp, flare){             // миномёт: тяжёлая мина; катапульта Роя: кассета; обе — «люстра»
-    const m = V2.muzzle(v, 0), mortar = v.team === 0;
+    const m = V2.muzzle(v, 0), mortar = FI76(v.team) === 0;
     tp = flare ? tp : add(tp, mul(tangent(randUnit(), norm(tp)), (mortar ? 2.5 : 1.5) * sqrt(random())));   // рассеивание
     const D = dist(m, tp), T = V2.lobT(v, D);
     const vel = V2.lobPath(m, tp, T).v0;
@@ -439,7 +439,7 @@ const V2 = {
       if (v.salvoT <= 0){
         const k = v.salvoK++;
         if (v.vk === 'raider'){ V2.rocketR(v, isMe ? v.aimPt : v.salvoAim, k, isMe ? v.aimEnt : v.salvoTe); v.salvoT = 0.14; }
-        else { V2.rocketG(v, v.salvoTp, v.salvoTe && v.salvoTe.alive ? v.salvoTe : null, k % 3, v.salvoSmoke); v.salvoT = v.team === 1 && !v.salvoSmoke ? 0.16 : 0.27; }
+        else { V2.rocketG(v, v.salvoTp, v.salvoTe && v.salvoTe.alive ? v.salvoTe : null, k % 3, v.salvoSmoke); v.salvoT = FI76(v.team) === 1 && !v.salvoSmoke ? 0.16 : 0.27; }
         if (--v.salvoN <= 0) v.salvoSmoke = false;
       }
     } else if (v.smokeQ){ const p = v.smokeQ; v.smokeQ = null; V2.startSalvo(v, p, null, true); }
@@ -447,19 +447,19 @@ const V2 = {
     if (v.lobTp && v.swingT > 0.22){ V2.lob(v, v.lobTp, false); v.lobTp = null; v.swingT = 0.22; }
     if (v.vk === 'cat'){
       const s = v.swingT;
-      v.arm = v.team === 0 ? max(0, 1 - s / 0.35) : (s < 0.25 ? s / 0.25 : 1 - smoothstep(0.25, R * 0.75, s));
+      v.arm = FI76(v.team) === 0 ? max(0, 1 - s / 0.35) : (s < 0.25 ? s / 0.25 : 1 - smoothstep(0.25, R * 0.75, s));
       v.loaded = v.cd <= R * 0.2 && s > 0.6;
     }
     if (isMe) V2.playerFire(v, dt, pin); else V2.aiFire(v, dt);
   },
   startSalvo(v, tp, te, smoke){
-    v.salvoN = smoke ? 3 : v.team === 1 ? 6 : 3; v.salvoT = 0; v.salvoK = 0; v.salvoTp = tp; v.salvoTe = te || null; v.salvoSmoke = !!smoke;
+    v.salvoN = smoke ? 3 : FI76(v.team) === 1 ? 6 : 3; v.salvoT = 0; v.salvoK = 0; v.salvoTp = tp; v.salvoTe = te || null; v.salvoSmoke = !!smoke;
   },
   shootMain(v, tp, te){
     const R = V2.reload(v);
     if (v.vk === 'raider'){ v.salvoN = 4; v.salvoT = 0; v.salvoK = 0; v.salvoAim = tp; v.salvoTe = te || null; v.cd = R; }
     else if (v.vk === 'mlrs'){ V2.startSalvo(v, tp, te, false); v.cd = R; }
-    else { if (v.team === 0) V2.lob(v, tp, false); else { v.lobTp = tp; v.swingT = 0; } v.cd = R; }
+    else { if (FI76(v.team) === 0) V2.lob(v, tp, false); else { v.lobTp = tp; v.swingT = 0; } v.cd = R; }
   },
   mg(v, aimPt, spread){
     const m = add(add(v.pos, mul(v.up, 0.75)), mul(v.aim, 1.2));
@@ -494,7 +494,7 @@ const V2 = {
     if (v.fireAt && v.fireAt.until > S.time){ const d = dist(v.fireAt.pos, v.pos); if (d >= rmin && d <= rmax) tp = v.fireAt.pos; }
     if (!tp && v.target && v.target.alive){
       te = v.target; const c = centerOf(te), d = dist(c, v.pos);
-      const tof = v.vk === 'mlrs' ? 1.2 + d / 48 : (v.team === 0 ? 3 + d / 45 : 2.4 + d / 32);
+      const tof = v.vk === 'mlrs' ? 1.2 + d / 48 : (FI76(v.team) === 0 ? 3 + d / 45 : 2.4 + d / 32);
       tp = add(c, mul(te.vel || [0, 0, 0], tof * 0.6));
     }
     if (!tp && v.order === 'attack'){ const h = S.hq[1 - v.team]; if (h.alive){ const d = dist(h.pos, v.pos); if (d > rmin && d < rmax) tp = add(h.pos, mul(randUnit(), 6)); } }
@@ -569,8 +569,8 @@ const V2 = {
   objInfo(e){
     const KK = VK[e.vk];
     const o = sub(e.pos, mul(e.up, e.rad));
-    const f = e.vk === 'mlrs' ? clamp(e.elev || 0, 0, 0.98) : e.vk === 'cat' ? clamp(e.team === 0 ? (e.elev || 0) : (e.arm || 0), 0, 0.98) : 0;
-    const th = e.vk === 'cat' ? (e.team === 0 ? clamp(e.arm || 0, 0, 1) : (e.loaded ? 1 : 0)) : (e.overT > 0 ? 1 : 0);
+    const f = e.vk === 'mlrs' ? clamp(e.elev || 0, 0, 0.98) : e.vk === 'cat' ? clamp(FI76(e.team) === 0 ? (e.elev || 0) : (e.arm || 0), 0, 0.98) : 0;
+    const th = e.vk === 'cat' ? (FI76(e.team) === 0 ? clamp(e.arm || 0, 0, 1) : (e.loaded ? 1 : 0)) : (e.overT > 0 ? 1 : 0);
     return { type: 5, origin: o, bc: add(o, mul(e.up, KK.bcY)), br: KK.br, sc: add(o, mul(e.up, 1.1)), sr: KK.sr, thrust: th, prog: clamp(e.load === undefined ? 1 : e.load, 0, 1), variant: KK.i + f * 0.5 };
   },
   // ---------------- прицел: дуга полёта и точка падения
@@ -603,7 +603,7 @@ const V2 = {
     octx.beginPath(); let st = false;
     for (const p of pts){ const s = project(p); if (!s){ st = false; continue; } if (!st){ octx.moveTo(s[0], s[1]); st = true; } else octx.lineTo(s[0], s[1]); }
     octx.stroke(); octx.setLineDash([]);
-    const spr = c.vk === 'mlrs' ? V2.spread(c, dist(tp, c.pos), false) : c.team === 0 ? 6 : 6.5;
+    const spr = c.vk === 'mlrs' ? V2.spread(c, dist(tp, c.pos), false) : FI76(c.team) === 0 ? 6 : 6.5;
     groundRing(add(tp, mul(norm(tp), 0.3)), spr, 28);
     octx.lineWidth = 1; groundRing(add(tp, mul(norm(tp), 0.3)), 1.2, 12);
     const s = project(tp);
@@ -621,7 +621,7 @@ const V2 = {
     const d = c.aimPt ? Math.round(dist(c.aimPt, c.pos)) : 0;
     if (c.vk === 'raider') jL.textContent = ready ? tr('РАКЕТЫ ГОТОВЫ · ЛКМ · ПКМ — пулемёт', 'ROCKETS READY · LMB · RMB — MG', 'ROCKETS READY · LMB · RMB — MG') : tr('ракеты перезаряжаются · ПКМ — пулемёт', 'rockets reloading · RMB — MG', 'rockets reloading · RMB — MG');
     else if (c.vk === 'mlrs') jL.textContent = (ready ? tr('ЗАЛП ГОТОВ · ЛКМ', 'SALVO READY · LMB', 'SALVO READY · LMB') : tr('пакет перезаряжается', 'launcher reloading', 'launcher reloading')) + ` · ${d} ${tr('м', 'm', 'm')} · ${tr('ПКМ — вид сверху', 'RMB — high view', 'RMB — high view')}`;
-    else jL.textContent = (ready ? (c.team === 0 ? tr('МИНА ГОТОВА · ЛКМ', 'SHELL READY · LMB', 'SHELL READY · LMB') : tr('БОМБА ГОТОВА · ЛКМ', 'BOMB READY · LMB', 'BOMB READY · LMB')) : tr('перезарядка', 'reloading', 'reloading')) + ` · ${d} ${tr('м', 'm', 'm')} · ${tr('ПКМ — вид сверху', 'RMB — high view', 'RMB — high view')}`;
+    else jL.textContent = (ready ? (FI76(c.team) === 0 ? tr('МИНА ГОТОВА · ЛКМ', 'SHELL READY · LMB', 'SHELL READY · LMB') : tr('БОМБА ГОТОВА · ЛКМ', 'BOMB READY · LMB', 'BOMB READY · LMB')) : tr('перезарядка', 'reloading', 'reloading')) + ` · ${d} ${tr('м', 'm', 'm')} · ${tr('ПКМ — вид сверху', 'RMB — high view', 'RMB — high view')}`;
   },
   hint(c){
     if (c.vk === 'raider') return tr(`Рейдер: ЛКМ — залп 4 ракет, ПКМ — пулемёт, ${bk('grenade')} — нитро. Быстрый и хрупкий: бей по строителям и с фланга.`, `Raider: LMB — 4-rocket salvo, RMB — MG, ${bk('grenade')} — nitro. Fast and fragile: hit builders and flanks.`);

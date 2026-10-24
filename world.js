@@ -140,6 +140,7 @@ function mapStatic(x,y,z){
   for (const b of BASES) mask = min(mask, 1 - smoothstep(PAD_B[0], PAD_B[1], nx*b[0]+ny*b[1]+nz*b[2]));
   for (const c of CPD)   mask = min(mask, 1 - smoothstep(PAD_C[0], PAD_C[1], nx*c[0]+ny*c[1]+nz*c[2]));
   let d = r - RM - hgt(nx*RM, ny*RM, nz*RM) * mask;
+  if (CR76 && CR76.n) d += CR76.dent(nx, ny, nz);   // v7.6: воронки от взрывов (v76_craters.js)
   for (const c of CRATERS) d = max(d, -(hypot(x-c[0], y-c[1], z-c[2]) - c[3]));
   const tun = min(hypot(y,z) - TUN_R, hypot(x,y) - TUN_R, r - CORE_R);
   d = max(d, -tun);
