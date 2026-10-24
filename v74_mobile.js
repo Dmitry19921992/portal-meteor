@@ -40,6 +40,16 @@ const M74 = {
     }
     const show = this.on() && S.mode === 'fps' && !S.attract && !MENU.isOpen() && !S.over;
     b.style.display = show ? 'flex' : 'none';
+    // 💣 — у здания врага (взрывчатка, v74_fx.js)
+    let tb = document.getElementById('m74tnt');
+    if (!tb){
+      tb = document.createElement('button'); tb.id = 'm74tnt'; document.body.appendChild(tb);
+      const go = e => { e.preventDefault(); e.stopPropagation(); if (typeof TNT74 !== 'undefined') TNT74.plant(); M71.haptic(20); };
+      tb.addEventListener('touchstart', go, { passive: false }); tb.addEventListener('click', go);
+    }
+    const tn = show && !this.nohud && typeof TNT74 !== 'undefined' && TNT74.n > 0 && !!TNT74.target(S.me);
+    tb.style.display = tn ? 'flex' : 'none';
+    if (tn){ const h = '💣<small>' + TNT74.n + '</small>'; if (tb._h !== h){ tb._h = h; tb.innerHTML = h; } }
     if (!show && this.nohud){ this.nohud = false; document.body.classList.remove('m74nh'); b.classList.remove('on'); }
   },
 };
@@ -131,6 +141,8 @@ Object.assign(M74, {
 M74.CSS = `
   /* ===== v7.4 телефон ===== */
   #m74eye{display:none;position:fixed;z-index:27;right:calc(var(--sr, 0px) + 10px);top:calc(var(--st, 0px) + 58px);width:40px;height:40px;padding:0;align-items:center;justify-content:center;border-radius:50%;background:rgba(10,12,14,.55);border:1.5px solid rgba(214,198,154,.5);color:#f0e8d0;font-size:19px;pointer-events:auto;touch-action:manipulation}
+  #m74tnt{display:none;position:fixed;z-index:27;right:calc(var(--sr, 0px) + 74px);top:calc(50% - 27px);width:54px;height:54px;padding:0;align-items:center;justify-content:center;border-radius:50%;background:rgba(90,30,10,.7);border:1.5px solid #ffb347;color:#fff;font-size:24px;pointer-events:auto;touch-action:manipulation}
+  #m74tnt small{position:absolute;right:6px;bottom:4px;font:700 11px "Exo 2",sans-serif;color:#ffd27a}
   #m74eye.on{background:rgba(214,198,154,.75);color:#111;opacity:.65}
   body.m74nh #hud, body.m74nh #obj, body.m74nh #bars, body.m74nh #kit, body.m74nh #hint, body.m74nh #feed, body.m74nh #who73, body.m74nh .m73x, body.m74nh #cur,
   body.m74nh #ov, body.m74nh #touch .tf.fps > button, body.m74nh #touch .tt, body.m74nh #m74mode, body.m74nh #dcard, body.m74nh [id^="m67"], body.m74nh [id^="m71"]:not(#m71rj):not(#m71lj){opacity:0 !important;pointer-events:none !important}
