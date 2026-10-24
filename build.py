@@ -45,6 +45,7 @@ JS.insert(JS.index('main.js'), 'v75_dendy.js')   # v7.5 «Денди» — по�
 JS.insert(JS.index('main.js'), 'v76_feel.js')    # v7.6 «ощущение боя»: отклик попаданий, «Играть сразу», итог + карточка, подсказка, автосохранение (отдельной строкой)
 JS.insert(JS.index('main.js'), 'v76.js')         # v7.6: номер версии, «Новое в v7.6», меню версий v7.6/v7.5/v7.4 (отдельной строкой)
 JS.insert(JS.index('main.js'), 'v76_stats.js')   # v7.6 статистика (pm-stats на Cloudflare) — после v75_stats.js и v75_dendy.js, последним перед main.js
+JS.insert(JS.index('main.js'), 'v77.js')         # v7.7: номер версии, «Новое в v7.7», меню версий v7.7/v7.6/v7.5 — после v76.js и v76_stats.js
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
