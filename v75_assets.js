@@ -129,10 +129,10 @@ AS75.plan = function(){
   const rnd = seeded(75075);
   const P = [];   // задания расстановки: [класс, «где»]
   const n = (x) => Math.max(1, Math.round(x * k));
-  for (let i = 0; i < n(9); i++) P.push(['ruin', 'far']);
-  for (let i = 0; i < n(12); i++) P.push(['wreck', 'far']);
-  for (let c = 0; c < CPD.length; c++) for (let i = 0; i < n(6); i++) P.push(['camp', 'cp', c]);
-  for (let i = 0; i < n(36); i++) P.push(['nature', 'cluster']);
+  for (let i = 0; i < n(10); i++) P.push(['ruin', 'far']);
+  for (let i = 0; i < n(16); i++) P.push(['wreck', 'far']);
+  for (let c = 0; c < CPD.length; c++) for (let i = 0; i < n(8); i++) P.push(['camp', 'cp', c]);
+  for (let i = 0; i < n(64); i++) P.push(['nature', 'cluster']);
   this.jobs = P; this.rnd = rnd; this.items = []; this.tries = 0; this.grid = new Map(); this.placed = false;
 };
 AS75.groundPt = function(dir){ return mul(dir, groundR(dir)); };
@@ -207,6 +207,7 @@ AS75.placeStep = function(budget){
     if (it || j.t > (j[1] === 'cluster' ? 24 : 60)){ this.jobs.shift(); continue; }
     if (j.t % 10 === 0){ j.e = null; if (j.c && j.t % 20 === 0) j.c = null; }
   }
+  this.stats.placeMs = (this.stats.placeMs || 0) + performance.now() - t0;
   if (!this.jobs.length){ this.placed = true; this.stats.items = this.items.length; this.colN = this.items.filter(i => i.col).length; }
 };
 // постройки игроков поверх декора: такой декор прячем (и его коллайдер тоже)
@@ -409,7 +410,7 @@ AS75.draw = function(c, nl){
 AS75.ALB = 1.45;
 // для тестов и скриншотов: ближайшие модели к точке
 AS75.near = function(p, n, cls){ return this.items.filter(it => !cls || it.e.p === cls).map(it => [dist(it.pos, p), it]).sort((a, b) => a[0] - b[0]).slice(0, n || 5).map(x => x[1]); };
-AS75.info = function(){ const s = this.stats; return { on: this.on(), err: this.err, items: this.items.length, placed: this.placed, col: this.colN || 0, drawn: s.drawn, tris: Math.round(s.tris), lod: s.lod.slice(), loaded: s.loaded, kb: Math.round(s.kb), req: s.req, fail: s.fail, ms: +s.ms.toFixed(2), cat: this.cat ? this.cat.items.length : 0 }; };
+AS75.info = function(){ const s = this.stats; return { on: this.on(), err: this.err, items: this.items.length, placed: this.placed, col: this.colN || 0, drawn: s.drawn, tris: Math.round(s.tris), lod: s.lod.slice(), loaded: s.loaded, kb: Math.round(s.kb), req: s.req, fail: s.fail, ms: +s.ms.toFixed(2), placeMs: Math.round(s.placeMs || 0), byCls: ['nature', 'camp', 'ruin', 'wreck'].map(c => c + ':' + this.items.filter(i => i.e.p === c).length).join(' '), cat: this.cat ? this.cat.items.length : 0 }; };
 AS75.init();
 // встраивание: рисуем сразу после построек v7.0 (render.js вызывает ST70.draw после 3D-бойцов)
 if (typeof ST70 !== 'undefined'){ const d0 = ST70.draw; ST70.draw = function(c, nl){ const r = d0.apply(this, arguments); AS75.draw(c, nl); return r; }; }
