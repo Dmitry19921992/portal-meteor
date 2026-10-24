@@ -38,6 +38,7 @@ if os.path.exists(cat3d):
 import datetime   # v7.4: дата сборки на экране меню берётся автоматически в момент сборки
 html += '<script>\nconst BUILD_DATE = "' + datetime.datetime.now().strftime('%d.%m.%Y %H:%M') + '";\n'
 JS.insert(JS.index('main.js'), 'v75_dendy.js')   # v7.5 «Денди» — последним перед main.js (его обёртки снаружи всех); отдельной строкой — не мешает слиянию
+JS.insert(JS.index('main.js'), 'v76_feel.js')    # v7.6 «ощущение боя»: отклик попаданий, «Играть сразу», итог + карточка, подсказка, автосохранение (отдельной строкой)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
