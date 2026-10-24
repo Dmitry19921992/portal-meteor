@@ -180,23 +180,25 @@ void main(){
     const out = Object.assign({}, c, { fov });
     if (!this.M || SET.denSnap === false){ this.shift(0, 0); return out; }
     const pa = fov / this.h;               // тангенс угла на один пиксель
-    let A = this.anchor;
-    const f = c.fwd, dz = A ? dot(f, A.fwd) : 0;
-    if (!A || dz < 0.93 || !(dz > 0)){ A = this.anchor = { fwd: f.slice(), right: c.right.slice(), up: c.up.slice() }; }
-    const tx = dot(f, A.right) / dot(f, A.fwd), ty = dot(f, A.up) / dot(f, A.fwd);
-    const qx = Math.round(tx / pa) * pa, qy = Math.round(ty / pa) * pa;
-    const fq = norm(add(A.fwd, add(mul(A.right, qx), mul(A.up, qy))));
-    const right = norm(cross(fq, c.up)), up = cross(right, fq);
-    out.fwd = fq; out.right = right; out.up = up;
-    // где центр отрисованного кадра на экране настоящей камеры → сдвиг canvas
-    const zf = dot(fq, c.fwd);
-    const ex = dot(fq, c.right) / zf / pa, ey = dot(fq, c.up) / zf / pa;
-    if (abs(ex) > 1.2 || abs(ey) > 1.2 || abs(tx) > 0.45 || abs(ty) > 0.45){
-      // большой поворот (резкий рывок, крен) — новая опорная сетка от настоящей камеры
-      this.anchor = abs(ex) > 1.2 || abs(ey) > 1.2 ? null : { fwd: fq, right, up };
-      if (!this.anchor){ out.fwd = c.fwd; out.right = c.right; out.up = c.up; this.shift(0, 0); return out; }
-    }
-    this.shift(clamp(ex, -1, 1) * this.px, -clamp(ey, -1, 1) * this.px);   // поля canvas — 1 px с каждой стороны
+    const f = c.fwd;
+    // камера «опоры», повёрнутая на целое число пикселей; базис — от опоры (не от настоящей камеры):
+    // внутри одного «пиксельного шага» камера в точности та же — картинка не меняется
+    const snapTo = A => {
+      const fz = dot(f, A.fwd); if (!(fz > 0.9)) return null;
+      const tx = dot(f, A.right) / fz, ty = dot(f, A.up) / fz;
+      const fq = norm(add(A.fwd, add(mul(A.right, Math.round(tx / pa) * pa), mul(A.up, Math.round(ty / pa) * pa))));
+      const right = norm(cross(fq, A.up)), up = cross(right, fq);
+      const zf = dot(fq, c.fwd), ex = dot(fq, c.right) / zf / pa, ey = dot(fq, c.up) / zf / pa;
+      // крен снимка относительно настоящей камеры (у шара «верх» меняется при ходьбе, у наклонной камеры — при повороте):
+      // > 0.004 рад — на краю экрана расхождение с HUD уже ~0.4 px → новая опора
+      if (abs(dot(c.right, up)) > 0.004 || abs(ex) > 1.2 || abs(ey) > 1.2) return null;
+      return { fq, right, up, ex, ey };
+    };
+    let s = this.anchor && snapTo(this.anchor);
+    if (!s){ this.anchor = { fwd: f.slice(), right: c.right.slice(), up: c.up.slice() }; s = snapTo(this.anchor); }
+    if (!s){ this.shift(0, 0); return out; }
+    out.fwd = s.fq; out.right = s.right; out.up = s.up;
+    this.shift(clamp(s.ex, -1, 1) * this.px, -clamp(s.ey, -1, 1) * this.px);   // остаток < 1 px — плавным сдвигом canvas (поля по 1 px)
     return out;
   },
   // ---------------------------------------------------------------- рубленая анимация
