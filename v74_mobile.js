@@ -16,12 +16,13 @@ const M74 = {
   stickStep(){
     const now = performance.now() / 1000;
     if (TOUCH.joy) this.lT = now;
-    const L = now - this.lT < 0.35, P = TOUCH.look && M71.tp[TOUCH.look.id], R = !!(TOUCH.look && P) || now - M73.rT < 0.7;
+    // правый палец «в деле» — только если им ВОДЯТ (тап по врагу — это ракета/граната, а не прицел)
+    const L = now - this.lT < 0.35, R = now - M73.rT < 0.7;
     const m = R && !L ? 'R' : R && L ? 'LR' : 'L';
     const fps = this.on() && S.mode === 'fps' && !S.attract && !MENU.isOpen() && this.inf() && !CAMFX.busy();
     this.mode = fps ? m : 'L';
     // только правый стик — прицел включается сам
-    const wantAim = fps && m === 'R' && !(S.kit && S.kit.reloadT > 0);
+    const wantAim = fps && m === 'R' && !!TOUCH.look && !(S.kit && S.kit.reloadT > 0);
     if (wantAim && !this.aimSet){ this.aimSet = true; mouseR = true; }
     else if (!wantAim && this.aimSet){ this.aimSet = false; if (!TOUCH.aimOn) mouseR = false; }
     let el = document.getElementById('m74mode');

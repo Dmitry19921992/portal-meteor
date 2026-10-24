@@ -27,7 +27,9 @@ float relief74(vec3 q){   // v7.4: каньоны, останцы, впадин�
   float m = cos(dot(q, TKC)) * cos(dot(q, TKD));
   float b = cos(dot(q, TKE)) * cos(dot(q, TKF));
   float w = smoothstep(0.62, 0.95, b) * smoothstep(0.15, 0.55, cos(dot(q, TKG)));
-  return can + 7.0 * smoothstep(0.5, 0.95, m) - min(8.0 * w, 4.5);
+  vec3 nq = normalize(q); float fade = 1.0;
+  for (int i = 0; i < 2; i++) fade = min(fade, 1.0 - smoothstep(0.961, 0.9888, dot(nq, BASES[i])));
+  return (can + 7.0 * smoothstep(0.5, 0.95, m) - min(8.0 * w, 4.5)) * fade;
 }
 float hgt(vec3 q){ return ${NK.map(([a,k1,k2]) => `${a.toFixed(3)}*cos(dot(q,vec3(${f5(k1)})))*cos(dot(q,vec3(${f5(k2)})))`).join(' + ')} + relief74(q); }`;
 }

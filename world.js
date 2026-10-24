@@ -34,7 +34,10 @@ function relief74(x, y, z){
   const b = Math.cos(TKd(TK.E, x, y, z)) * Math.cos(TKd(TK.F, x, y, z));
   const w = smoothstep(0.62, 0.95, b) * smoothstep(0.15, 0.55, Math.cos(TKd(TK.G, x, y, z)));   // впадины — не везде
   const bas = -Math.min(8 * w, 4.5);
-  return can + rock + bas;
+  // у баз (зона обучения и стройки) рельеф прежний: плавно гаснет в 75–140 м от центра базы
+  const r = Math.hypot(x, y, z) || 1; let fade = 1;
+  for (const B of BASES) fade = Math.min(fade, 1 - smoothstep(0.961, 0.9888, (x * B[0] + y * B[1] + z * B[2]) / r));
+  return (can + rock + bas) * fade;
 }
 
 // ---------- векторы ----------

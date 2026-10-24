@@ -183,7 +183,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
       vec3 q = rn * RM;
       float lb = smoothstep(0.62, 0.95, cos(dot(q, TKE)) * cos(dot(q, TKF))) * smoothstep(0.15, 0.55, cos(dot(q, TKG)));
       float pm = 1.0;
-      for (int i = 0; i < 2; i++) pm = min(pm, 1.0 - smoothstep(PAD_B0 - 0.004, PAD_B0, dot(rn, BASES[i])));
+      for (int i = 0; i < 2; i++) pm = min(pm, 1.0 - smoothstep(0.961, 0.9888, dot(rn, BASES[i])));
       float lake = smoothstep(0.5, 0.58, lb) * pm * (1.0 - smoothstep(0.05, 0.2, slope));
       if (lake > 0.001){
         float kind = cos(dot(q, vec3(-0.0049, 0.0071, 0.0038)));
