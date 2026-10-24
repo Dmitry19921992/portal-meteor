@@ -659,7 +659,7 @@ WPN69.draw = function(c, nl, eyeSh, vm3, wk, me){
     const fl = this.dbgFlash !== undefined ? this.dbgFlash : ps.since < 0.05 ? 1 - ps.since / 0.05 : 0;   // dbgFlash — для скриншотов
     const mz = M34.ap(ps.Mg, D.muz);
     gl.uniform3f(U.uFlP, mz[0], mz[1], -mz[2]);
-    const team = me ? me.team : 0, glowK = (me && me.elite ? 1.3 : 1) * (K && K.incT > 0 ? 1.25 : 1);
+    const team = me ? FI76(me.team) : 0, glowK = (me && me.elite ? 1.3 : 1) * (K && K.incT > 0 ? 1.25 : 1);
     gl.uniform4f(U.uP, eyeSh, 1, team, ps.heat);
     gl.uniform4f(U.uQ, glowK, K ? K.charge || 0 : 0, fl * (w === 'rail' ? 0.6 : 1), now % 1000);
     const part = (G, k, M) => { const r = G.R[k]; if (!r || !M) return; gl.uniformMatrix4fv(U.uM, false, M34.gl(M, W69_UM)); gl.drawElements(gl.TRIANGLES, r.count, gl.UNSIGNED_INT, r.first * 4); };

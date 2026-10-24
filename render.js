@@ -387,20 +387,20 @@ function gatherLights(){
   const tg = pr => pr >= 0 ? [lerp(0.5, 2.0, pr), lerp(0.5, 2.8, pr), lerp(0.5, 3.2, pr)] : [lerp(0.5, 4.2, -pr), lerp(0.5, 0.25, -pr), lerp(0.5, 0.12, -pr)];
   for (const cp of S.cps){
     if (cp.core){ add2([0, 16, 0], [2.5, 1.2, 4], 40, 0.002); add2([0, -16, 0], [2.5, 1.2, 4], 40, 0.002); continue; }
-    add2(cp.beacon, tg(cp.prog), 32, 0.004);
+    add2(cp.beacon, tg(FI76(0) === 1 ? -cp.prog : cp.prog), 32, 0.004);
   }
   for (const h of S.hq){
     if (!h.alive) continue;
     const b = BASES[h.team], t1 = anyTangent(b), t2 = cross(b, t1);
-    add2(mul(b, RM + 37.2), h.team ? [6, 0.4, 0.2] : [2.6, 3.4, 4], 45, 0.004);
+    add2(mul(b, RM + 37.2), FI76(h.team) ? [6, 0.4, 0.2] : [2.6, 3.4, 4], 45, 0.004);
     for (let k = 0; k < 4; k++){
       const a = k * PI / 2 + PI / 4;
-      add2(add(mul(b, RM + 11), add(mul(t1, cos(a) * 12), mul(t2, sin(a) * 12))), h.team ? [1.4, 0.45, 0.35] : [1.3, 1.2, 1.0], 30, 0);
+      add2(add(mul(b, RM + 11), add(mul(t1, cos(a) * 12), mul(t2, sin(a) * 12))), FI76(h.team) ? [1.4, 0.45, 0.35] : [1.3, 1.2, 1.0], 30, 0);
     }
   }
   for (const b of S.buildings){
     if (!b.alive) continue;
-    const E = b.team ? [3.5, 0.3, 0.15] : [1.6, 2.2, 2.6];
+    const E = FI76(b.team) ? [3.5, 0.3, 0.15] : [1.6, 2.2, 2.6];
     if (!b.done) add2(add(b.pos, mul(b.up, b.H * b.built)), [0.6, 1.6, 2.2], 14, 0.003);
     else if (b.type === 'factory') add2(add(add(b.pos, mul(b.up, 5)), mul(b.fwd, 9.5)), E, 18, 0.002);
     else if (b.type === 'airdock') add2(add(b.pos, mul(b.up, 2)), E, 16, 0.003);
@@ -545,7 +545,7 @@ function renderScene(dt, now, V){
   const vmMesh = !V && showVM && !vm3[3] && typeof WPN69 !== 'undefined' && WPN69.ok();   // v6.9: 3D-оружие отдельным проходом
   gl.uniform4f(U.uVM, showVM && !vm3[3] && !vmMesh ? 1 : 0, V ? (V.bob || 0) : S.bob, V ? (V.recoil || 0) : S.recoil, V ? (V.muzzle ? 1 : 0) : S.muzzle > 0 ? 1 : min(0.5, vm3[2] * 0.5));
   gl.uniform4f(U.uVM3, vm3[0], vm3[1], vm3[2], 0);
-  gl.uniform4f(U.uVM2, me ? me.team : 0, (wk === 'rail' ? 2 : wk === 'hmg' ? 3 : (me && me.elite ? 1 : 0)) + reload * 0.9, eyeSh, me ? (me.moveAmt || 0) : 0);
+  gl.uniform4f(U.uVM2, me ? FI76(me.team) : 0, (wk === 'rail' ? 2 : wk === 'hmg' ? 3 : (me && me.elite ? 1 : 0)) + reload * 0.9, eyeSh, me ? (me.moveAmt || 0) : 0);
   gl.uniform1f(U.uLamp, V ? (V.lamp || 0) : S.mode === 'fps' && !S.attract ? 1 : 0);
   gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.ALWAYS); gl.depthMask(true);   // v6.5: рэймарчер заполняет глубину
   gl.drawArrays(gl.TRIANGLES, 0, 3);

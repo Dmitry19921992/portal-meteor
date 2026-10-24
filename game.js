@@ -228,7 +228,7 @@ function addToSquad(sq, pos){
 let TANK_SERIAL = [1, 1];
 function makeTank(pos, team){
   const e = makeBody(pos, 1.5);
-  Object.assign(e, { cls: 'tank', team, hp: team ? 1150 : 1400, mgCd: 0, walk: team ? 8.5 : 7, think: 0, target: null, stuckT: 0, jet: null,
+  Object.assign(e, { cls: 'tank', team, hp: FI76(team) ? 1150 : 1400, mgCd: 0, walk: FI76(team) ? 8.5 : 7, think: 0, target: null, stuckT: 0, jet: null,
                      goal: null, order: 'idle', cp: null, focus: null, manualUntil: 0, abil: {}, vet: 0, serial: TANK_SERIAL[team]++, overT: 0, strat: null });
   e.maxhp = e.hp; e.aim = e.fwd;
   S.vehicles.push(e);
