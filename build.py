@@ -22,6 +22,7 @@ for lg in ('en', 'vi', 'he'):
         html += f'<script id="vo68{lg}" type="application/json">' + open(vo, encoding='utf-8').read().replace('</', '<\\/') + '</script>\n'
 import datetime   # v7.4: дата сборки на экране меню берётся автоматически в момент сборки
 html += '<script>\nconst BUILD_DATE = "' + datetime.datetime.now().strftime('%d.%m.%Y %H:%M') + '";\n'
+JS.insert(JS.index('main.js'), 'v75_dendy.js')   # v7.5 «Денди» — последним перед main.js (его обёртки снаружи всех); отдельной строкой — не мешает слиянию
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
