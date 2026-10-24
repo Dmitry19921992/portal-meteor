@@ -164,7 +164,7 @@ if (typeof DEV !== 'undefined'){
   DEV.panel = function(on){
     const r = pn0.apply(this, arguments);
     const p = $('devPan');
-    if (p && !p._v75){ p._v75 = true; p.addEventListener('click', e => { const t = e.target.closest('[data-dv75]'); if (!t) return; e.stopPropagation(); AU.init(); if (t.dataset.dv75 === 'tut'){ DEV.panel(false); T72.devAll = true; MENU.pause(); MENU.show('t72', true); } }, true); }
+    if (p && !p._v75){ p._v75 = true; p.addEventListener('click', e => { const t = e.target.closest('[data-dv75]'); if (!t) return; e.stopPropagation(); AU.init(); if (t.dataset.dv75 === 'tut'){ DEV.panel(false); MENU.pause(); T72.devAll = true; MENU.show('t72', true); } }, true); }
     return r;
   };
   // метка в углу: одна кнопка «🛠 Разработчик»
