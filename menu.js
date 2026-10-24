@@ -94,7 +94,7 @@ const MENU = {
     const C = PROG.career;
     return `<div class="mcol">
       <h1>PORTAL METEOR</h1>
-      <p class="sub" style="opacity:.75;margin-top:-6px">v6.5 · ${tr('сборка', 'build', 'bản dựng')} 19.10.2026 · ${tr('одна версия для ПК и телефона', 'one build for PC and phone', 'một bản cho PC và điện thoại')} · ${tr('сейчас', 'now', 'hiện tại')}: <b>${(('ontouchstart' in window) || matchMedia('(pointer:coarse)').matches) ? tr('телефон, сенсорное управление', 'phone, touch controls', 'điện thoại, cảm ứng') : tr('ПК, клавиатура и мышь', 'PC, keyboard and mouse', 'PC, bàn phím và chuột')}</b></p>
+      <p class="sub" style="opacity:.75;margin-top:-6px">v6.5 · ${tr('сборка', 'build', 'bản dựng')} ${typeof BUILD_DATE !== 'undefined' ? BUILD_DATE : '—'} · ${tr('одна версия для ПК и телефона', 'one build for PC and phone', 'một bản cho PC và điện thoại')} · ${tr('сейчас', 'now', 'hiện tại')}: <b>${(('ontouchstart' in window) || matchMedia('(pointer:coarse)').matches) ? tr('телефон, сенсорное управление', 'phone, touch controls', 'điện thoại, cảm ứng') : tr('ПК, клавиатура и мышь', 'PC, keyboard and mouse', 'PC, bàn phím và chuột')}</b></p>
       <p class="sub">${tr('война роботов за руду метеорита · небо — это портал к врагу', 'a robot war for meteor ore · the sky is a portal to the enemy', 'cuộc chiến robot giành quặng thiên thạch · bầu trời là cánh cổng tới quân thù')}</p>
       ${this.btn('play', tr('Новый матч', 'New match', 'Trận mới'), 'big')}
       <div class="diffrow">${DIFF.map((d, i) => `<button class="dbtn ${SET.diff === i ? 'cur' : ''}" data-diff="${i}">${N2(d.n)}</button>`).join('')}</div>

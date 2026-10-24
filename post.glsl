@@ -15,6 +15,7 @@ uniform int   uNT;
 uniform float uSlow;     // рефлекс (замедление времени)
 uniform float uDist;     // искажения вкл/выкл
 uniform float uXfer;     // v6: «передача сигнала» при перелёте камеры между бойцами
+uniform float uG72;      // v7.2gfx: новая пост-обработка (0 — как в v7.1)
 out vec4 frag;
 
 vec3 aces(vec3 x){
@@ -94,6 +95,16 @@ void main(){
   vec3 bl = blurLod(u2, 1.5) * 0.18 + blurLod(u2, 3.0) * 0.26 + blurLod(u2, 4.5) * 0.30 + blurLod(u2, 6.0) * 0.26;
   col += max(bl - vec3(0.18), 0.0) * (0.55 + 0.4 * uSlow) * uBloom;
   col += vec3(1.0, 0.85, 0.7) * ring * 0.035;
+  if (uG72 > 0.75){
+    // v7.2gfx: горизонтальный «анаморфный» блик от ярких источников и «грязь» на линзе в ореоле
+    vec3 st = vec3(0.0);
+    for (int k = -3; k <= 3; k++){ if (k == 0) continue; float fx = float(k) / 3.0; st += max(textureLod(uTex, u2 + vec2(fx * 0.09, 0.0), 4.0).rgb - vec3(1.6), 0.0) * (1.0 - abs(fx) * 0.8); }
+    col += st * vec3(0.55, 0.75, 1.0) * 0.05 * uBloom;
+    vec2 dq = uv * vec2(11.0, 6.5), di = floor(dq), df = smoothstep(0.0, 1.0, fract(dq));
+    float dn = mix(mix(hash(di), hash(di + vec2(1.0, 0.0)), df.x), mix(hash(di + vec2(0.0, 1.0)), hash(di + vec2(1.0, 1.0)), df.x), df.y);
+    float dirt = smoothstep(0.5, 0.95, dn * 0.7 + 0.3 * sin(uv.x * 9.0 + uv.y * 5.0) * sin(uv.y * 7.0));
+    col += max(bl - vec3(0.3), 0.0) * dirt * 0.3 * uBloom;
+  }
 
   col *= uExpo;
   col = aces(col);
@@ -105,6 +116,17 @@ void main(){
   col = mix(col, col * vec3(1.08, 1.0, 0.86), uSlow * 0.6);
   col = pow(col, vec3(1.0 / 2.2));
   col = mix(col, smoothstep(0.0, 1.0, col), 0.25);
+  if (uG72 > 0.25){
+    // v7.2gfx: «военная плёнка» — тени в холодный сине-зелёный, света в беж/охру, поднятый чёрный, мягкое плечо
+    float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+    col = mix(col, col * vec3(0.9, 1.0, 1.06) + vec3(0.0, 0.006, 0.012), smoothstep(0.45, 0.0, l) * 0.8);
+    col = mix(col, col * vec3(1.05, 1.0, 0.9), smoothstep(0.35, 0.9, l) * 0.55);
+    col = mix(vec3(l), col, 0.92);
+    col = col * 0.965 + 0.022;
+    // зерно плёнки: сильнее в тенях и полутонах, крупнее VHS-шума
+    float gr = hash(floor(gl_FragCoord.xy * 0.7) + fract(uTime * 23.1) * 517.0) - 0.5;
+    col += gr * 0.05 * (1.0 - l * 0.7);
+  }
 
   float vig = smoothstep(1.05, 0.3, length(cc * vec2(1.25, 1.0)));
   col *= mix(0.55 - 0.25 * uSlow, 1.0, vig);
