@@ -42,6 +42,8 @@ import datetime   # v7.4: дата сборки на экране меню бе�
 html += '<script>\nconst BUILD_DATE = "' + datetime.datetime.now().strftime('%d.%m.%Y %H:%M') + '";\n'
 JS.insert(JS.index('main.js'), 'v75_dendy.js')   # v7.5 «Денди» — последним перед main.js (его обёртки снаружи всех); отдельной строкой — не мешает слиянию
 JS.insert(JS.index('main.js'), 'v76_feel.js')    # v7.6 «ощущение боя»: отклик попаданий, «Играть сразу», итог + карточка, подсказка, автосохранение (отдельной строкой)
+JS.insert(JS.index('main.js'), 'v76.js')         # v7.6: номер версии, «Новое в v7.6», меню версий v7.6/v7.5/v7.4 (отдельной строкой)
+JS.insert(JS.index('main.js'), 'v76_stats.js')   # v7.6 статистика (pm-stats на Cloudflare) — после v75_stats.js и v75_dendy.js, последним перед main.js
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
