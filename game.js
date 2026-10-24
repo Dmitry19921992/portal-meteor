@@ -901,7 +901,7 @@ function newMatch(opts){
   S.hq = [0, 1].map(t => ({ cls: 'hq', team: t, pos: mul(BASES[t], RM + 5), hp: GAME.HQ_HP, maxhp: GAME.HQ_HP, cd: 0, alive: true,
                             queue: [], prodT: 0, seen: [0, 0], flash: 0, aim: anyTangent(BASES[t]), lastHit: -99, rally: null, up: BASES[t], fwd: anyTangent(BASES[t]) }));
   S.cps = CPD.map((d, i) => ({ i, dir: d, pos: mul(d, RM + 1), beacon: mul(d, RM + 11.5), prog: 0, owner: -1, core: false, name: 'ABCDEF'[i] }));
-  S.cps.push({ i: 6, dir: [0,0,0], pos: [0,0,0], beacon: [0,0,0], prog: 0, owner: -1, core: true, name: 'Core' });
+  if (!NOCORE75) S.cps.push({ i: 6, dir: [0,0,0], pos: [0,0,0], beacon: [0,0,0], prog: 0, owner: -1, core: true, name: 'Core' });   // v7.5: ядра нет
   for (const t of [0, 1]){
     for (let k = 0, nsq = LITE73.on ? (opts.attract ? 1 : 2) : 3; k < nsq; k++) spawnSquad(t);
     const b = BASES[t], ta = anyTangent(b);

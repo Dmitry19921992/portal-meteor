@@ -304,14 +304,16 @@ function gatherObjects(){
   L.sort((a, b) => a.d - b.d);
   renderList = L.slice(0, MAXO);
   let meIdx = -1;
-  const firstPerson = S.mode === 'fps' && !S.attract && S.me && ((S.me.cls === 'inf' && !S.third) || (typeof FPS61 !== 'undefined' && FPS61.vehFP(S.me) && !CAMFX.busy()));   // v6.1: свою машину не рисуем в кабине (тень и отражения остаются)
+  const fpE = arguments[0] || null;   // v7.5: сплитскрин — бот, из чьих глаз смотрит камера (его тело не рисуем)
+  const firstPerson = !!fpE || S.mode === 'fps' && !S.attract && S.me && ((S.me.cls === 'inf' && !S.third) || (typeof FPS61 !== 'undefined' && FPS61.vehFP(S.me) && !CAMFX.busy()));   // v6.1: свою машину не рисуем в кабине (тень и отражения остаются)
+  const meE = fpE || S.me;
   const hv = typeof HV65 !== 'undefined' && HV65.begin(firstPerson);   // v6.5: 3D-модели тяжёлых бойцов
   renderList.forEach((o, i) => {
     const e = o.e, k = i * 28;
-    if (firstPerson && e === S.me) meIdx = i;
+    if (firstPerson && e === meE) meIdx = i;
     const eu = e.kdUp || e.up, fwd = tangent(e.fwd, eu);   // v7.0: наклон при падении
     const aim = e.aim || fwd;
-    const meshed = hv && HV65.take(e, o, firstPerson && e === S.me);
+    const meshed = hv && HV65.take(e, o, firstPerson && e === meE);
     OBJ.set([o.bc[0], o.bc[1], o.bc[2], meshed ? -o.br : o.br,
              o.origin[0], o.origin[1], o.origin[2], o.type,
              eu[0], eu[1], eu[2], e.team,
@@ -480,8 +482,20 @@ function gatherDistortion(){
 }
 const CPU = new Float32Array(7 * 4);
 function render(dt, now){
+  // v7.5: кино-сплитскрин — две камеры в одном кадре (каждая рисует свою половину буфера, пост-обработка общая)
+  const SV = typeof CINE75 !== 'undefined' ? CINE75.views() : null;
+  if (SV){
+    const c0 = S.cam, w0 = fboW;
+    try { for (const v of SV){ S.cam = v.cam; fboW = v.w; renderScene(dt, now, v); } } finally { fboW = w0; S.cam = c0; }
+    renderPost(now, true);
+    return;
+  }
+  renderScene(dt, now, null);
+  renderPost(now, false);
+}
+function renderScene(dt, now, V){
   const c = S.cam;
-  const meIdx = gatherObjects();
+  const meIdx = gatherObjects(V ? V.fp : null);
   const np = gatherParticles();
   const nl = gatherLights();
   S.cps.forEach((cp, i) => CPU.set([cp.beacon[0], cp.beacon[1], cp.beacon[2], cp.prog], i * 4));
@@ -493,13 +507,13 @@ function render(dt, now){
 
   // --- сцена
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-  gl.viewport(0, 0, fboW, fboH);
+  gl.viewport(V ? V.x : 0, 0, fboW, fboH);
   gl.useProgram(SCENE.p);
   const U = SCENE.U;
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texObj); gl.uniform1i(U.uObj, 0);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texPar); gl.uniform1i(U.uPar, 1);
   gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_3D, texNoise); gl.uniform1i(U.uNoise, 2);
-  gl.uniform2f(U.uRes, fboW, fboH);
+  gl.uniform2f(U.uRes, V ? V.rx : fboW, fboH);   // v7.5: правая половина сплитскрина — сдвиг центра через uRes.x
   gl.uniform3fv(U.uCam, c.pos);
   gl.uniformMatrix3fv(U.uRot, false, [...c.right, ...c.up, ...mul(c.fwd, -1)]);
   gl.uniform1f(U.uR, S.R);
@@ -523,25 +537,27 @@ function render(dt, now){
   gl.uniform3fv(U.uGP, GP_U);
   gl.uniform1f(U.uStorm, (S.storm ? S.storm.k : 0) * (fpsLike ? 1 : 0.12));
   if (typeof GFX72 !== 'undefined') GFX72.sceneU(U); else gl.uniform1f(U.uG72, 0);   // v7.2gfx
-  const me = S.me;
-  const showVM = S.mode === 'fps' && !S.attract && me && me.cls === 'inf' && !S.third && !S.freecam;
-  const wk = S.kit ? S.kit.w : 'rifle';
-  const reload = S.kit && S.kit.reloadT > 0 ? min(1, S.kit.reloadT / WEAPONS[wk].reload) : 0;
-  const vm3 = gunVM3();   // v6: прицел, опускание оружия при перелёте, заряд рельсы
-  const vmMesh = showVM && !vm3[3] && typeof WPN69 !== 'undefined' && WPN69.ok();   // v6.9: 3D-оружие отдельным проходом
-  gl.uniform4f(U.uVM, showVM && !vm3[3] && !vmMesh ? 1 : 0, S.bob, S.recoil, S.muzzle > 0 ? 1 : min(0.5, vm3[2] * 0.5));
+  const me = V ? V.fp : S.me;
+  const showVM = V ? !!V.vm : S.mode === 'fps' && !S.attract && me && me.cls === 'inf' && !S.third && !S.freecam;
+  const wk = V ? (V.wk || 'rifle') : S.kit ? S.kit.w : 'rifle';
+  const reload = !V && S.kit && S.kit.reloadT > 0 ? min(1, S.kit.reloadT / WEAPONS[wk].reload) : 0;
+  const vm3 = V ? [0, 0, 0, 0] : gunVM3();   // v6: прицел, опускание оружия при перелёте, заряд рельсы
+  const vmMesh = !V && showVM && !vm3[3] && typeof WPN69 !== 'undefined' && WPN69.ok();   // v6.9: 3D-оружие отдельным проходом
+  gl.uniform4f(U.uVM, showVM && !vm3[3] && !vmMesh ? 1 : 0, V ? (V.bob || 0) : S.bob, V ? (V.recoil || 0) : S.recoil, V ? (V.muzzle ? 1 : 0) : S.muzzle > 0 ? 1 : min(0.5, vm3[2] * 0.5));
   gl.uniform4f(U.uVM3, vm3[0], vm3[1], vm3[2], 0);
   gl.uniform4f(U.uVM2, me ? me.team : 0, (wk === 'rail' ? 2 : wk === 'hmg' ? 3 : (me && me.elite ? 1 : 0)) + reload * 0.9, eyeSh, me ? (me.moveAmt || 0) : 0);
-  gl.uniform1f(U.uLamp, S.mode === 'fps' && !S.attract ? 1 : 0);
+  gl.uniform1f(U.uLamp, V ? (V.lamp || 0) : S.mode === 'fps' && !S.attract ? 1 : 0);
   gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.ALWAYS); gl.depthMask(true);   // v6.5: рэймарчер заполняет глубину
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   if (typeof HV65 !== 'undefined') HV65.draw(c, nl, np);   // v6.5: 3D-модели поверх, с тестом глубины
   if (typeof ST70 !== 'undefined'){ ST70.collect(); ST70.draw(c, nl); }   // v7.0: постройки улучшений форпостов и штаба
   if (vmMesh) WPN69.draw(c, nl, eyeSh, vm3, wk, me);       // v6.9: оружие в руках — поверх всего
   gl.disable(gl.DEPTH_TEST);
-
+}
+function renderPost(now, split){
+  const fpsLike = S.mode === 'fps' || S.attract;
   // --- пост
-  const [nw, nt] = gatherDistortion();
+  const [nw, nt] = split ? [0, 0] : gatherDistortion();   // v7.5: в сплитскрине искажения (экранные координаты одной камеры) выключены
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, fboTex);

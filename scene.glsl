@@ -94,7 +94,7 @@ vec2 map(vec3 p){
   // кристаллы ядра
   vec3 cq = vec3(p.x, abs(p.y) - 16.0, p.z);
   float cr = length(cq) - 6.0 + 0.25 * sin(2.0*cq.x) * sin(2.0*cq.y + 1.0) * sin(2.0*cq.z);
-  if (cr < res.x) res = vec2(cr, 6.0);
+  if (CORE_R > 0.0 && cr < res.x) res = vec2(cr, 6.0);   // v7.5: без ядра (CORE_R < 0) кристаллов нет
   // штабы на полюсах
   vec3 b = vec3(p.x, abs(p.y) - RM, p.z);
   float hqAlive = p.y > 0.0 ? uHQ.x : uHQ.y;

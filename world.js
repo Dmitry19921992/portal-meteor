@@ -4,7 +4,10 @@
 // =====================================================================
 const RM = 500;            // радиус метеорита, м
 const DOME = 800;          // радиус портального купола (300 м над поверхностью)
-const TUN_R = 6, CORE_R = 35;
+// v7.5: ядра и тоннелей сквозь метеорит больше нет (метеорит сплошной). Радиусы −1000 выключают
+// и вырез в шейдере/коллизиях, и все проверки «под землёй / в шахте». Вернуть: localStorage pm_core75 = 1
+const NOCORE75 = (() => { try { if (new URLSearchParams(location.search).get('core75') === '1') return false; return localStorage.getItem('pm_core75') !== '1'; } catch (e){ return true; } })();
+const TUN_R = NOCORE75 ? -1000 : 6, CORE_R = NOCORE75 ? -1000 : 35;
 const PAD_B = [0.990, 0.997], PAD_C = [0.9965, 0.9992];
 const DET_F = 1 / 48, DET_A = 1.0;   // мелкий рельеф (шум), ±0.45 м
 const D2R = Math.PI / 180;
@@ -141,7 +144,7 @@ function mapStatic(x,y,z){
   const tun = min(hypot(y,z) - TUN_R, hypot(x,y) - TUN_R, r - CORE_R);
   d = max(d, -tun);
   if (d < 1.5 && mask > 0) d -= (fbm3JS(x*DET_F, y*DET_F, z*DET_F) - 0.44) * DET_A * mask;
-  d = min(d, hypot(x, abs(y) - 16, z) - 6);
+  if (!NOCORE75) d = min(d, hypot(x, abs(y) - 16, z) - 6);
   const by = abs(y) - RM;
   if (hypot(x, by, z) - 48 < d && (y > 0 ? HQ_ALIVE[0] : HQ_ALIVE[1])){
     const ax = abs(x), az = abs(z);
@@ -362,6 +365,6 @@ function groundR(dir){
 const gAt = r => r >= RM ? RULES.G * (1 + RULES.G_TOP * smoothstep(0, DOME - RM, r - RM)) : RULES.G * r / RM;
 function inShaft(p){ const r = len(p); return r > 28 && r < RM + 8 && (hypot(p[1], p[2]) < TUN_R + 0.5 || hypot(p[0], p[1]) < TUN_R + 0.5); }
 function underground(p){ const r = len(p); return r < CORE_R + 3 || (r < RM - 10 && inShaft(p)); }
-const AXES = [[1,0,0], [-1,0,0], [0,0,1], [0,0,-1]];
-function bestAxis(dir){ let b = AXES[0], bd = -2; for (const a of AXES){ const d = dot(a, dir); if (d > bd){ bd = d; b = a; } } return b; }
+const AXES = NOCORE75 ? [] : [[1,0,0], [-1,0,0], [0,0,1], [0,0,-1]];   // v7.5: устья шахт — только если ядро вернули
+function bestAxis(dir){ let b = AXES[0] || [1, 0, 0], bd = -2; for (const a of AXES){ const d = dot(a, dir); if (d > bd){ bd = d; b = a; } } return b; }
 function altitude(p){ return len(p) - RM; }

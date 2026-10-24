@@ -119,7 +119,7 @@ const SAVE = {
     for (const r of data.buildings) make(r, S.buildings);
     for (const r of data.squads){ const o = Object.assign({}, r); objs.set('s:' + o.id, o); S.squads.push(o); }
     data.hq.forEach((r, i) => { Object.assign(S.hq[i], r); objs.set('h:' + i, S.hq[i]); });
-    data.cps.forEach((r, i) => { Object.assign(S.cps[i], r); objs.set('c:' + i, S.cps[i]); });
+    data.cps.forEach((r, i) => { if (!S.cps[i]) return; Object.assign(S.cps[i], r); objs.set('c:' + i, S.cps[i]); });   // v7.5: в старых сохранениях есть 7-я точка — Ядро
     for (const p of PROPS) objs.set('p:' + p.id, p);
     data.props.forEach((a, i) => { const p = PROPS[i]; if (!p) return; p.alive = !!a[0]; p.integ = a[1]; p.hp = a[2]; });
     // разворачиваем ссылки
@@ -137,6 +137,7 @@ const SAVE = {
     S.squads = S.squads.filter(sq => sq.units.length);
     for (const u of S.units){ if (!u.squad || !S.squads.includes(u.squad)) u.alive = false; u.jet = jetOf(u); }
     S.units = S.units.filter(u => u.alive);
+    if (NOCORE75) for (const e of [...S.units, ...S.vehicles, ...S.builders]) if (e.pos && (len(e.pos) < 40 || (len(e.pos) < RM - 10 && (hypot(e.pos[1], e.pos[2]) < 7 || hypot(e.pos[0], e.pos[1]) < 7)))) e.pos = surfacePoint(norm(e.pos), 1.5);   // v7.5: кто был в шахте/ядре — на поверхность
     BLD_LIST = S.buildings; bgridDirty();
     HQ_ALIVE[0] = data.hqAlive[0]; HQ_ALIVE[1] = data.hqAlive[1];
     NID = data.nid; TANK_SERIAL = data.ts; DRONE_SERIAL = data.ds; S.nextSquad = data.nextSquad;
