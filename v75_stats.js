@@ -81,6 +81,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 { const hs0 = MENU.html_settings;
   MENU.html_settings = function(){
     const h = hs0.apply(this, arguments), on = SET.stats75 !== false;
+    if (typeof P71M !== 'undefined' && P71M.on()) return h;   // телефон: галка в Настройки → Игра
     const row = `<div class="row"><label>${tr('Анонимная статистика', 'Anonymous statistics', 'Thống kê ẩn danh', 'סטטיסטיקה אנונימית')} <small style="opacity:.6">${tr('без имён и почты: версия, устройство, время игры — чтобы делать игру лучше', 'no names or emails: version, device, play time — to make the game better', 'không tên, không email', 'בלי שמות ואימייל')}</small></label><button class="tog ${on ? 'on' : ''}" data-p74tog="stats75">${on ? tr('ВКЛ', 'ON', 'BẬT', 'פועל') : tr('ВЫКЛ', 'OFF', 'TẮT', 'כבוי')}</button></div>`;
     const i = h.lastIndexOf('</div>');
     return i > 0 ? h.slice(0, i) + row + h.slice(i) : h + row;

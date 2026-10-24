@@ -6,6 +6,8 @@ const V75 = {
   err: {},
   safe(fn, tag){ try { return fn(); } catch (e){ if (!this.err[tag]){ this.err[tag] = 1; console.warn('v75 ' + tag, e); } } },
   phone(){ return typeof TOUCH !== 'undefined' && TOUCH.on; },
+  // экраны меню телефона (P71M) строятся отдельно — ПК-обёртки MENU.html_* их не трогают
+  pm(){ return typeof P71M !== 'undefined' && P71M.on(); },
 };
 // ---------------------------------------------------------------------
 //  1. Ядра нет: медаль «Покоритель ядра» и шутка про шахту — не показываем
@@ -88,18 +90,27 @@ if (typeof P71M !== 'undefined'){
     let h = sec0.apply(this, arguments);
     if (k !== 's_ctl' || !V75.phone()) return h;
     const row = (m, lab) => `<div class="p71s"><button data-p75mag="${m}" data-d="-1">${IC71('minus')}</button><span><small>${uixEsc(lab)}</small><b>×${MAG75.get(m).toFixed(1)}</b></span><button data-p75mag="${m}" data-d="1">${IC71('plus')}</button></div>`;
-    const add = `<h6 class="p74h6">${uixEsc(tr('Расширенные: магнит прицела (сила и радиус)', 'Advanced: aim magnet (strength & radius)', 'Nâng cao: hút ngắm (lực và bán kính)', 'מתקדם: מגנט כוונת (כוח ורדיוס)'))}</h6><div class="p71g c2 rows">` +
-      row('L', tr('● только левый (авто)', '● left only (auto)', '● chỉ trái (tự động)', '● רק שמאל (אוטו)')) +
-      row('R', tr('◎ только правый (прицел)', '◎ right only (aim)', '◎ chỉ phải (ngắm)', '◎ רק ימין (כוונת)')) +
-      row('LR', tr('○ оба (свободно)', '○ both (free)', '○ cả hai (tự do)', '○ שניהם (חופשי)')) +
-      `<button class="p71o" data-p75mag="reset"><span>${uixEsc(tr('Сбросить магнит', 'Reset magnet', 'Đặt lại', 'איפוס'))}</span><b>1 · 1.8 · 0.5</b></button></div>`;
-    return h + add;
+    // одна кнопка «Расширенные: магнит ▸» в ту же сетку — сами ползунки на своём экране (без прокрутки)
+    const add = `<button class="p71o" data-p75mag="open"><span>${uixEsc(tr('Расширенные: магнит прицела ▸', 'Advanced: aim magnet ▸', 'Nâng cao: hút ngắm ▸', 'מתקדם: מגנט כוונת ▸'))}</span><b>${['L', 'R', 'LR'].map(m => MAG75.get(m).toFixed(1)).join(' · ')}</b></button>`;
+    const k2 = '</div><div class="p71ft">';
+    return h.includes(k2) ? h.replace(k2, add + k2) : h;
   };
+  V75.magRow = function(m, lab){ return `<div class="p71s"><button data-p75mag="${m}" data-d="-1">${IC71('minus')}</button><span><small>${uixEsc(lab)}</small><b>×${MAG75.get(m).toFixed(1)}</b></span><button data-p75mag="${m}" data-d="1">${IC71('plus')}</button></div>`; };
+  MENU.html_p75mag = function(){
+    const R = V75.magRow;
+    return `<div class="p71 p71sec">${P71M.hd(tr('Магнит прицела', 'Aim magnet', 'Hút ngắm', 'מגנט כוונת'), true)}<div class="p71g c2 rows">` +
+      R('L', tr('● только левый палец (авто)', '● left finger only (auto)', '● chỉ ngón trái (tự động)', '● רק אצבע שמאל (אוטו)')) +
+      R('R', tr('◎ только правый (прицел) — сила и радиус', '◎ right only (aim) — strength & radius', '◎ chỉ phải (ngắm)', '◎ רק ימין (כוונת)')) +
+      R('LR', tr('○ оба пальца (свободно)', '○ both fingers (free)', '○ cả hai (tự do)', '○ שתי אצבעות (חופשי)')) +
+      `<button class="p71o" data-p75mag="reset"><span>${uixEsc(tr('Сбросить: 1 · 1.8 · 0.5', 'Reset: 1 · 1.8 · 0.5', 'Đặt lại', 'איפוס'))}</span><b>↺</b></button></div></div>`;
+  };
+  { const w0 = MENU.wire; MENU.wire = function(name){ w0.apply(this, arguments); if (name === 'p75mag'){ const b = $('m_back'); if (b) b.onclick = e => { e.stopPropagation(); MENU.back(); }; } }; }
 }
 { // клики по ± магнита (капча: и мышь, и касание; общий обработчик меню не мешает)
   let at = -1e9;
   const go = b => {
     const m = b.dataset.p75mag;
+    if (m === 'open'){ emit('ui', { kind: 'ok' }); MENU.show('p75mag', true); return; }
     if (m === 'reset'){ SET.mag75 = Object.assign({}, MAG75.DEF); MENU.save(); }
     else MAG75.set(m, MAG75.get(m) + (+b.dataset.d) * 0.1);
     emit('ui', { kind: 'ok' });
@@ -168,6 +179,7 @@ if (typeof DEV !== 'undefined'){
   const hp0 = MENU.html_pause;
   MENU.html_pause = function(){
     let h = hp0.apply(this, arguments);
+    if (V75.pm()) return h;
     h = h.replace(/<button id="m_devtog"[^>]*>[\s\S]*?<\/button>/, '').replace(/<button id="m_devars"[^>]*>[\s\S]*?<\/button>/, '');
     const i = h.indexOf('id="m_settings"'); if (i < 0) return h;
     const s = h.lastIndexOf('<button', i);
@@ -176,6 +188,7 @@ if (typeof DEV !== 'undefined'){
   // главное меню (ПК): «Режим разработчика» открывает экран «Разработчик»
   const hm0 = MENU.html_main;
   MENU.html_main = function(){
+    if (V75.pm()) return hm0.apply(this, arguments);
     return hm0.apply(this, arguments).replace(/(<button id="m_dev"[^>]*>)[\s\S]*?(<\/button>)/, '$1🛠 ' + tr('Разработчик', 'Developer', 'Nhà phát triển', 'מפתח') + ` <small style="opacity:.6">${tr('полигон · все обучения · кино', 'sandbox · all trainings · cinema', 'sa bàn · mọi bài · điện ảnh', 'ארגז חול · כל האימונים · קולנוע')}</small>$2`);
   };
   MENU.html_dev75 = function(){
@@ -210,7 +223,7 @@ if (typeof P71M !== 'undefined' && typeof DEV !== 'undefined'){
   if (pp0) P71M.pause = function(){
     let h = pp0.apply(this, arguments);
     h = h.replace(/<button[^>]*id="m_devtog"[^>]*>[\s\S]*?<\/button>/, '');
-    if (!/id="m_devars"/.test(h)) h = h.replace(/(<button[^>]*id="m_career")/, this.tile('id="m_devars"', 'tool', tr('Разработчик', 'Developer', 'Nhà phát triển', 'מפתח'), DEV.on ? L71('on') : '') + '$1');
+    if (!/id="m_devars"/.test(h)) h = h.replace(/(<button[^>]*id="m_career")/, this.tile('id="m_devars"', 'tool', tr('Разработчик', 'Developer', 'Nhà phát triển', 'מפתח'), DEV.on ? L71('on') : '', /id="m73more"/.test(h) ? 'p73h' : '') + '$1');
     else h = h.replace(/(<button[^>]*id="m_devars"[^>]*>[\s\S]*?)(Арсенал|Arsenal|Kho vũ khí|נשקייה)/, '$1' + tr('Разработчик', 'Developer', 'Nhà phát triển', 'מפתח'));
     return h;
   };
@@ -269,8 +282,8 @@ const V75_NEWS = [
   body.touch #screen .d75g{grid-template-columns:1fr 1fr} body.touch #screen .d75b{min-height:56px}
   /* 👁: ранец, ⇆, стики и 👁 остаются (правило v7.4 прятало весь верхний ряд и все кнопки шутера) */
   body.m74nh.m74nh.m74nh #touch .tt{opacity:1 !important;pointer-events:none !important}
-  body.m74nh.m74nh.m74nh #touch .tt > *:not(#m67n){opacity:0 !important;pointer-events:none !important}
-  body.m74nh.m74nh.m74nh #touch .tt > #m67n{opacity:1 !important;pointer-events:auto !important}
+  body.m74nh.m74nh.m74nh #touch .tt > *:not(.m67n){opacity:0 !important;pointer-events:none !important}
+  body.m74nh.m74nh.m74nh #touch .tt > .m67n{opacity:1 !important;pointer-events:auto !important}
   body.m74nh.m74nh.m74nh #touch .tf.fps > [data-s="LJ"], body.m74nh.m74nh.m74nh #touch [data-s="LJ"], body.m74nh.m74nh.m74nh #touch .tf.fps > [data-t="jet"]{opacity:1 !important;pointer-events:auto !important}
   body.m74nh.m74nh.m74nh #ov{opacity:1 !important;pointer-events:none !important}`;
   document.head.appendChild(st);

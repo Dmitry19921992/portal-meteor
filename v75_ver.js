@@ -58,6 +58,7 @@ MENU.html_ver75 = function(){
 { const hm0 = MENU.html_main;
   MENU.html_main = function(){
     const h = hm0.apply(this, arguments), i = h.indexOf('id="m_cinema"');
+    if (/id="m_ver75"/.test(h) || (typeof P71M !== 'undefined' && P71M.on())) return h;   // телефон — своя плитка
     const btn = this.btn('ver75', '🕘 ' + tr('Версия игры', 'Game version', 'Phiên bản', 'גרסת המשחק') + ` <small style="opacity:.6">v7.5 · ${tr('и старые: v7.4, v7.3, вехи v1–v7.0', 'and older: v7.4, v7.3, milestones v1–v7.0', 'và bản cũ', 'וגרסאות ישנות')}</small>`);
     if (i < 0) return h + btn;
     const j = h.indexOf('</button>', i) + 9;
@@ -67,7 +68,8 @@ if (typeof P71M !== 'undefined'){
   const pm0 = P71M.main;
   P71M.main = function(){
     const h = pm0.apply(this, arguments);
-    return h.replace(/(<button[^>]*id="m_cinema"[^>]*>[\s\S]*?<\/button>)/, '$1' + this.tile('id="m_ver75"', 'clock', tr('Версия', 'Version', 'Phiên bản', 'גרסה'), 'v7.5'));
+    const more = /id="m73more"/.test(h);   // упрощённое меню v7.3: редкое — под «Ещё»
+    return h.replace(/(<button[^>]*id="m_cinema"[^>]*>[\s\S]*?<\/button>)/, '$1' + this.tile('id="m_ver75"', 'clock', tr('Версия', 'Version', 'Phiên bản', 'גרסה'), 'v7.5', more ? 'p73h' : ''));
   };
 }
 // ?versions=1 (кнопка «↩ Версии» из старой версии) — сразу экран выбора
