@@ -417,7 +417,7 @@ if (typeof LITE73 !== 'undefined' && LITE73.adapt){   // лёгкий режим
 // выбор стиля игроком (ПК: кнопки data-ch, телефон: − / + data-p71c) — раньше обработчика меню, который сохранит настройки
 document.addEventListener('click', e => {
   const b = e.target && e.target.closest ? e.target.closest('[data-ch="denStyle"],[data-p71c="denStyle"]') : null;
-  if (b){ SET.denUser = true; SET.denAuto = 0; }
+  if (b){ if (SET.denAuto === 'fps') SET.denRows = 0; SET.denUser = true; SET.denAuto = 0; }   // 120 строк ставил авто — вернуть «авто»
 }, true);
 // запись видео из кино: пиксели «Денди» не размывать при растяжке до 1920×1080
 if (typeof REC !== 'undefined' && REC.frame){
