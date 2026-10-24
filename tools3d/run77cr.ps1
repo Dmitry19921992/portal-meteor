@@ -1,0 +1,2 @@
+while (-not (Test-Path D:\AI\pm_v6\tests\out77rel_all.txt) -or (Get-Item D:\AI\pm_v6\tests\out77rel_all.txt).LastWriteTime -lt (Get-Date).AddHours(-1)){ Start-Sleep 10 }
+& powershell -ExecutionPolicy Bypass -File D:\AI\pm_v6\tools\t77t.ps1 v77_crater.js out77_crater.txt -A '--vp 1280x720 --reload' -Runner v73run.js | Out-Null
