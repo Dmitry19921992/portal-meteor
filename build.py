@@ -46,6 +46,9 @@ JS.insert(JS.index('main.js'), 'v76_feel.js')    # v7.6 «ощущение бо�
 JS.insert(JS.index('main.js'), 'v76.js')         # v7.6: номер версии, «Новое в v7.6», меню версий v7.6/v7.5/v7.4 (отдельной строкой)
 JS.insert(JS.index('main.js'), 'v76_stats.js')   # v7.6 статистика (pm-stats на Cloudflare) — после v75_stats.js и v75_dendy.js, последним перед main.js
 JS.insert(JS.index('main.js'), 'v77.js')         # v7.7: номер версии, «Новое в v7.7», меню версий v7.7/v7.6/v7.5 — после v76.js и v76_stats.js
+JS.insert(JS.index('main.js'), 'v78_anomalies.js')   # v7.8: anomalies wave 1 (Singing Vein + 5), bolts, artifacts — after v77.js
+JS.insert(JS.index('main.js'), 'v78_support.js')     # v7.8: support calls for CP (crate drop, recon, Grad, artillery), supply crates
+JS.insert(JS.index('main.js'), 'v78.js')             # v7.8: version label, "New in v7.8", version menu v7.8/v7.7/v7.6, tips, settings toggle
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
