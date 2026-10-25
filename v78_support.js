@@ -242,6 +242,7 @@ const S78 = {
   render(){
     const el = this.ensure();
     const fps = !!this.me() && !MENU.isOpen() && !S.over && !(typeof FEEL76 !== 'undefined' && FEEL76.intro) && !(typeof TUT !== 'undefined' && TUT.on) && !(typeof T72 !== 'undefined' && T72.on) && !OPER.on && !(typeof M74 !== 'undefined' && M74.nohud);
+    document.body.classList.toggle('s78open', !!(fps && this.on && this.open && !TOUCH.on));   // the event feed fades under the open panel
     if (!fps || !this.on){ if (el.style.display !== 'none') el.style.display = 'none'; this.open = false; return; }
     el.style.display = 'block';
     const T = S.teams[0], cp = T ? Math.floor(T.cmd) : 0, ph = TOUCH.on, kb = SET.bind.sup78 || 'Digit4';
