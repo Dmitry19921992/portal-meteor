@@ -1,0 +1,20 @@
+// v7.5: кино-сплитскрин — старт, кадры, «всё построено», выход
+const out = {};
+const tg = 'D:/AI/pm_v6/shots/v75_cine_' + (PH ? 'ph' : 'pc') + '_';
+AU.init(); OPER.begin({ aspect: '16:9' });
+await sleep(6000);
+out.on = CINE75.on(); out.views = (CINE75.views() || []).map(v => [v.x, v.w, v.rx, !!v.fp]);
+out.sh = CINE75.sh && CINE75.sh.u ? callsign(CINE75.sh.u) : null; out.st = CINE75.st && CINE75.st.kind;
+await shot(tg + '1.jpg');
+const nb0 = S.buildings.length, nu0 = S.units.length, nv0 = S.vehicles.length;
+CINE75.act('preset');
+await sleep(5000);
+out.preset = { b: [nb0, S.buildings.length], u: [nu0, S.units.length], v: [nv0, S.vehicles.length], hq: Object.keys(BASE70.hqu(0).done).length };
+await shot(tg + '2.jpg');
+await sleep(9000);
+await shot(tg + '3.jpg');
+CINE75.act('split'); await sleep(2500); out.classic = !CINE75.views(); await shot(tg + '4_classic.jpg');
+CINE75.act('split');
+CINE75.act('exit'); await sleep(800); out.menu = MENU.cur; out.oper = OPER.on;
+out.errs = errs.slice(0, 10);
+return out;

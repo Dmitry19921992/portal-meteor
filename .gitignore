@@ -1,2 +1,19 @@
 dist/
 *.pyc
+__pycache__/
+# local build output (ci/cf_build.py, ci/smoke.py)
+site/
+_b/
+smoke_*.png
+# never commit: browser profiles, node deps, screenshots, packages, keys
+chrome_*/
+node_modules/
+shots*/
+*.zip
+*.patch
+tmp_*
+.env
+*.key
+*.pem
+keys/
+cloudflare.txt

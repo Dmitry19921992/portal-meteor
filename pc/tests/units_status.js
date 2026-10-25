@@ -1,0 +1,1 @@
+return { boot: document.getElementById('bootTxt').textContent, done: document.getElementById('boot').classList.contains('done'), scene: !!SCENE, menu: MENU.cur, attract: S.attract, me: S.me && S.me.cls, t: S.time, nveh: S.vehicles.length, fps: typeof fpsVal !== 'undefined' ? fpsVal : -1 };

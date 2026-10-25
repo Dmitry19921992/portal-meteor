@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portal Meteor</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0a0c0e; overflow: hidden; }
+  #g { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #0a0c0e; }
+  #fb { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 2; font: 600 12px Arial, sans-serif;
+        color: #e8dcb8; background: rgba(10,12,14,.8); border: 1px solid rgba(214,198,154,.5); padding: 6px 10px; border-radius: 5px;
+        text-decoration: none; display: none; }
+</style>
+</head>
+<body>
+<!-- Portal Meteor itch loader: the game itself is served by Cloudflare Pages (auto-deployed from GitHub branch `release`). -->
+<iframe id="g" src="https://portal-meteor-live.pages.dev/?utm_source=itch"
+  allow="fullscreen; autoplay; gamepad; xr-spatial-tracking; clipboard-write; web-share; accelerometer; gyroscope"
+  allowfullscreen></iframe>
+<a id="fb" href="https://portal-meteor-live.pages.dev/" target="_blank" rel="noopener">Game did not load? Open it directly / Игра не загрузилась? Открыть напрямую</a>
+<script>
+(function(){
+  var f = document.getElementById('g'), fb = document.getElementById('fb'), ok = false;
+  f.addEventListener('load', function(){ ok = true; });
+  setTimeout(function(){ if (!ok) fb.style.display = 'block'; }, 20000);
+  // keep keyboard focus in the game (itch puts focus on its own frame)
+  window.addEventListener('focus', function(){ try { f.focus(); } catch (e){} });
+  document.addEventListener('click', function(){ try { f.focus(); } catch (e){} });
+  setTimeout(function(){ try { f.focus(); } catch (e){} }, 500);
+})();
+</script>
+</body>
+</html>

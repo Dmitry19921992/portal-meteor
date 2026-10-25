@@ -1,0 +1,1 @@
+The full research doc is in the claude.ai project doc claude/portal-meteor-mechanics-research.md (Russian). A copy is also at C:\Users\klaas\OneDrive\Рабочий стол\portal meteor\dev\research_mechanics.md

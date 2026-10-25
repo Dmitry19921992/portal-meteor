@@ -1,0 +1,18 @@
+const out = {};
+MENU.newGame(); if (TUT.on) TUT.finish();
+await sleep(2000);
+const d = e => { const r = e.getBoundingClientRect(); return (e.id ? '#' + e.id : '') + '.' + String(e.className).slice(0, 30) + ' [' + [r.left, r.top, r.width, r.height].map(Math.round).join(',') + '] ' + (e.textContent || '').trim().slice(0, 40); };
+out.hud = [...document.querySelectorAll('#hud > *')].map(d);
+out.fixed = [...document.body.children].filter(e => getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().width > 0).map(d);
+out.touch = [...document.querySelectorAll('#touch button')].map(e => (e.dataset.k || e.dataset.t || e.className) + ':' + e.textContent + ':' + getComputedStyle(e).display);
+out.bars = [...document.querySelectorAll('#bars > *')].map(d);
+out.kit = $('kit').innerHTML.slice(0, 600);
+out.obj = $('obj').innerHTML.slice(0, 400);
+out.sal = getComputedStyle(document.body).getPropertyValue('padding-left');
+const t = document.createElement('div'); t.style.cssText = 'position:fixed;left:env(safe-area-inset-left,0px);top:0;width:env(safe-area-inset-right,0px);height:env(safe-area-inset-bottom,0px)'; document.body.appendChild(t);
+out.safe = [t.getBoundingClientRect().left, t.getBoundingClientRect().width, t.getBoundingClientRect().height]; t.remove();
+enterRTS(); await sleep(1500);
+out.rts = [...document.body.children].filter(e => getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().width > 0).map(d);
+out.hudR = [...document.querySelectorAll('#hud > *')].map(d);
+out.side = $('side').innerHTML.length;
+return out;
