@@ -19,7 +19,9 @@ for (const l of langs){
     lines.forEach((ln, i) => {
       if (!ln.trim() || ln.startsWith('#')) return;
       const t = ln.indexOf('\t'); if (t < 0){ warn.push(f + ':' + (i + 1) + ' no TAB'); return; }
-      const id = ln.slice(0, t).trim(), tx = ln.slice(t + 1).replace(/\\n/g, '\n').trim();
+      const id = ln.slice(0, t).trim();
+      let tx = ln.slice(t + 1).replace(/\\n/g, '\n').trim();
+      if (l === 'uz') tx = tx.replace(/([oOgG])[‘’'`ʼ]/g, '$1ʻ');   // Uzbek Latin: oʻ gʻ with U+02BB (the separator ʼ stays elsewhere)
       const o = byId.get(id); if (!o){ warn.push(f + ':' + (i + 1) + ' unknown id ' + id); return; }
       const ph = o.en.match(/\{\d+\}/g) || [];
       const extra = (tx.match(/\{\d+\}/g) || []).filter(p => !ph.includes(p));

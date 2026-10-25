@@ -17,7 +17,7 @@ if (a[0] === 'dump'){
 }
 if (a[0] === 'all'){   // id | en | ru for ALL current keys (chunked), regardless of translations
   const from = +a[1] || 0, n = +a[2] || 100;
-  for (const o of cur.slice(from, from + n)) console.log(o.id + '\t' + JSON.stringify(o.en) + '\t' + JSON.stringify(o.ru));
+  for (const o of cur.slice(from, from + n)) console.log((need('he', o) ? 'H' : '') + (need('vi', o) ? 'V' : '') + '\t' + o.id + '\t' + JSON.stringify(o.en) + (a[3] === 'noru' ? '' : '\t' + JSON.stringify(o.ru)));
   process.exit(0);
 }
 console.log('keys', K.length, 'current', cur.length, 'old', K.length - cur.length, 'chars en', cur.reduce((s, o) => s + o.en.length, 0), 'old chars', K.filter(o => o.old).reduce((s, o) => s + o.en.length, 0));
