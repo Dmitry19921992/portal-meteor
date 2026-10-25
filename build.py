@@ -55,6 +55,7 @@ JS.insert(JS.index('main.js'), 'v781.js')            # v7.8.1: ☰ pause menu (p
 JS.insert(JS.index('main.js'), 'v79_ninja.js')       # v7.9: robo-ninja hero (auto mode, katana + dismemberment, blinks, teleport, duels)
 JS.insert(JS.index('main.js'), 'v79_ninja_ui.js')    # v7.9: robo-ninja HUD, duel bars, map markers, phone buttons and gestures
 JS.insert(JS.index('main.js'), 'v79_radio.js')       # v7.9: Radio Portal Meteor (EDMITRY music streamed from Cloudflare /radio/) — own line, no other hooks
+JS.insert(JS.index('main.js'), 'v79.js')             # v7.9: version label, "New in v7.9", version menu v7.9/v7.8.1/v7.8
 JS.insert(JS.index('main.js'), 'v79_lang.js')        # v7.9 l10n: more languages (lang/*.json) + new language selector — wraps tr/N2/menus, keep last before main.js
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
