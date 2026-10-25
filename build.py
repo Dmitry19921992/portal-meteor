@@ -39,6 +39,8 @@ if os.path.exists(cat3d):
         if not os.path.exists(p3) or open(p3, encoding='ascii').read() != js: open(p3, 'w', encoding='ascii', newline='\n').write(js)
         n3 += 1; b3 += len(js)
     print('assets3d:', n3, 'files', b3, 'bytes ->', o3)
+for f in (sorted(os.listdir(src + 'lang')) if os.path.isdir(src + 'lang') else []):   # v7.9 l10n: lang/<code>.json string tables (parsed only for the chosen language)
+    if len(f) == 7 and f.endswith('.json') and f[:2].isalpha(): html += f'<script id="l79_{f[:2]}" type="application/json">' + open(src + 'lang/' + f, encoding='utf-8').read().replace('</', '<\\/') + '</script>\n'
 import datetime   # v7.4: дата сборки на экране меню берётся автоматически в момент сборки
 html += '<script>\nconst BUILD_DATE = "' + datetime.datetime.now().strftime('%d.%m.%Y %H:%M') + '";\n'
 JS.insert(JS.index('main.js'), 'v75_dendy.js')   # v7.5 «Денди» — последним перед main.js (его обёртки снаружи всех); отдельной строкой — не мешает слиянию
@@ -53,6 +55,7 @@ JS.insert(JS.index('main.js'), 'v781.js')            # v7.8.1: ☰ pause menu (p
 JS.insert(JS.index('main.js'), 'v79_ninja.js')       # v7.9: robo-ninja hero (auto mode, katana + dismemberment, blinks, teleport, duels)
 JS.insert(JS.index('main.js'), 'v79_ninja_ui.js')    # v7.9: robo-ninja HUD, duel bars, map markers, phone buttons and gestures
 JS.insert(JS.index('main.js'), 'v79_radio.js')       # v7.9: Radio Portal Meteor (EDMITRY music streamed from Cloudflare /radio/) — own line, no other hooks
+JS.insert(JS.index('main.js'), 'v79_lang.js')        # v7.9 l10n: more languages (lang/*.json) + new language selector — wraps tr/N2/menus, keep last before main.js
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'

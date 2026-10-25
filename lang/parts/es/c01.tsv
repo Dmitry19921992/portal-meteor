@@ -1,0 +1,140 @@
+1cisaq0	Destruye robots: {n}
+1oty4v4	Bajas con tiro a la cabeza: {n}
+5s6w5q	Bajas con rifle: {n}
+zb9hu5	Bajas con ametralladora: {n}
+k35mhi	Bajas con railgun: {n}
+wqo03u	Bajas con cohete: {n}
+1qvbf1t	Captura puntos tú mismo: {n}
+6x0rum	Derriba drones: {n}
+qavdl8	Destruye vehículos del Enjambre: {n}
+1plg8xn	Bajas desde vehículos: {n}
+wydj3b	Racha de 5 bajas: {n}
+1orxlpf	Cumple órdenes: {n}
+1yqv9yl	Bajas como Pesado: {n}
+kl4eyc	Bajas como Cohetero: {n}
+9ef2ga	Bajas como Explorador: {n}
+y7erjn	Clásico
+1azd270	Verde
+1n7utcw	Hielo
+5ze0dc	Ámbar
+1js0zfp	Neón
+19d4ccc	Rojo
+u7yhom	Blanco
+1ftf1pe	Oro veterano
+1qu56t0	Veterano
+wwag85	nv. 
+13oi2e3	Carrera
+7c396r	color de mira «
+19wd1up	emblema 
+1ky9625	¡VETERANÍA! 
+gf0895	CARRERA: 
+t414om	desbloqueado: 
+auywzi	maestría
+3fl8ok	nuevo accesorio: 
+966ezd	 (equipado, Carrera → accesorios)
+1g793kc	Medalla
+1sa6zzg	medalla
+jckw12	Contrato cumplido
+br7fnn	contrato
+1r6i3vb	Racha: ¡{0} sin morir!
+n567fa	Desbloqueado: 
+1vjt3io	Carrera: medallas, accesorios, contratos
+1y0tt8h	mira «
+pax5fr	nv.
+9624wu	bajas
+1u2xdff	CARRERA
+6ndhzb	XP total
+1fpi551	para el siguiente
+f0gupn	Cada nivel cuesta más que el anterior; cada 50 niveles, «Veterano ★». La XP sale de todo: combate, órdenes, medallas, contratos.
+pr95p	Siguiente recompensa: 
+vagw17	Contratos de hoy
+3j613q	Maestría de clase
+zh8tcf	Cosméticos
+n0au3l	Color de mira
+101goe3	Emblema
+1yu2lfw	Armas y accesorios (clic para alternar)
+tisyzx	Medallas
+1hzmxtu	Atrás
+1urnkhg	cargador
+1tw75vw	recarga
+rldrp3	retroceso
+1riqlss	dispersión al disparar
+1q17rxu	zoom
+1qzxr5g	dispersión apuntando
+oy3kg0	daño
+kc2b4e	dispersión
+2djcx	cadencia
+1d50p1x	Guía activada: te diré qué hacer
+1juyfvj	Guía desactivada (actívala con el botón «Guía» o en Ajustes)
+3o7yhs	INGENIERO
+1wsxjre	VETA ⛏
+v1xh02	CG
+hz3dzf	ENEMIGO
+qemf0r	AQUÍ
+pi6g5x	Elige un ingeniero: botón «⚒ Ingeniero más cercano» o «⚒ Ingeniero».
+3qjguv	Elige un ingeniero: «⚒ Ingeniero más cercano» a la derecha o haz clic en uno.
+1fwu9jd	Toca la veta marcada ⛏ (los cristales brillantes) y luego «✔ Construir». Marca fuera de pantalla: tócala y la cámara vuela allí.
+hb70rk	Haz clic en la veta marcada ⛏, los cristales brillantes (clic derecho/Esc: cancelar). Marca fuera de pantalla: haz clic y la cámara vuela allí.
+ut38xk	Toca un lugar para {0} y luego «✔ Construir».
+1kuzpbq	Haz clic en un lugar para {0} (clic derecho/Esc: cancelar).
+2hjyn1	Soy la Guía: resalto el botón y el lugar en el mapa. «✕» me desactiva.
+an6t18	Soy la Guía. Mientras juegas te sugiero qué hacer y resalto el botón y el lugar en el mapa. Desactívame con «✕» aquí o con el botón «Guía» abajo a la derecha.
+1mumsqc	¡El Enjambre está en la base! «Todo el ejército» y luego mantén pulsado sobre los enemigos. Una torreta en la base también ayuda.
+1hrgnsa	¡El Enjambre está en la base! Selecciona tropas (recuadro o Ctrl+A) y clic derecho sobre los enemigos. Una torreta (Z) también ayuda.
+1pra5n7	Cámara: arrastra el mapa con un dedo; con dos dedos, zoom y giro. Mueve la cámara.
+16b46ed	Cámara: WASD o bordes de la pantalla, rueda: altura, Q/E: girar. Mueve la cámara.
+1q8pvhx	No hay ingenieros, y sin ellos no se construye nada. Selecciona el CG: haz clic en él o en el botón «⌂ CG».
+1ki3u2	Pide un ingeniero: botón «⚒ Ingeniero» en el panel del CG (50 de mineral).
+158hsem	Necesitamos mineral: pongamos un extractor en una veta.
+ymb42u	Pulsa «Extractor» (C) y colócalo sobre los cristales brillantes de la veta; la marqué con ⛏.
+gwcf5u	Pocas tropas. Selecciona el CG: ahí se piden escuadras.
+1i9c9ya	Pide una «Escuadra de asalto» en el panel del CG.
+hdfjtk	Los puntos dan mineral. Elige una escuadra: tócala o pulsa «◈ Escuadra» a la derecha.
+1w6oi28	Los puntos dan mineral. Elige una escuadra: tócala o toca la tarjeta «◆ Ejército» arriba.
+w3raz8	Los puntos dan mineral. Elige una escuadra: haz clic en ella o en su tarjeta del panel «◆ Ejército» a la izquierda.
+k1cem2	Mantén pulsado el punto {0}: la escuadra irá a capturarlo.
+wmhg3e	Clic derecho en el punto {0}: la escuadra irá a capturarlo.
+9squ2r	PUNTO 
+1t6wbk9	Atacan la base: construyamos una torreta.
+1xjwfqa	Pulsa «Torreta» (Z) y colócala en la base mirando al enemigo.
+wrubr	Hay mineral para una fábrica: hace tanques y vehículos.
+vf3frn	Pulsa «Fábrica» (B) y colócala en la base (un lugar plano dentro del anillo punteado).
+hkmcqh	{0} está sin hacer nada: selecciónalo y da una orden: {1} un punto o un enemigo.
+skcib	La fábrica está lista. Selecciónala para pedir un tanque.
+u0ziha	Pide un «Tanque» en el panel de la fábrica.
+lt833y	Más extractores, más mineral. Hay una veta libre cerca.
+ogpxym	«Extractor» (C) sobre la veta marcada ⛏.
+182oiqu	Elige un poder y haz clic en un grupo de enemigos.
+xw364	Se acumulan puntos de mando: pestaña «✺ Poderes»: artillería, reconocimiento, cápsula.
+heiiu9	¿Poco mineral? Toca «MINERAL» arriba: verás de dónde salen los ingresos y cómo subirlos.
+1xok76d	¿Quieres pelear tú? Elige una escuadra y pulsa «▶ Controlar».
+ptkrr9	GUÍA
+1huhrnd	¡Listo! ✓
+sfyk2j	Saltar este consejo
+r4ayc6	Desactivar la guía
+4ona2n	Guía en estrategia (consejos mientras juegas)
+zrh9ao	SÍ
+csaup6	NO
+1tpgay6	🛠 Modo desarrollador: todo desbloqueado, mineral infinito. Arsenal: F8 o el botón «🛠 Arsenal».
+xhpjgk	Modo desarrollador desactivado (la partida queda marcada: la carrera no se guarda)
+1reodyl	Guardar la batalla está desactivado en modo desarrollador
+cqqsnz	Arma: {0}
+yvwp75	Clase: {0}
+11ruxep	Vehículo: {0}
+vl5vkf	Habilidades y munición recargadas
+69wepu	Muñecos de práctica: 4 robots del Enjambre que no se mueven ni disparan
+9hena9	Arsenal
+zt7ul5	Contraer / expandir
+o3g95i	Armas
+1c6wat2	Recargar todo
+blx86r	Clase (nueva escuadra cerca, tomar control)
+1x500bl	Vehículos (aparecen cerca, subir)
+13mh6zt	Tanque
+1ldr641	Dron
+198uyr6	Campo de tiro
+1aegwcw	Muñecos de práctica
+w9ymcu	Construcción instantánea
+xke819	Mineral / PM
+11uoffg	Desactivar modo
+5hsxt6	Activar modo
+w947lc	Arsenal: desactivado
