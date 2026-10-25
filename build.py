@@ -52,6 +52,7 @@ JS.insert(JS.index('main.js'), 'v78.js')             # v7.8: version label, "New
 JS.insert(JS.index('main.js'), 'v781.js')            # v7.8.1: ☰ pause menu (phone + PC), no auto-Dendy, touch action button, phone box select, phone UX
 JS.insert(JS.index('main.js'), 'v79_ninja.js')       # v7.9: robo-ninja hero (auto mode, katana + dismemberment, blinks, teleport, duels)
 JS.insert(JS.index('main.js'), 'v79_ninja_ui.js')    # v7.9: robo-ninja HUD, duel bars, map markers, phone buttons and gestures
+JS.insert(JS.index('main.js'), 'v79_radio.js')       # v7.9: Radio Portal Meteor (EDMITRY music streamed from Cloudflare /radio/) — own line, no other hooks
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
