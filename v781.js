@@ -105,7 +105,7 @@ const V781 = {
     document.body.classList.toggle('i781on', !!on);
     if (!on) return;
     this.useT -= dt; if (this.useT > 0) return; this.useT = 0.12;
-    const show = S.mode === 'fps' && !S.attract && !S.over && !MENU.isOpen() && !(typeof M74 !== 'undefined' && M74.nohud) && !(typeof CAMFX !== 'undefined' && CAMFX.busy());
+    const show = S.mode === 'fps' && !S.attract && !S.over && !MENU.isOpen() && !(typeof CAMFX !== 'undefined' && CAMFX.busy());
     const u = show ? this.safe(() => this.useOf(ctrlEntity()), 'use') : null;
     const b = this.useBtn(), was = this.use;
     this.use = u || null;
@@ -138,9 +138,44 @@ const V781 = {
       .replace(/Кнопка «Войти»/g, 'Кнопка действия справа').replace(/The "Enter" button/g, 'The action button on the right')
       .replace(/⏏ «Войти»/g, '✋').replace(/⏏ "Enter"/g, '✋').replace(/[⏏⇥]/g, '✋');
   },
+  // ---------------------------------------------------------------- 👁 «скрыть значки»: what stays visible regroups into a tidy right-edge column
+  //  (CSS `translate`, so the buttons' own transform animations keep working); «показать» slides everything back home.
+  cmpEls(){
+    const L = [], vis = e => e && e.isConnected && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().width > 0;
+    const eye = document.getElementById('m74eye'); if (vis(eye)) L.push({ el: eye, m: eye });
+    const sw = typeof M67 !== 'undefined' && M67.bNext; if (vis(sw)) L.push({ el: sw, m: sw });
+    const sp = document.getElementById('s78'), sb = sp && sp.querySelector('[data-s78="tog"]'); if (sp && sp.classList.contains('ph') && vis(sp) && vis(sb)) L.push({ el: sp, m: sb });
+    const u = document.getElementById('i781'); if (vis(u)) L.push({ el: u, m: u });
+    return L;
+  },
+  cur(el){ const t = getComputedStyle(el).translate; if (!t || t === 'none') return [0, 0]; const p = t.split(' ').map(parseFloat); return [p[0] || 0, p[1] || 0]; },
+  cmpStep(){
+    const on = TOUCH.on && typeof M74 !== 'undefined' && M74.nohud && S.mode === 'fps' && !S.attract && !MENU.isOpen();
+    document.body.classList.toggle('cmp781', !!on);
+    const all = new Set([document.getElementById('m74eye'), typeof M67 !== 'undefined' && M67.bNext, document.getElementById('s78'), document.getElementById('i781')].filter(Boolean));
+    if (!on){ if (this.cmpSig){ this.cmpSig = ''; for (const e of all) e.style.translate = ''; } return; }
+    const L = this.cmpEls(), sf = typeof M67 !== 'undefined' ? M67.safe : { r: 0, t: 0, b: 0 };
+    const sig = L.map(o => o.el.id || o.el.className).join('|') + innerWidth + 'x' + innerHeight;
+    if (sig === this.cmpSig) return;
+    this.cmpSig = sig;
+    // natural (untranslated) rectangles
+    const R = L.map(o => { const r = o.m.getBoundingClientRect(), [tx, ty] = this.cur(o.el); return { o, x: r.left - tx, y: r.top - ty, w: r.width, h: r.height }; });
+    const W = innerWidth, H = innerHeight, gap = 12, colW = max(...R.map(q => q.w), 48);
+    const total = R.reduce((s, q) => s + q.h, 0) + gap * max(0, R.length - 1);
+    const cx = W - sf.r - 12 - colW / 2;                                   // one vertical axis at the right edge
+    const port = H > W, top0 = port ? H * 0.5 : H * 0.42;                   // around the right thumb, never the centre
+    let y = clamp(top0 - total / 2 + (port ? 0 : total * 0.15), sf.t + 64, H - sf.b - 16 - total);
+    for (const q of R){
+      const dx = Math.round(cx - q.w / 2 - q.x), dy = Math.round(y - q.y);
+      q.o.el.style.translate = `${dx}px ${dy}px`;
+      y += q.h + gap;
+    }
+    for (const e of all) if (!L.some(o => o.el === e)) e.style.translate = '';
+  },
   // ---------------------------------------------------------------- per-frame
   frame(dt){
     document.body.classList.toggle('mo781', MENU.isOpen());
+    this.cmpT = (this.cmpT || 0) - dt; if (this.cmpT <= 0){ this.cmpT = 0.1; this.cmpStep(); }
     const pc = document.getElementById('m781');
     if (pc){ const v = !TOUCH.on && !MENU.isOpen() && !S.attract && !(typeof OPER !== 'undefined' && OPER.on) && !(typeof T72 !== 'undefined' && T72.fin); pc.style.display = v ? 'flex' : 'none'; }
     this.useStep(dt);
@@ -315,6 +350,49 @@ if (TOUCH.on){
   if (typeof M67 !== 'undefined' && M67.HINT) for (const k in M67.HINT){ const h = M67.HINT[k]; if (Array.isArray(h)) for (let i = 0; i < h.length; i++) h[i] = V781.tt(h[i]); }
   if (typeof drawOverlay === 'function'){ const do0 = drawOverlay; drawOverlay = function(){ const r = do0.apply(this, arguments); V781.safe(() => V781.drawUse(), 'drawUse'); return r; }; }
 }
+// 👁 (v7.4) listens to touchstart AND click — a synthetic click right after the touch toggled it twice; drop that click
+if (TOUCH.on){
+  // second guard: two touchstarts within 300 ms (finger bounce / iOS duplicate) toggle only once
+  document.addEventListener('touchstart', e => { if (!(e.target && e.target.closest && e.target.closest('#m74eye'))) return; const n = performance.now(); if (n - (V781.eyeT || -1e9) < 300){ e.stopImmediatePropagation(); if (e.cancelable) e.preventDefault(); return; } V781.eyeT = n; }, { capture: true, passive: false });
+  document.addEventListener('click', e => { if (e.target && e.target.closest && e.target.closest('#m74eye') && performance.now() - (V781.eyeT || -1e9) < 900){ e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+}
+// ---- iOS: system gestures (edge swipe back, pull-down, double-tap zoom, rubber-band) must not fight the game;
+//      «На экран Домой» launches without Safari bars (apple-mobile-web-app-capable + manifest display:fullscreen)
+V781.ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+V781.standalone = !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches));
+V781.safe(() => {
+  const meta = (n, c) => { if (document.querySelector(`meta[name="${n}"]`)) return; const m = document.createElement('meta'); m.name = n; m.content = c; document.head.appendChild(m); };
+  meta('apple-mobile-web-app-capable', 'yes'); meta('mobile-web-app-capable', 'yes');
+  meta('apple-mobile-web-app-status-bar-style', 'black-translucent'); meta('apple-mobile-web-app-title', 'Portal Meteor');
+  if (!document.querySelector('link[rel="manifest"]') && location.protocol.startsWith('http')){
+    const start = location.href.split('#')[0];
+    const man = { name: 'Portal Meteor', short_name: 'Portal Meteor', start_url: start, scope: start.replace(/[^/]*$/, ''), display: 'fullscreen', orientation: 'landscape', background_color: '#000000', theme_color: '#000000' };
+    const l = document.createElement('link'); l.rel = 'manifest'; l.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(man)); document.head.appendChild(l);
+  }
+}, 'pwa');
+if (TOUCH.on){
+  document.documentElement.classList.add('t781');
+  // no scrolling / pull-to-refresh / swipe-back on the game field; buttons and menus keep their own handlers
+  document.addEventListener('touchmove', e => {
+    const t = e.target;
+    if (t && t.closest && t.closest('#screen, #m74L, #m74B .row, #side, #m67sheet, #s78 .ls, #t72p')) return;   // scrollable panels keep scrolling
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
+  // a touch starting in the outer 20 px of the screen edge (iOS swipe-back zone) is claimed by the game
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; if (t && (t.clientX < 20 || t.clientX > innerWidth - 20) && e.cancelable && !MENU.isOpen() && !(e.target.closest && e.target.closest('button'))) e.preventDefault(); }, { passive: false, capture: true });
+  document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });   // iOS pinch-zoom of the page
+  document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+}
+// iPhone hint on pause / main menu: full screen via «Поделиться → На экран «Домой»» (not needed when already launched from the home screen)
+V781.iosHint = function(){
+  if (!this.ios || this.standalone) return '';
+  const inFrame = (() => { try { return window.top !== window.self; } catch (e){ return true; } })();
+  const t = this.L('Для полного экрана на iPhone: «Поделиться» ⬆ → «На экран «Домой»» — игра откроется без панелей Safari.', 'Full screen on iPhone: "Share" ⬆ → "Add to Home Screen" — the game opens without the Safari bars.', 'Toàn màn hình trên iPhone: “Chia sẻ” ⬆ → “Thêm vào MH chính”.') +
+    (inFrame ? ' ' + this.L('Открой для этого сайт portal-meteor.pages.dev.', 'Open portal-meteor.pages.dev for that.', 'Mở portal-meteor.pages.dev.') : '');
+  return `<p class="ios781">📱 ${t}</p>`;
+};
+{ const hp1 = MENU.html_pause; MENU.html_pause = function(){ const h = hp1.apply(this, arguments), x = V781.iosHint(); if (!x) return h; return V781.ph() ? h.replace('<div class="p71g c4">', x + '<div class="p71g c4">') : h.replace('</h2>', '</h2>' + x); }; }
+if (typeof P71M !== 'undefined'){ const pm1 = P71M.main; P71M.main = function(){ const h = pm1.apply(this, arguments), x = V781.iosHint(); return x ? h.replace('<div class="p71g c4">', x + '<div class="p71g c4">') : h; }; }
 // strategy card help on phone (v7.1+ gestures): long tap is the command menu / box, not an order
 if (TOUCH.on && typeof updateCard === 'function'){
   const uc0 = updateCard;
@@ -366,6 +444,23 @@ body.touch .m73x, body.touch #m71mmb, body.touch #cur .cbox button{position:fixe
 body.touch #cur .cbox button{position:relative} body.touch #f76hint button, body.touch #hint .t78x{position:relative}
 body.touch #s78.ph .ls button{min-height:42px;font-size:14px} body.touch #s78.ph .ls{width:230px}
 body.touch #screen .f76end button{min-height:44px}
+/* 👁 hidden-icons mode: smooth move into the compact column and back */
+body.touch #m74eye, body.touch #touch .tt > .m67n, body.touch #s78, body.touch #i781{transition:translate .32s cubic-bezier(.2,.8,.2,1)}
+body.cmp781 #m74eye{opacity:.95;width:48px;height:48px;font-size:21px}
+body.cmp781 #touch .tt > .m67n{width:48px;height:48px;min-width:0;border-radius:50%;padding:0}
+/* iOS / touch: no page scroll, rubber-band, pull-to-refresh, double-tap zoom on the game */
+html.t781, html.t781 body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html.t781 body, html.t781 canvas, html.t781 #touch{touch-action:none}
+html.t781 #screen{touch-action:pan-y} html.t781 #m74L, html.t781 #side{touch-action:pan-y} html.t781 #m74B .row{touch-action:pan-x}
+#screen .ios781{margin:2px 0;padding:5px 10px;border-radius:8px;background:rgba(40,70,110,.35);border:1px solid rgba(127,190,255,.45);color:#d8ecff;font:600 12px/1.3 "Exo 2",sans-serif;flex:none}
+/* portrait phone (390×844 etc.): the top-right button row no longer covers the order banner / score; card below the minimap */
+@media (orientation:portrait){
+  body.m71.m64fps #obj{top:calc(var(--st, 0px) + 60px) !important;left:calc(var(--sl, 0px) + 112px) !important;right:calc(var(--sr, 0px) + 100px) !important;transform:none !important;max-width:none !important;width:auto !important;text-align:center}
+  body.m71.m64fps #hud{top:calc(var(--st, 0px) + 110px) !important;left:calc(var(--sl, 0px) + 8px) !important}
+  body.touch.m64fps #f76hint{top:calc(var(--st, 0px) + 178px) !important;max-width:62vw}
+  body.touch #feed{max-width:70vw !important}
+  body.touch #cur .cbox{left:calc(var(--sl, 0px) + 150px) !important;right:calc(var(--sr, 0px) + 8px) !important;top:calc(var(--st, 0px) + 50px) !important;max-width:none !important;width:auto !important}
+}
 @media (max-height:440px){ body.touch #i781{width:58px;height:58px;top:calc(50% - 36px)} }
 `;
   document.head.appendChild(st);
