@@ -208,7 +208,7 @@ MENU.html_c781 = function(){
     let h = hp0.apply(this, arguments);
     if (V781.ph()){
       const L = (r, e, v) => V781.L(r, e, v);
-      const add = P71M.tile('id="m_a781"', 'skills', '⚡ ' + L('Действия', 'Actions', 'Hành động'), L('боя', 'battle', 'trận')) + P71M.tile('id="m_t781"', 'school', L('Обучение', 'Training', 'Huấn luyện')) + V781.gTile();
+      const add = P71M.tile('id="m_a781"', 'skills', L('Действия боя', 'Battle actions', 'Hành động'), L('рывок, переброска…', 'dash, redeploy…', 'lướt, tái triển khai…')) + P71M.tile('id="m_t781"', 'school', L('Обучение', 'Training', 'Huấn luyện')) + V781.gTile();
       h = h.replace(/(<button id="m_save"[^>]*>[\s\S]*?<\/button>)/, '$1' + add);
       h = h.replace(/(id="m_restart"[^>]*>[\s\S]*?<b>)[^<]*(<\/b>)/, '$1' + L('Начать заново', 'Restart', 'Chơi lại') + '$2');
       return h;
@@ -312,6 +312,7 @@ if (TOUCH.on){
   { const hs0 = HINTS.show; HINTS.show = function(id, text){ const a = [...arguments]; a[1] = V781.tt(text); return hs0.apply(this, a); }; }
   { const em0 = emit; emit = function(type, data){ if (type === 'radio' && data && typeof data.text === 'string') data.text = V781.tt(data.text); return em0(type, data); }; }
   if (typeof FEEL76 !== 'undefined' && FEEL76.hintText){ const ht0 = FEEL76.hintText; FEEL76.hintText = function(){ const r = ht0.apply(this, arguments); if (r){ r.t = V781.tt(r.t); r.s = V781.tt(r.s); } return r; }; }
+  if (typeof M67 !== 'undefined' && M67.HINT) for (const k in M67.HINT){ const h = M67.HINT[k]; if (Array.isArray(h)) for (let i = 0; i < h.length; i++) h[i] = V781.tt(h[i]); }
   if (typeof drawOverlay === 'function'){ const do0 = drawOverlay; drawOverlay = function(){ const r = do0.apply(this, arguments); V781.safe(() => V781.drawUse(), 'drawUse'); return r; }; }
 }
 // strategy card help on phone (v7.1+ gestures): long tap is the command menu / box, not an order
