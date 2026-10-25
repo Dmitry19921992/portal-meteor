@@ -23,6 +23,7 @@ for (const l of langs){
       let tx = ln.slice(t + 1).replace(/\\n/g, '\n').trim();
       if (l === 'uz') tx = tx.replace(/([oOgG])[‘’'`ʼ]/g, '$1ʻ');   // Uzbek Latin: oʻ gʻ with U+02BB (the separator ʼ stays elsewhere)
       const o = byId.get(id); if (!o){ warn.push(f + ':' + (i + 1) + ' unknown id ' + id); return; }
+      tx = (o.en.match(/^\s*/)[0]) + tx + (o.en.match(/\s*$/)[0]);   // keep the English leading/trailing spaces (they glue template pieces)
       const ph = o.en.match(/\{\d+\}/g) || [];
       const extra = (tx.match(/\{\d+\}/g) || []).filter(p => !ph.includes(p));
       if (extra.length) warn.push(f + ':' + (i + 1) + ' ' + id + ' extra placeholder ' + extra.join(','));

@@ -285,6 +285,8 @@ L79.trimNews = function(h){
   MENU.html_main = function(){
     let h = hm0.apply(this, arguments);
     if (typeof P71M !== 'undefined' && P71M.on()){
+      const ver = typeof STATS75 !== 'undefined' && STATS75.ver ? STATS75.ver : '7.8';
+      if (L79.on()) h = h.replace(/(data-p71go="news"[^>]*>[\s\S]*?<b>)[^<]*(<\/b>)/, (m, a, b) => a + L79.t(LANG.cur, 'New in v7.8').replace('7.8', ver) + b);   // older wrappers only know RU/EN/VI/HE titles
       return h.replace(/<button data-p71go="lang" class="p71t[^"]*">[\s\S]*?<\/button>/, `<div class="p71t l79tile">${L79.sel('ph')}</div>`);
     }
     h = h.replace(/<div class="diffrow"><button class="lbtn[\s\S]*?<\/div>/, '');
