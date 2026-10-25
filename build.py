@@ -50,6 +50,8 @@ JS.insert(JS.index('main.js'), 'v78_anomalies.js')   # v7.8: anomalies wave 1 (S
 JS.insert(JS.index('main.js'), 'v78_support.js')     # v7.8: support calls for CP (crate drop, recon, Grad, artillery), supply crates
 JS.insert(JS.index('main.js'), 'v78.js')             # v7.8: version label, "New in v7.8", version menu v7.8/v7.7/v7.6, tips, settings toggle
 JS.insert(JS.index('main.js'), 'v781.js')            # v7.8.1: ☰ pause menu (phone + PC), no auto-Dendy, touch action button, phone box select, phone UX
+JS.insert(JS.index('main.js'), 'v79_ninja.js')       # v7.9: robo-ninja hero (auto mode, katana + dismemberment, blinks, teleport, duels)
+JS.insert(JS.index('main.js'), 'v79_ninja_ui.js')    # v7.9: robo-ninja HUD, duel bars, map markers, phone buttons and gestures
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
