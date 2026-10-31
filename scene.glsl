@@ -89,6 +89,7 @@ vec2 map(vec3 p){
   for (int i = 0; i < 2; i++) mask = min(mask, 1.0 - smoothstep(PAD_B0, PAD_B1, dot(n, BASES[i])));
   for (int i = 0; i < 6; i++) mask = min(mask, 1.0 - smoothstep(PAD_C0, PAD_C1, dot(n, CPD[i])));
   float d = r - RM - hgt(n * RM) * mask;
+  d = ter81(p, n, r, d, mask);   // v81: скалы, гряды, ангар, трещины, озёра (= TER81.sdf, v81_terrain.js)
   for (int i = ZERO; i < 12; i++){   // v7.6: воронки (= CR76.dent в v76_craters.js)
     if (i >= uNCr76) break;
     vec4 c = uCr76[i]; vec3 q = n * length(c.xyz) - c.xyz; float s2 = dot(q, q);
@@ -300,6 +301,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
         em += vec3(1.8, 0.4, 0.06) * uScorH[i] * smoothstep(0.55, 0.95, k) * smoothstep(0.55, 0.8, nz(p * 1.4 + float(i) * 0.71));
       }
     }
+    ter81mat(p, rn, n, slope, alb, em, sp, gBump);   // v81: скалы, ангар, трещины, лава/лёд/метан
   }
   else if (m < 3.5){
     float t = m - 2.0;
@@ -1736,6 +1738,7 @@ void main(){
         }
         c = shade(p, bN, -d, bA, bS, bAO, -1.0) + bE;
       }
+      c = fog81(o, d, bestT, c);   // v81: туман над метаном
       if (uG72 > 0.5 && b == 0){   // v7.2gfx: высотная пылевая дымка, подсвеченная солнцами (воздушная перспектива; только прямой луч)
         float h0 = length(o) - RM, h1 = length(p) - RM;
         float hz = 0.55 * exp(-max(min(h0, h1), 0.0) / 22.0) + 0.45 * exp(-max(0.5 * (h0 + h1), 0.0) / 22.0);

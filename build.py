@@ -50,6 +50,7 @@ JS.insert(JS.index('main.js'), 'v78_anomalies.js')   # v7.8: anomalies wave 1 (S
 JS.insert(JS.index('main.js'), 'v78_support.js')     # v7.8: support calls for CP (crate drop, recon, Grad, artillery), supply crates
 JS.insert(JS.index('main.js'), 'v78.js')             # v7.8: version label, "New in v7.8", version menu v7.8/v7.7/v7.6, tips, settings toggle
 JS[-1:-1] = ['v80_gfx.js', 'v80_rts.js', 'v80_craters.js']   # v8.0 (cloud): adaptive graphics, RTS group panel + quick buttons + builder limit 7, crater caliber (separate line)
+JS[-1:-1] = ['v81_terrain.js', 'v81_air.js']   # v8.1 (cloud): living meteor - rocks/ridges/hangar/cracks/lakes in the terrain SDF, air strikes (separate line)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
