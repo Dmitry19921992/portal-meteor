@@ -558,7 +558,7 @@ function drawWorldMarkers(rts){
     octx.font = '11px "Exo 2", Consolas, sans-serif';
     octx.fillStyle = col;
     const label = bname(b.type) + (!b.done ? ` ${Math.floor(b.built * 100)}%` : '') + (b.queue.length ? ` [${b.queue.length}]` : '');
-    if (rts || s[2] < 70) octx.fillText(label, s[0], s[1] - 7);
+    if ((rts || s[2] < 70) && !(b.type === 'wall82' && typeof V84 !== 'undefined' && V84.wallSkip(b))) octx.fillText(b.type === 'wall82' && typeof V84 !== 'undefined' ? V84.wallLabel(b, label) : label, s[0], s[1] - 7);   // v84: one label per barrier chain
     octx.fillStyle = 'rgba(0,0,0,.6)'; octx.fillRect(s[0] - 18, s[1] - 3, 36, 4);
     octx.fillStyle = col; octx.fillRect(s[0] - 18, s[1] - 3, 36 * max(0, b.hp) / b.maxhp, 4);
     if (rts && S.selB === b){ octx.strokeStyle = '#fff'; octx.lineWidth = 1.5; octx.strokeRect(s[0] - 21, s[1] - 20, 42, 26); }
