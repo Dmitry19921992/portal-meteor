@@ -456,6 +456,7 @@ addEventListener('keydown', e => {
     }
     return;
   }
+  if (typeof V87M !== 'undefined' && V87M.cmdKey(e)) return;   // v87: лестница режимов (Tab, Alt+1/2/3), X — следующий отряд
   if (code === SET.bind.rts && performance.now() - (C.tOn || 0) < 60) return;   // тот же Tab только что вернул из шутера
   if (['KeyM', 'KeyO', 'Slash', 'Backquote', 'Minus', 'Equal', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'].includes(code)) return;
   e.preventDefault(); e.stopImmediatePropagation();
