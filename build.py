@@ -52,6 +52,7 @@ JS.insert(JS.index('main.js'), 'v78.js')             # v7.8: version label, "New
 JS[-1:-1] = ['v80_gfx.js', 'v80_rts.js', 'v80_craters.js']   # v8.0 (cloud): adaptive graphics, RTS group panel + quick buttons + builder limit 7, crater caliber (separate line)
 JS[-1:-1] = ['v81_terrain.js', 'v81_air.js']   # v8.1 (cloud): living meteor - rocks/ridges/hangar/cracks/lakes in the terrain SDF, air strikes (separate line)
 JS[-1:-1] = ['v82_common.js', 'v82_swarm.js', 'v82_cons.js']   # v8.2 (cloud): factions - Swarm tunnels + regen, Consortium barriers/repair post/field repair/turrets (separate line)
+JS[-1:-1] = ['v83_boss.js', 'v83_mesh.js']   # v8.3 (cloud): faction boss super-units - Consortium "Bastion" super-heavy tank, Swarm "Reaper" walker (separate line)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
