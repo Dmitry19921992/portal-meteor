@@ -57,6 +57,7 @@ JS[-1:-1] = ['v84_fix.js', 'v84_tut.js']   # v8.4 (cloud): leftover fixes v8.0-v
 JS[-1:-1] = ['v85_camp.js', 'v85_cmd.js', 'v85_tut.js']   # v8.5 (cloud): third mode "Commander" (RTT) + squad campaign veterancy between matches + lesson (separate line)
 JS[-1:-1] = ['v86_biome.js', 'v86_anom.js', 'v86_fauna.js', 'v86_wx.js', 'v86_tut.js']   # v8.6 (cloud): living meteor stage 2 - sharp-border biomes, anomalies wave 2, Verdan fauna, weather patches, lesson (separate line)
 JS[-1:-1] = ['v87_mode.js', 'v87_launch.js', 'v87_fx.js']   # v8.7 (cloud): one button for three modes (ladder), everything launches from the base (pad, sky-portal arc), effects (heavy tracers, F.E.A.R. bullets, possession vortex), version label (separate line)
+JS[-1:-1] = ['v88_hud.js', 'v88_fix.js']   # v8.8 (cloud): clean battle HUD (help once, short deduped tips, 4-line fading feed, clean-screen toggle F9, portrait layout), small fixes (Commander barrier placement, Verdans x1.6, no building on the launch pad), version label (separate line)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
