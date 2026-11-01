@@ -189,6 +189,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
       float strata = smoothstep(0.55, 0.95, abs(sin(dot(p, vec3(0.11, 0.37, 0.19)) + 6.0 * big)));
       alb *= (1.0 - 0.22 * strata * smoothstep(0.1, 0.5, slope)) * (0.86 + 0.14 * smoothstep(0.2, 0.8, mid));
     }
+    bio86(p, rn, slope, alb, em, sp, gBump);   // v86: биомы с резкими границами (= BIO86.pick, v86_biome.js)
     if (TER74 > 0.5 && r > RM - 25.0){   // v7.4: озёра на дне впадин (лёд / метан / лава), тёмные останцы
       vec3 q = rn * RM;
       float lb = smoothstep(0.62, 0.95, cos(dot(q, TKE)) * cos(dot(q, TKF))) * smoothstep(0.15, 0.55, cos(dot(q, TKG)));
@@ -1739,6 +1740,7 @@ void main(){
         c = shade(p, bN, -d, bA, bS, bAO, -1.0) + bE;
       }
       c = fog81(o, d, bestT, c);   // v81: туман над метаном
+      c = wx86(o, d, bestT, c);    // v86: погодные пятна — дождь/туман/дым/метель (v86_wx.js)
       if (uG72 > 0.5 && b == 0){   // v7.2gfx: высотная пылевая дымка, подсвеченная солнцами (воздушная перспектива; только прямой луч)
         float h0 = length(o) - RM, h1 = length(p) - RM;
         float hz = 0.55 * exp(-max(min(h0, h1), 0.0) / 22.0) + 0.45 * exp(-max(0.5 * (h0 + h1), 0.0) / 22.0);

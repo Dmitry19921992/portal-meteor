@@ -55,6 +55,7 @@ JS[-1:-1] = ['v82_common.js', 'v82_swarm.js', 'v82_cons.js']   # v8.2 (cloud): f
 JS[-1:-1] = ['v83_boss.js', 'v83_mesh.js']   # v8.3 (cloud): faction boss super-units - Consortium "Bastion" super-heavy tank, Swarm "Reaper" walker (separate line)
 JS[-1:-1] = ['v84_fix.js', 'v84_tut.js']   # v8.4 (cloud): leftover fixes v8.0-v8.3 + lessons for the new mechanics (separate line)
 JS[-1:-1] = ['v85_camp.js', 'v85_cmd.js', 'v85_tut.js']   # v8.5 (cloud): third mode "Commander" (RTT) + squad campaign veterancy between matches + lesson (separate line)
+JS[-1:-1] = ['v86_biome.js', 'v86_anom.js', 'v86_fauna.js', 'v86_wx.js', 'v86_tut.js']   # v8.6 (cloud): living meteor stage 2 - sharp-border biomes, anomalies wave 2, Verdan fauna, weather patches, lesson (separate line)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
