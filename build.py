@@ -64,6 +64,7 @@ JS[-1:-1] = ['v811_perf.js']   # v8.11 (cloud): performance pass - benchmark hoo
 JS[-1:-1] = ['v812_pad.js', 'v812_tab.js']   # v8.12 (cloud): gamepad (Gamepad API, all three modes, menus focus ring, glyph hints, rumble, settings page) + tablet layout profile, version label (separate line)
 JS[-1:-1] = ['v813_codex.js']   # v8.13 (cloud): encyclopedia - units / buildings / bosses / factions / anomalies / fauna / support / modes / world, live stats from the game tables, search, faction filter, met-in-battle lock, menu + pause button, version label (separate line)
 JS[-1:-1] = ['v814_fb.js']   # v8.14 (cloud): playtest feedback mode - recording overlay (version, match timer, clock, FPS, graphics, mode, faction, device, session), notes hotkey (Backslash / View+Start / phone button) with canvas screenshot + game state into IndexedDB, notes screen with JSON export, version label (separate line)
+JS[-1:-1] = ['v815_ui.js']   # v8.15 (cloud): interface levels Simple (phone default) / Normal / Full, clean pause + More, mode reveal, phone RTS/RTT declutter (1-line messages + log, icon bar), crisp unit markers + tap snap, 3rd-person toggle, three main lessons, aim states (separate line; ?ui815=0 = off)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
