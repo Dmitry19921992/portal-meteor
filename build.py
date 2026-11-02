@@ -61,6 +61,7 @@ JS[-1:-1] = ['v88_hud.js', 'v88_fix.js']   # v8.8 (cloud): clean battle HUD (hel
 JS[-1:-1] = ['v89_live.js', 'v89_tut.js']   # v8.9 (cloud): living world - unit requests with rewards (gun from the trunk, gunner seat, trooper pod from the base, orbital cover), hero quests (Owl, Lefty), breakthrough ops on a stalled front (generator / relay, AI too), lesson, version label (separate line)
 JS[-1:-1] = ['v810_ai.js', 'v810_cap.js', 'v810_world.js']   # v8.10 (cloud): AI uses Commander abilities + commits to killing bosses, player transfer capsule from the base pad (ride view), Steel fluff anomaly, Rootwalker / Firefly swarm fauna, convoy escort quest, generator/relay models, tips reset, version label (separate line)
 JS[-1:-1] = ['v811_perf.js']   # v8.11 (cloud): performance pass - benchmark hooks, cheaper terrain SDF / low level, throttled JS systems, version label (separate line)
+JS[-1:-1] = ['v812_pad.js', 'v812_tab.js']   # v8.12 (cloud): gamepad (Gamepad API, all three modes, menus focus ring, glyph hints, rumble, settings page) + tablet layout profile, version label (separate line)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
