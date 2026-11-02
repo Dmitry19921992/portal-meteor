@@ -62,6 +62,7 @@ JS[-1:-1] = ['v89_live.js', 'v89_tut.js']   # v8.9 (cloud): living world - unit 
 JS[-1:-1] = ['v810_ai.js', 'v810_cap.js', 'v810_world.js']   # v8.10 (cloud): AI uses Commander abilities + commits to killing bosses, player transfer capsule from the base pad (ride view), Steel fluff anomaly, Rootwalker / Firefly swarm fauna, convoy escort quest, generator/relay models, tips reset, version label (separate line)
 JS[-1:-1] = ['v811_perf.js']   # v8.11 (cloud): performance pass - benchmark hooks, cheaper terrain SDF / low level, throttled JS systems, version label (separate line)
 JS[-1:-1] = ['v812_pad.js', 'v812_tab.js']   # v8.12 (cloud): gamepad (Gamepad API, all three modes, menus focus ring, glyph hints, rumble, settings page) + tablet layout profile, version label (separate line)
+JS[-1:-1] = ['v813_codex.js']   # v8.13 (cloud): encyclopedia - units / buildings / bosses / factions / anomalies / fauna / support / modes / world, live stats from the game tables, search, faction filter, met-in-battle lock, menu + pause button, version label (separate line)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
