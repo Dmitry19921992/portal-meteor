@@ -1267,8 +1267,8 @@ void loadObj(int i, out vec3 O, out vec3 R, out vec3 Uu, out vec3 F){
 void traceObjects(vec3 o, vec3 d, int seg, inout float bestT, inout vec3 bN, inout vec3 bA, inout vec3 bE, inout float bS, inout float bAO, inout int kind){
   int hitI = -1;
   float hitMid = 0.0; vec3 hitQ = vec3(0.0), hitN = vec3(0.0, 1.0, 0.0), hO, hR, hU, hF;
-  for (int i = ZERO; i < 160; i++){
-    if (i >= uNO) break;
+  for (int i = gSO811; i < 160; i++){   // v811: с начала диапазона
+    if (i >= gNO811) break;   // v811: в первом отрезке луча — только объекты в кадре (PERF811)
     if (i == uMe && (seg == 0 || uSelf < 0.5)) continue;
     vec4 b0 = texelFetch(uObj, ivec2(0, i), 0);
     if (b0.w < 0.0 && seg == 0) continue;   // v6.5: юнит рисуется 3D-моделью (heavy65.js); сквозь портал — по-старому
@@ -1349,8 +1349,8 @@ float hitCapsule(vec3 ro, vec3 rd, vec3 pa, vec3 pb, float ra){
   return -1.0;
 }
 void traceParticles(vec3 o, vec3 d, inout float bestT, inout vec3 bE, inout int kind){
-  for (int i = ZERO; i < 160; i++){
-    if (i >= uNP) break;
+  for (int i = gSP811; i < 160; i++){   // v811: с начала диапазона
+    if (i >= gNP811) break;   // v811
     vec4 b = texelFetch(uPar, ivec2(1, i), 0);
     if (b.w > 9.5 && b.w < 11.5) continue;
     vec4 a = texelFetch(uPar, ivec2(0, i), 0);
@@ -1362,8 +1362,8 @@ void traceParticles(vec3 o, vec3 d, inout float bestT, inout vec3 bE, inout int 
 }
 vec3 tracerGlow(vec3 o, vec3 d, float tMax){
   vec3 g = vec3(0.0);
-  for (int i = ZERO; i < 160; i++){
-    if (i >= uNP) break;
+  for (int i = gSP811; i < 160; i++){   // v811: с начала диапазона
+    if (i >= gNP811) break;   // v811
     vec4 b = texelFetch(uPar, ivec2(1, i), 0);
     if (b.w > 8.5 || (b.w > 1.5 && b.w < 2.5)) continue;
     vec4 a = texelFetch(uPar, ivec2(0, i), 0);
@@ -1383,8 +1383,8 @@ vec3 tracerGlow(vec3 o, vec3 d, float tMax){
 // объёмные частицы: дым и огненные шары
 vec4 volumes(vec3 o, vec3 d, float tMax){
   vec3 add = vec3(0.0); float T = 1.0;
-  for (int i = ZERO; i < 160; i++){
-    if (i >= uNP) break;
+  for (int i = gSP811; i < 160; i++){   // v811: с начала диапазона
+    if (i >= gNP811) break;   // v811
     vec4 b = texelFetch(uPar, ivec2(1, i), 0);
     if (b.w < 9.5) continue;
     vec4 a = texelFetch(uPar, ivec2(0, i), 0);
@@ -1479,8 +1479,8 @@ float shadow(vec3 p, vec3 l){
     gDetail = 1.0;
     res = clamp(res, 0.0, 1.0);
   }
-  for (int i = ZERO; i < 160; i++){
-    if (i >= uNO) break;
+  for (int i = gSS811; i < 160; i++){   // v811: с начала диапазона
+    if (i >= gNS811) break;   // v811: тени — объекты у кадра
     if (res < 0.02) break;
     vec4 s6 = texelFetch(uObj, ivec2(6, i), 0);
     if (s6.w <= 0.0) continue;
@@ -1687,6 +1687,7 @@ void main(){
   bool done = false;
   for (int b = ZERO; b < 16; b++){
     if (b > uBounces) break;
+    cull811(b);   // v811: сколько объектов/частиц перебирать в этом отрезке луча (PERF811)
     float B = dot(o, d);
     float C = dot(o, o) - uR * uR;
     float tExit = -B + sqrt(max(B*B - C, 0.0));
@@ -1703,7 +1704,7 @@ void main(){
         if (t > t1) break;
         vec3 p = o + d * t;
         vec2 r = map(p);
-        if (r.x < 0.003 * (1.0 + t * 0.03) || i == 219){ bestT = t; mat = r.y; kind = 1; break; }
+        if (r.x < 0.003 * (1.0 + t * 0.03) || i == (b == 0 || uC811.y == 0 ? 219 : uC811.z)){ bestT = t; mat = r.y; kind = 1; break; }   // v811: предел шагов сквозь портал (на «Низкой» меньше)
         t += r.x * (r.x > 3.0 ? 0.85 : 0.62);
       }
     }
