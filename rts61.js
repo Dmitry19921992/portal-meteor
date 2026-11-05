@@ -89,14 +89,16 @@ function r61LabelText(g, enemy){
   if (g.cls === 'builder' && !enemy) l2 += ' · ' + (builderBusy(g) ? (g.order === 'repair' ? tr('чинит', 'repairing', 'đang sửa') : tr('строит', 'building', 'đang xây')) : builderIdle(g) ? tr('свободен', 'idle', 'rảnh') : tr('идёт', 'moving', 'đang đi'));
   return [l1, l2];
 }
-function r61DrawLabel(x, y, lines, col, boxes){
-  octx.font = '600 11px "Exo 2", sans-serif';
-  const w = max(...lines.map(t => octx.measureText(t).width)) + 10, h = lines.length * 13 + 4, x0 = x - w / 2, y0 = y;
+function r61DrawLabel(x, y, lines, col, boxes, small){   // v816: small — уменьшенная подпись над зданием
+  small = !!small && !(typeof FIX816 !== 'undefined' && !FIX816.on);   // v816: уменьшение только при включённом модуле
+  octx.font = small ? '600 7px "Exo 2", sans-serif' : '600 11px "Exo 2", sans-serif';   // v816
+  const lh = small ? 8 : 13;   // v816
+  const w = max(...lines.map(t => octx.measureText(t).width)) + (small ? 6 : 10), h = lines.length * lh + (small ? 2 : 4), x0 = x - w / 2, y0 = y;   // v816
   if (boxes){ for (const b of boxes) if (x0 < b[2] && x0 + w > b[0] && y0 < b[3] && y0 + h > b[1]) return; boxes.push([x0, y0, x0 + w, y0 + h]); }
-  octx.fillStyle = 'rgba(8,10,14,.78)'; octx.fillRect(x0, y0, w, h);
-  octx.fillStyle = col; octx.fillRect(x0, y0, 2, h);
+  octx.fillStyle = small ? 'rgba(8,10,14,.55)' : 'rgba(8,10,14,.78)'; octx.fillRect(x0, y0, w, h);   // v816: полупрозрачнее
+  octx.globalAlpha = small ? 0.85 : 1; octx.fillStyle = col; octx.fillRect(x0, y0, 2, h); octx.globalAlpha = 1;   // v816
   octx.textAlign = 'center'; octx.textBaseline = 'top';
-  lines.forEach((t, i) => { octx.fillStyle = i ? '#cfd6c8' : '#fff'; octx.fillText(t, x + 1, y0 + 2 + i * 13); });
+  lines.forEach((t, i) => { octx.fillStyle = i ? '#cfd6c8' : '#fff'; octx.fillText(t, x + 1, y0 + (small ? 1 : 2) + i * lh); });   // v816
   octx.textBaseline = 'alphabetic';
 }
 function r61Badges(sel, dt){
@@ -134,7 +136,7 @@ function r61Badges(sel, dt){
   for (const L of labels) r61DrawLabel(L.x, L.y, r61LabelText(L.g, L.enemy), L.col, L.pri === 0 ? null : boxes);
   // наведённое здание: название и HP
   const hb = R61.hover && (R61.hover.cls === 'bld' || R61.hover.cls === 'hq') ? R61.hover : null;
-  if (hb){ const c = hb.cls === 'hq' ? add(hb.pos, mul(BASES[hb.team], 6)) : bldCenter(hb), p = project(c); if (p) r61DrawLabel(p[0], p[1] + 10, r61BldText(hb), TEAM[hb.team].css, null); }
+  if (hb){ const c = hb.cls === 'hq' ? add(hb.pos, mul(BASES[hb.team], 6)) : bldCenter(hb), p = project(c); if (p) r61DrawLabel(p[0], p[1] + 10, r61BldText(hb), TEAM[hb.team].css, null, true); }   // v816: надпись над зданием меньше и полупрозрачнее
   octx.restore();
 }
 function r61BldName(b){ return b.cls === 'hq' ? tr('Штаб', 'HQ', 'Sở chỉ huy') : bname(b.type); }
