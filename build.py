@@ -84,3 +84,4 @@ os.makedirs(os.path.join(os.path.dirname(src[:-1]), 'dist'), exist_ok=True)
 out = os.path.join(os.path.dirname(src[:-1]), 'dist', sys.argv[1] if len(sys.argv) > 1 else 'portal_meteor_v5.html')
 open(out, 'w', encoding='utf-8', newline='\n').write(html)
 print(out, len(html), 'bytes')
+JS.insert(JS.index('v815_ver.js') + 1, 'v816_ver.js')   # v8.16: version label 8.16, v8.15 to old versions
