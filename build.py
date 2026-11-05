@@ -77,6 +77,7 @@ JS.insert(JS.index('main.js'), 'v79_lang.js')        # v7.9 l10n: more languages
 JS.insert(JS.index('main.js'), 'v8x_dict.js')        # v8.15 merge: translations of the v8.0-v8.14 texts (uz/tg/zh/es/pt-BR/he/vi), keyed by English
 JS.insert(JS.index('main.js'), 'v815_l10n.js')       # v8.15 merge: v8.15 strings + plugs V8X into v79_lang (v7.9 dictionaries win) - after v79_lang.js
 JS.insert(JS.index('main.js'), 'v816_fixes.js')      # v8.16: T42 fixes — CAM card hides under any menu (phone sheet, tour), smaller fainter building float labels, clean screen (F9) hides 3D world markers (?fix816=0)
+JS.insert(JS.index('v815_ver.js') + 1, 'v816_ver.js')   # v8.16: version label 8.16, v8.15 to old versions
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
@@ -84,4 +85,3 @@ os.makedirs(os.path.join(os.path.dirname(src[:-1]), 'dist'), exist_ok=True)
 out = os.path.join(os.path.dirname(src[:-1]), 'dist', sys.argv[1] if len(sys.argv) > 1 else 'portal_meteor_v5.html')
 open(out, 'w', encoding='utf-8', newline='\n').write(html)
 print(out, len(html), 'bytes')
-JS.insert(JS.index('v815_ver.js') + 1, 'v816_ver.js')   # v8.16: version label 8.16, v8.15 to old versions
