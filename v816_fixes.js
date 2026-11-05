@@ -24,6 +24,9 @@ const FIX816 = {
   ph(){ return typeof TOUCH !== 'undefined' && !!TOUCH.on; },
   // «чистый экран» активен (класс ставит HUD88 только в шутере)
   clean(){ return this.on && !!document.body && document.body.classList.contains('clean88'); },
+  // безопасная проверка для прямых вызовов в помеченных строках ui.js: ошибка модуля —
+  // лог один раз и «не чистый экран», кадр не падает
+  cleanSafe(){ try { return this.clean(); } catch (e){ this.fail(e, 'cleanSafe'); return false; } },
   // открыто ли меню, под которым CAM-карточка должна прятаться
   uiOpen(){
     if (typeof MENU !== 'undefined' && MENU.isOpen && MENU.isOpen()) return true;
@@ -59,16 +62,15 @@ if (FIX816.on){
   quiet(typeof TUT !== 'undefined' ? TUT : null, 'overlay');
   quiet(typeof SIDEQ !== 'undefined' ? SIDEQ : null, 'overlay');
   { // строка «» МАРШРУТ СТРАТЕГА · СПРИНТ »» рисуется из S.onRoute внутри drawOverlay
+    // Круг 2 ревью: catch вокруг вызова исходного отрисовщика убран — при его исключении
+    // повторный вызов в том же кадре только усугублял падение (ui.js:593/621 идут через
+    // cleanSafe, поэтому ошибка модуля внутри кадра уже не падает). Остаётся try/finally:
+    // S.onRoute восстанавливается даже при исключении отрисовщика.
     const do816 = drawOverlay;
     drawOverlay = function(dt){
-      try {
-        if (!FIX816.clean()) return do816.call(this, dt);
-        const r = S.onRoute; S.onRoute = false;
-        try { return do816.call(this, dt); } finally { S.onRoute = r; }
-      } catch (e){   // ошибка модуля — штатно вызываем исходный отрисовщик
-        FIX816.fail(e, 'drawOverlay');
-        return do816.call(this, dt);
-      }
+      if (!FIX816.cleanSafe()) return do816.call(this, dt);
+      const r = S.onRoute; S.onRoute = false;
+      try { return do816.call(this, dt); } finally { S.onRoute = r; }
     };
   }
   // шевроны маршрута и метки юнитов — помеченные условия в ui.js (// v816)

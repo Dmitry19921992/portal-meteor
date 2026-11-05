@@ -590,7 +590,7 @@ function drawOverlay(dt){
   // навигационная линия
   const t = TACT.task;
   const MI = typeof MISSION !== 'undefined';
-  if (!(window.FIX816 && FIX816.clean()) && (MI ? MISSION.navVisible() : (S.navLine || S.navT > 0) && t && !t.done) && navPts.length){   // v816: чистый экран прячет шевроны маршрута
+  if (!(window.FIX816 && FIX816.cleanSafe()) && (MI ? MISSION.navVisible() : (S.navLine || S.navT > 0) && t && !t.done) && navPts.length){   // v816: чистый экран прячет шевроны маршрута
     const alpha = S.navLine || (MI && MISSION.nav && MISSION.nav.mode !== 'order') ? 0.75 : min(0.75, S.navT / 2);
     const tt = performance.now() / 600;
     const col = MI ? MISSION.navColor() : t.kind === 'strat' || t.kind === 'player' ? '140,255,170' : '255,190,90';
@@ -618,7 +618,7 @@ function drawOverlay(dt){
   octx.font = '600 12px "Exo 2", Consolas, sans-serif';
   const tgts = t && t.targets && !t.done ? t.targets : null;
   const all = [...S.units, ...S.vehicles, ...S.drones];
-  if (!(window.FIX816 && FIX816.clean())) for (const u of all){   // v816: чистый экран прячет метки юнитов
+  if (!(window.FIX816 && FIX816.cleanSafe())) for (const u of all){   // v816: чистый экран прячет метки юнитов
     if (!u.alive || u === c) continue;
     if (u.team === 1 && u.seen[0] <= 0) continue;
     const big = u.cls === 'tank';
