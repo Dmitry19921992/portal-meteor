@@ -56,7 +56,26 @@ JS.insert(JS.index('main.js'), 'v79_ninja.js')       # v7.9: robo-ninja hero (au
 JS.insert(JS.index('main.js'), 'v79_ninja_ui.js')    # v7.9: robo-ninja HUD, duel bars, map markers, phone buttons and gestures
 JS.insert(JS.index('main.js'), 'v79_radio.js')       # v7.9: Radio Portal Meteor (EDMITRY music streamed from Cloudflare /radio/) — own line, no other hooks
 JS.insert(JS.index('main.js'), 'v79.js')             # v7.9: version label, "New in v7.9", version menu v7.9/v7.8.1/v7.8
+JS[-1:-1] = ['v80_gfx.js', 'v80_rts.js', 'v80_craters.js']   # v8.0 (cloud): adaptive graphics, RTS group panel + quick buttons + builder limit 7, crater caliber (separate line)
+JS[-1:-1] = ['v81_terrain.js', 'v81_air.js']   # v8.1 (cloud): living meteor - rocks/ridges/hangar/cracks/lakes in the terrain SDF, air strikes (separate line)
+JS[-1:-1] = ['v82_common.js', 'v82_swarm.js', 'v82_cons.js']   # v8.2 (cloud): factions - Swarm tunnels + regen, Consortium barriers/repair post/field repair/turrets (separate line)
+JS[-1:-1] = ['v83_boss.js', 'v83_mesh.js']   # v8.3 (cloud): faction boss super-units - Consortium "Bastion" super-heavy tank, Swarm "Reaper" walker (separate line)
+JS[-1:-1] = ['v84_fix.js', 'v84_tut.js']   # v8.4 (cloud): leftover fixes v8.0-v8.3 + lessons for the new mechanics (separate line)
+JS[-1:-1] = ['v85_camp.js', 'v85_cmd.js', 'v85_tut.js']   # v8.5 (cloud): third mode "Commander" (RTT) + squad campaign veterancy between matches + lesson (separate line)
+JS[-1:-1] = ['v86_biome.js', 'v86_anom.js', 'v86_fauna.js', 'v86_wx.js', 'v86_tut.js']   # v8.6 (cloud): living meteor stage 2 - sharp-border biomes, anomalies wave 2, Verdan fauna, weather patches, lesson (separate line)
+JS[-1:-1] = ['v87_mode.js', 'v87_launch.js', 'v87_fx.js']   # v8.7 (cloud): one button for three modes (ladder), everything launches from the base (pad, sky-portal arc), effects (heavy tracers, F.E.A.R. bullets, possession vortex), version label (separate line)
+JS[-1:-1] = ['v88_hud.js', 'v88_fix.js']   # v8.8 (cloud): clean battle HUD (help once, short deduped tips, 4-line fading feed, clean-screen toggle F9, portrait layout), small fixes (Commander barrier placement, Verdans x1.6, no building on the launch pad), version label (separate line)
+JS[-1:-1] = ['v89_live.js', 'v89_tut.js']   # v8.9 (cloud): living world - unit requests with rewards (gun from the trunk, gunner seat, trooper pod from the base, orbital cover), hero quests (Owl, Lefty), breakthrough ops on a stalled front (generator / relay, AI too), lesson, version label (separate line)
+JS[-1:-1] = ['v810_ai.js', 'v810_cap.js', 'v810_world.js']   # v8.10 (cloud): AI uses Commander abilities + commits to killing bosses, player transfer capsule from the base pad (ride view), Steel fluff anomaly, Rootwalker / Firefly swarm fauna, convoy escort quest, generator/relay models, tips reset, version label (separate line)
+JS[-1:-1] = ['v811_perf.js']   # v8.11 (cloud): performance pass - benchmark hooks, cheaper terrain SDF / low level, throttled JS systems, version label (separate line)
+JS[-1:-1] = ['v812_pad.js', 'v812_tab.js']   # v8.12 (cloud): gamepad (Gamepad API, all three modes, menus focus ring, glyph hints, rumble, settings page) + tablet layout profile, version label (separate line)
+JS[-1:-1] = ['v813_codex.js']   # v8.13 (cloud): encyclopedia - units / buildings / bosses / factions / anomalies / fauna / support / modes / world, live stats from the game tables, search, faction filter, met-in-battle lock, menu + pause button, version label (separate line)
+JS[-1:-1] = ['v814_fb.js']   # v8.14 (cloud): playtest feedback mode - recording overlay (version, match timer, clock, FPS, graphics, mode, faction, device, session), notes hotkey (Backslash / View+Start / phone button) with canvas screenshot + game state into IndexedDB, notes screen with JSON export, version label (separate line)
+JS[-1:-1] = ['v815_ui.js']   # v8.15 (cloud): interface levels Simple (phone default) / Normal / Full, clean pause + More, mode reveal, phone RTS/RTT declutter (1-line messages + log, icon bar), crisp unit markers + tap snap, 3rd-person toggle, three main lessons, aim states (separate line; ?ui815=0 = off)
+JS[-1:-1] = ['v815_ver.js']   # v8.15 merge: version label once over v7.9 (v8.15 current, v7.9 in old versions) - after all v8 modules, before v79_lang.js
 JS.insert(JS.index('main.js'), 'v79_lang.js')        # v7.9 l10n: more languages (lang/*.json) + new language selector — wraps tr/N2/menus, keep last before main.js
+JS.insert(JS.index('main.js'), 'v8x_dict.js')        # v8.15 merge: translations of the v8.0-v8.14 texts (uz/tg/zh/es/pt-BR/he/vi), keyed by English
+JS.insert(JS.index('main.js'), 'v815_l10n.js')       # v8.15 merge: v8.15 strings + plugs V8X into v79_lang (v7.9 dictionaries win) - after v79_lang.js
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'

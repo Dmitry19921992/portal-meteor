@@ -89,6 +89,7 @@ vec2 map(vec3 p){
   for (int i = 0; i < 2; i++) mask = min(mask, 1.0 - smoothstep(PAD_B0, PAD_B1, dot(n, BASES[i])));
   for (int i = 0; i < 6; i++) mask = min(mask, 1.0 - smoothstep(PAD_C0, PAD_C1, dot(n, CPD[i])));
   float d = r - RM - hgt(n * RM) * mask;
+  d = ter81(p, n, r, d, mask);   // v81: скалы, гряды, ангар, трещины, озёра (= TER81.sdf, v81_terrain.js)
   for (int i = ZERO; i < 12; i++){   // v7.6: воронки (= CR76.dent в v76_craters.js)
     if (i >= uNCr76) break;
     vec4 c = uCr76[i]; vec3 q = n * length(c.xyz) - c.xyz; float s2 = dot(q, q);
@@ -188,6 +189,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
       float strata = smoothstep(0.55, 0.95, abs(sin(dot(p, vec3(0.11, 0.37, 0.19)) + 6.0 * big)));
       alb *= (1.0 - 0.22 * strata * smoothstep(0.1, 0.5, slope)) * (0.86 + 0.14 * smoothstep(0.2, 0.8, mid));
     }
+    bio86(p, rn, slope, alb, em, sp, gBump);   // v86: биомы с резкими границами (= BIO86.pick, v86_biome.js)
     if (TER74 > 0.5 && r > RM - 25.0){   // v7.4: озёра на дне впадин (лёд / метан / лава), тёмные останцы
       vec3 q = rn * RM;
       float lb = smoothstep(0.62, 0.95, cos(dot(q, TKE)) * cos(dot(q, TKF))) * smoothstep(0.15, 0.55, cos(dot(q, TKG)));
@@ -300,6 +302,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
         em += vec3(1.8, 0.4, 0.06) * uScorH[i] * smoothstep(0.55, 0.95, k) * smoothstep(0.55, 0.8, nz(p * 1.4 + float(i) * 0.71));
       }
     }
+    ter81mat(p, rn, n, slope, alb, em, sp, gBump);   // v81: скалы, ангар, трещины, лава/лёд/метан
   }
   else if (m < 3.5){
     float t = m - 2.0;
@@ -1264,8 +1267,8 @@ void loadObj(int i, out vec3 O, out vec3 R, out vec3 Uu, out vec3 F){
 void traceObjects(vec3 o, vec3 d, int seg, inout float bestT, inout vec3 bN, inout vec3 bA, inout vec3 bE, inout float bS, inout float bAO, inout int kind){
   int hitI = -1;
   float hitMid = 0.0; vec3 hitQ = vec3(0.0), hitN = vec3(0.0, 1.0, 0.0), hO, hR, hU, hF;
-  for (int i = ZERO; i < 160; i++){
-    if (i >= uNO) break;
+  for (int i = gSO811; i < 160; i++){   // v811: с начала диапазона
+    if (i >= gNO811) break;   // v811: в первом отрезке луча — только объекты в кадре (PERF811)
     if (i == uMe && (seg == 0 || uSelf < 0.5)) continue;
     vec4 b0 = texelFetch(uObj, ivec2(0, i), 0);
     if (b0.w < 0.0 && seg == 0) continue;   // v6.5: юнит рисуется 3D-моделью (heavy65.js); сквозь портал — по-старому
@@ -1346,8 +1349,8 @@ float hitCapsule(vec3 ro, vec3 rd, vec3 pa, vec3 pb, float ra){
   return -1.0;
 }
 void traceParticles(vec3 o, vec3 d, inout float bestT, inout vec3 bE, inout int kind){
-  for (int i = ZERO; i < 160; i++){
-    if (i >= uNP) break;
+  for (int i = gSP811; i < 160; i++){   // v811: с начала диапазона
+    if (i >= gNP811) break;   // v811
     vec4 b = texelFetch(uPar, ivec2(1, i), 0);
     if (b.w > 9.5 && b.w < 11.5) continue;
     vec4 a = texelFetch(uPar, ivec2(0, i), 0);
@@ -1359,8 +1362,8 @@ void traceParticles(vec3 o, vec3 d, inout float bestT, inout vec3 bE, inout int 
 }
 vec3 tracerGlow(vec3 o, vec3 d, float tMax){
   vec3 g = vec3(0.0);
-  for (int i = ZERO; i < 160; i++){
-    if (i >= uNP) break;
+  for (int i = gSP811; i < 160; i++){   // v811: с начала диапазона
+    if (i >= gNP811) break;   // v811
     vec4 b = texelFetch(uPar, ivec2(1, i), 0);
     if (b.w > 8.5 || (b.w > 1.5 && b.w < 2.5)) continue;
     vec4 a = texelFetch(uPar, ivec2(0, i), 0);
@@ -1380,8 +1383,8 @@ vec3 tracerGlow(vec3 o, vec3 d, float tMax){
 // объёмные частицы: дым и огненные шары
 vec4 volumes(vec3 o, vec3 d, float tMax){
   vec3 add = vec3(0.0); float T = 1.0;
-  for (int i = ZERO; i < 160; i++){
-    if (i >= uNP) break;
+  for (int i = gSP811; i < 160; i++){   // v811: с начала диапазона
+    if (i >= gNP811) break;   // v811
     vec4 b = texelFetch(uPar, ivec2(1, i), 0);
     if (b.w < 9.5) continue;
     vec4 a = texelFetch(uPar, ivec2(0, i), 0);
@@ -1476,8 +1479,8 @@ float shadow(vec3 p, vec3 l){
     gDetail = 1.0;
     res = clamp(res, 0.0, 1.0);
   }
-  for (int i = ZERO; i < 160; i++){
-    if (i >= uNO) break;
+  for (int i = gSS811; i < 160; i++){   // v811: с начала диапазона
+    if (i >= gNS811) break;   // v811: тени — объекты у кадра
     if (res < 0.02) break;
     vec4 s6 = texelFetch(uObj, ivec2(6, i), 0);
     if (s6.w <= 0.0) continue;
@@ -1684,6 +1687,7 @@ void main(){
   bool done = false;
   for (int b = ZERO; b < 16; b++){
     if (b > uBounces) break;
+    cull811(b);   // v811: сколько объектов/частиц перебирать в этом отрезке луча (PERF811)
     float B = dot(o, d);
     float C = dot(o, o) - uR * uR;
     float tExit = -B + sqrt(max(B*B - C, 0.0));
@@ -1700,7 +1704,7 @@ void main(){
         if (t > t1) break;
         vec3 p = o + d * t;
         vec2 r = map(p);
-        if (r.x < 0.003 * (1.0 + t * 0.03) || i == 219){ bestT = t; mat = r.y; kind = 1; break; }
+        if (r.x < 0.003 * (1.0 + t * 0.03) || i == (b == 0 || uC811.y == 0 ? 219 : uC811.z)){ bestT = t; mat = r.y; kind = 1; break; }   // v811: предел шагов сквозь портал (на «Низкой» меньше)
         t += r.x * (r.x > 3.0 ? 0.85 : 0.62);
       }
     }
@@ -1736,6 +1740,8 @@ void main(){
         }
         c = shade(p, bN, -d, bA, bS, bAO, -1.0) + bE;
       }
+      c = fog81(o, d, bestT, c);   // v81: туман над метаном
+      c = wx86(o, d, bestT, c);    // v86: погодные пятна — дождь/туман/дым/метель (v86_wx.js)
       if (uG72 > 0.5 && b == 0){   // v7.2gfx: высотная пылевая дымка, подсвеченная солнцами (воздушная перспектива; только прямой луч)
         float h0 = length(o) - RM, h1 = length(p) - RM;
         float hz = 0.55 * exp(-max(min(h0, h1), 0.0) / 22.0) + 0.45 * exp(-max(0.5 * (h0 + h1), 0.0) / 22.0);

@@ -17,6 +17,8 @@ uniform float uDist;     // искажения вкл/выкл
 uniform float uXfer;     // v6: «передача сигнала» при перелёте камеры между бойцами
 uniform float uG72;      // v7.2gfx: новая пост-обработка (0 — как в v7.1)
 uniform float uDen;      // v7.5 «Денди»: без зерна плёнки (иначе пиксели палитры мерцают каждый кадр)
+uniform vec4  uVx87;     // v87: вихрь вселения — xy центр (uv), z сила (+ засасывает, − выплёвывает), w радиус
+uniform float uK87;      // v87: сила марева пуль (F.E.A.R.), растёт в «рефлексе»
 out vec4 frag;
 
 vec3 aces(vec3 x){
@@ -47,6 +49,7 @@ void main(){
   }
   // ---- искажение пространства (как в F.E.A.R.): ударная волна-линза и марево трассеров
   vec2 asp = vec2(uRes.x / uRes.y, 1.0);
+  if (abs(uVx87.z) > 0.001){ vec2 dv = (uv - uVx87.xy) * asp; float f = exp(-dot(dv, dv) / (uVx87.w * uVx87.w)); float an = uVx87.z * 2.6 * f * (0.4 + length(dv)); dv = mat2(cos(an), sin(an), -sin(an), cos(an)) * dv * (1.0 - uVx87.z * 0.55 * f); uv = uVx87.xy + dv / asp; }   // v87
   vec2 off = vec2(0.0);
   float ring = 0.0;
   if (uDist > 0.5){
@@ -75,12 +78,12 @@ void main(){
       vec2 q = p - (a + ba * h);
       float dd = length(q);
       float k = exp(-dd * dd / 0.00009);
-      off += (dd > 1e-6 ? q / dd : vec2(0.0)) * k * 0.0035 * sin(dd * 1400.0 - uTime * 50.0);
+      off += (dd > 1e-6 ? q / dd : vec2(0.0)) * k * 0.0035 * (1.0 + uK87) * sin(dd * 1400.0 - uTime * 50.0);   // v87: × (1 + uK87)
     }
     off = clamp(off, vec2(-0.06), vec2(0.06)) / asp;
   }
   vec2 cc = uv - 0.5;
-  float ca = dot(cc, cc) * (0.012 + uSlow * 0.03) + ring * 0.004 + uXfer * 0.035;
+  float ca = dot(cc, cc) * (0.012 + uSlow * 0.03) + ring * 0.004 + uXfer * 0.035 + abs(uVx87.z) * 0.05;   // v87: + вихрь
   vec2 u2 = uv + off;
   vec3 col;
   col.r = texture(uTex, u2 - cc * ca + off * 0.35).r;
