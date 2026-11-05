@@ -555,10 +555,12 @@ function drawWorldMarkers(rts){
     const s = project(p); if (!s) continue;
     if (!rts && s[2] > 160) continue;
     const col = TEAM[b.team].css;
-    octx.font = '11px "Exo 2", Consolas, sans-serif';
+    octx.font = (window.FIX816 && FIX816.bldFont()) || '11px "Exo 2", Consolas, sans-serif';   // v816: плавающая надпись над зданием — меньше
     octx.fillStyle = col;
+    octx.globalAlpha = (window.FIX816 && FIX816.bldAlpha()) || 1;   // v816: и полупрозрачнее
     const label = bname(b.type) + (!b.done ? ` ${Math.floor(b.built * 100)}%` : '') + (b.queue.length ? ` [${b.queue.length}]` : '');
     if ((rts || s[2] < 70) && !(b.type === 'wall82' && typeof V84 !== 'undefined' && V84.wallSkip(b))) octx.fillText(b.type === 'wall82' && typeof V84 !== 'undefined' ? V84.wallLabel(b, label) : label, s[0], s[1] - 7);   // v84: one label per barrier chain
+    octx.globalAlpha = 1;   // v816
     octx.fillStyle = 'rgba(0,0,0,.6)'; octx.fillRect(s[0] - 18, s[1] - 3, 36, 4);
     octx.fillStyle = col; octx.fillRect(s[0] - 18, s[1] - 3, 36 * max(0, b.hp) / b.maxhp, 4);
     if (rts && S.selB === b){ octx.strokeStyle = '#fff'; octx.lineWidth = 1.5; octx.strokeRect(s[0] - 21, s[1] - 20, 42, 26); }
@@ -588,7 +590,7 @@ function drawOverlay(dt){
   // навигационная линия
   const t = TACT.task;
   const MI = typeof MISSION !== 'undefined';
-  if ((MI ? MISSION.navVisible() : (S.navLine || S.navT > 0) && t && !t.done) && navPts.length){
+  if (!(window.FIX816 && FIX816.cleanSafe()) && (MI ? MISSION.navVisible() : (S.navLine || S.navT > 0) && t && !t.done) && navPts.length){   // v816: чистый экран прячет шевроны маршрута
     const alpha = S.navLine || (MI && MISSION.nav && MISSION.nav.mode !== 'order') ? 0.75 : min(0.75, S.navT / 2);
     const tt = performance.now() / 600;
     const col = MI ? MISSION.navColor() : t.kind === 'strat' || t.kind === 'player' ? '140,255,170' : '255,190,90';
@@ -616,7 +618,7 @@ function drawOverlay(dt){
   octx.font = '600 12px "Exo 2", Consolas, sans-serif';
   const tgts = t && t.targets && !t.done ? t.targets : null;
   const all = [...S.units, ...S.vehicles, ...S.drones];
-  for (const u of all){
+  if (!(window.FIX816 && FIX816.cleanSafe())) for (const u of all){   // v816: чистый экран прячет метки юнитов
     if (!u.alive || u === c) continue;
     if (u.team === 1 && u.seen[0] <= 0) continue;
     const big = u.cls === 'tank';

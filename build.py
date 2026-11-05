@@ -76,6 +76,7 @@ JS[-1:-1] = ['v815_ver.js']   # v8.15 merge: version label once over v7.9 (v8.15
 JS.insert(JS.index('main.js'), 'v79_lang.js')        # v7.9 l10n: more languages (lang/*.json) + new language selector — wraps tr/N2/menus, keep last before main.js
 JS.insert(JS.index('main.js'), 'v8x_dict.js')        # v8.15 merge: translations of the v8.0-v8.14 texts (uz/tg/zh/es/pt-BR/he/vi), keyed by English
 JS.insert(JS.index('main.js'), 'v815_l10n.js')       # v8.15 merge: v8.15 strings + plugs V8X into v79_lang (v7.9 dictionaries win) - after v79_lang.js
+JS.insert(JS.index('main.js'), 'v816_fixes.js')      # v8.16: T42 fixes — CAM card hides under any menu (phone sheet, tour), smaller fainter building float labels, clean screen (F9) hides 3D world markers (?fix816=0)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
