@@ -78,6 +78,7 @@ JS.insert(JS.index('main.js'), 'v8x_dict.js')        # v8.15 merge: translations
 JS.insert(JS.index('main.js'), 'v815_l10n.js')       # v8.15 merge: v8.15 strings + plugs V8X into v79_lang (v7.9 dictionaries win) - after v79_lang.js
 JS.insert(JS.index('main.js'), 'v816_fixes.js')      # v8.16: T42 fixes — CAM card hides under any menu (phone sheet, tour), smaller fainter building float labels, clean screen (F9) hides 3D world markers (?fix816=0)
 JS.insert(JS.index('v815_ver.js') + 1, 'v816_ver.js')   # v8.16: version label 8.16, v8.15 to old versions
+JS.insert(JS.index('v816_ver.js'), 'v817_t22.js')      # v8.17 (T22): простая стратегия телефона — панель «Удары» (?t22=0) и карточка отряда
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
