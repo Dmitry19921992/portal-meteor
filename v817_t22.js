@@ -212,5 +212,5 @@ if (T22.on && typeof TOUCH !== 'undefined' && TOUCH.on){
     color:#f0e8d0;font:700 12px "Exo 2",sans-serif;pointer-events:auto;touch-action:manipulation}
   #t22card .t22c .go{border-color:#8fffaa;background:rgba(40,90,55,.75)}
   #t22card .t22c .x{padding:0 9px}
-  body.clean88 #t22pl, body.clean88 #t22card, body.u8eye.u8eyeok #t22pl, body.u8eye.u8eyeok #t22card{display:none !important}
+  body.clean88 #t22pw, body.clean88 #t22pl, body.clean88 #t22card, body.u8eye.u8eyeok #t22pw, body.u8eye.u8eyeok #t22pl, body.u8eye.u8eyeok #t22card{display:none !important}
 `; document.head.appendChild(st); })();

@@ -7,6 +7,10 @@
 // Генерируется: /home/claude/work/l10n/build.js из strings_v8x.json. Как подключить — README.md рядом.
 const V8X_DICT = {
 "vi": {
+"✺ Powers — pick a strike, then tap the target on the map":"✺ Đòn đánh — chọn một đòn, rồi chạm vào mục tiêu trên bản đồ",
+"Strike targeting cancelled":"Đã hủy ngắm đòn đánh",
+"To base":"Về căn cứ",
+"tap the target":"chạm vào mục tiêu",
 "Disabled":"Đã tắt",
 "Appears by itself when the tunnel breaks through":"Tự xuất hiện khi đường hầm đào xong",
 "Only for {0}":"Chỉ cho {0}",
@@ -639,6 +643,11 @@ const V8X_DICT = {
 "Steel dandelions — Steel fluff! It sticks and eats armour!":"Bồ công anh thép — Lông Thép! Nó bám vào và ăn mòn giáp!",
 "Fluff in the air — keep out of the meadow and away from the infected!":"Lông thép bay trong không khí — tránh xa bãi cỏ và những ai bị nhiễm!"},
 "uz": {
+"✺ Powers — pick a strike, then tap the target on the map":"✺ Zarbalar — bir zarba tanlang va xaritadagi nishonga bosing",
+"Strike targeting cancelled":"Zarba nishoni bekor qilindi",
+"To base":"Bazaga",
+"tap the target":"nishonga bosing",
+
 "Low":"Past",
 "Medium":"Oʻrta",
 "High":"Yuqori",
@@ -1569,6 +1578,11 @@ const V8X_DICT = {
 "Feedback mode: recording overlay, notes":"Fikr rejimi: yozuv uchun oyna, qaydlar",
 "Feedback mode & notes":"Fikr rejimi va qaydlar"},
 "tg": {
+"✺ Powers — pick a strike, then tap the target on the map":"✺ Зарбаҳо — як зарбаро интихоб кунед, сипас нишонаро дар харита ламс кунед",
+"Strike targeting cancelled":"Нишонгузории зарба бекор карда шуд",
+"To base":"Ба пойгоҳ",
+"tap the target":"нишонаро ламс кунед",
+
 "Low":"Паст",
 "Medium":"Миёна",
 "High":"Баланд",
@@ -2499,6 +2513,11 @@ const V8X_DICT = {
 "Feedback mode: recording overlay, notes":"Реҷаи фикр: намоиш барои сабт, қайдҳо",
 "Feedback mode & notes":"Реҷаи фикр ва қайдҳо"},
 "zh": {
+"✺ Powers — pick a strike, then tap the target on the map":"✺ 打击 — 选择打击方式，然后点按地图上的目标",
+"Strike targeting cancelled":"已取消打击瞄准",
+"To base":"回基地",
+"tap the target":"点按目标",
+
 "Low":"低",
 "Medium":"中",
 "High":"高",
@@ -3429,6 +3448,11 @@ const V8X_DICT = {
 "Feedback mode: recording overlay, notes":"反馈模式：录屏信息层、笔记",
 "Feedback mode & notes":"反馈模式和笔记"},
 "es": {
+"✺ Powers — pick a strike, then tap the target on the map":"✺ Ataques — elige un ataque y toca el objetivo en el mapa",
+"Strike targeting cancelled":"Objetivo del ataque cancelado",
+"To base":"A la base",
+"tap the target":"toca el objetivo",
+
 "Low":"Baja",
 "Medium":"Media",
 "High":"Alta",
@@ -4359,6 +4383,11 @@ const V8X_DICT = {
 "Feedback mode: recording overlay, notes":"Modo comentarios: capa para grabar, notas",
 "Feedback mode & notes":"Modo comentarios y notas"},
 "pt-BR": {
+"✺ Powers — pick a strike, then tap the target on the map":"✺ Ataques — escolha um ataque e toque no alvo no mapa",
+"Strike targeting cancelled":"Mira do ataque cancelada",
+"To base":"À base",
+"tap the target":"toque no alvo",
+
 "Low":"Baixa",
 "Medium":"Média",
 "High":"Alta",
@@ -5289,6 +5318,11 @@ const V8X_DICT = {
 "Feedback mode: recording overlay, notes":"Modo feedback: sobreposição para gravar, notas",
 "Feedback mode & notes":"Modo feedback e notas"},
 "he": {
+"✺ Powers — pick a strike, then tap the target on the map":"‏✺ תקיפות — בחר תקיפה ואז הקש על המטרה במפה",
+"Strike targeting cancelled":"הכוונת התקיפה בוטלה",
+"To base":"לבסיס",
+"tap the target":"הקש על המטרה",
+
 "✈ AIR RAID! Swarm carpet bombing — get off the red strip!":"‏✈ התקפה אווירית! הפצצה שטיחית של הנחיל — צא מהרצועה האדומה!",
 "♨ AIR RAID! Swarm napalm — get out of the red circle!":"‏♨ התקפה אווירית! נפאלם של הנחיל — צא מהעיגול האדום!",
 "Air raid! Bomber overhead!":"התקפה אווירית! מפציץ מעלינו!",
