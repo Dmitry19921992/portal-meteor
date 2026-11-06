@@ -6,8 +6,9 @@
 //   1) новый ключ сохранения 'pm_gfx818' — старые сохранённые 0.33 больше не читаются (сам старый ключ не удаляем);
 //   2) первые 10 с после init и пока идут кадры > 200 мс (компиляция, подгрузка) — FPS не меряем; после такого кадра ещё 1,5 с тишины;
 //   3) дискретная видеокарта (ADG80.hint = 2, не телефон): масштаб не ниже 0.75 (или потолка уровня, если он ниже),
-//      уровень эффектов не ниже «Средней». Ниже — только если меньше 25 к/с держится дольше 5 с подряд («аварийно»);
-//      вернулось ≥ 40 к/с на 10 с — пол снова включается;
+//      уровень эффектов не ниже «Средней». Ниже — ступенями: < 25 к/с дольше 5 с подряд → пол 0.5; ещё ≥ 10 с так же → пол снят
+//      («аварийно»); вернулось ≥ 40 к/с на 10 с — пол 0.75 снова. Если медленно ВСЕ кадры (среднее > 120 мс), длинный кадр
+//      не считается «всплеском компиляции» — слабая видеокарта не застрянет в вечном прогреве;
 //   4) включён ограничитель кадров (Настройки → «Кадров в секунду» 30/60) — это не перегрузка: цель FPS не выше лимита;
 //   5) ручные «Графика» (SET.gfx80) и «Разрешение» (SET.res80) уважаются как раньше — пол действует только в «Авто»;
 //   6) текущий масштаб и реальный буфер canvas (ширина×высота) видны: в строке FPS (угол экрана), F3 (подробно), Настройки → Графика.
@@ -15,16 +16,17 @@
 // =====================================================================
 const GFX818 = {
   on: (() => { try { return new URLSearchParams(location.search).get('gfx818') !== '0'; } catch (e){ return true; } })(),
-  KEY: 'pm_gfx818', WARM_MS: 10000, LONG_MS: 200, QUIET_MS: 1500, FLOOR: 0.75, LMIN: 1,
+  KEY: 'pm_gfx818', WARM_MS: 10000, LONG_MS: 200, QUIET_MS: 1500, FLOOR: 0.75, FLOOR2: 0.5, LMIN: 1,
   EM_FPS: 25, EM_MS: 5000, OK_FPS: 40, OK_MS: 10000,
-  t0: 0, lastT: 0, lastLong: 0, longN: 0, emergency: false, lowSince: 0, okSince: 0,
+  t0: 0, lastT: 0, lastLong: 0, longN: 0, emergency: false, stage: 0, stageT: 0, lowSince: 0, okSince: 0,
   mf: 0, mt: 0, f: 0, err: {}, said: {},
   safe(fn, tag){ try { return fn(); } catch (e){ if (!this.err[tag]){ this.err[tag] = 1; console.warn('GFX818 ' + tag, e); } } },
   note(t){ if (typeof ADG80 !== 'undefined' && ADG80.note) ADG80.note('818 ' + t); },
   discrete(){ return typeof ADG80 !== 'undefined' && ADG80.hint === 2 && !ADG80.touch(); },
   floorOn(){ return this.on && this.discrete() && !this.emergency; },
   warming(now){ return !this.t0 || now - this.t0 < this.WARM_MS || now - this.lastLong < this.QUIET_MS; },
-  fsFloor(L){ return Math.min(ADG80.cap(L), this.FLOOR); },
+  fl(){ return this.stage > 0 ? this.FLOOR2 : this.FLOOR; },
+  fsFloor(L){ return Math.min(ADG80.cap(L), this.fl()); },
   // поднять уровень/масштаб до пола (только «Авто»)
   enforce(){
     if (!this.floorOn() || !ADG80.ready) return false;
@@ -45,12 +47,16 @@ const GFX818 = {
     if (f < this.EM_FPS){
       this.okSince = 0;
       if (!this.lowSince) this.lowSince = now;
-      else if (!this.emergency && now - this.lowSince >= this.EM_MS){ this.emergency = true; this.note('emergency <' + this.EM_FPS + ' fps for ' + this.EM_MS / 1000 + ' s — floor off'); }
+      else if (now - this.lowSince >= this.EM_MS && this.stage < 2){
+        // ступень 1: пол 0.75 → 0.5 (уровень не ниже «Средней»); ступень 2 (ещё 10 с < 25 к/с): пол снят совсем
+        if (this.stage === 0 || now - this.stageT >= 10000){ this.stage++; this.stageT = now; this.lowSince = now; this.emergency = this.stage >= 2;
+          this.note('low fps <' + this.EM_FPS + ' for ' + this.EM_MS / 1000 + ' s — stage ' + this.stage + (this.stage >= 2 ? ' (floor off)' : ' (floor ' + this.FLOOR2 + ')')); }
+      }
     } else {
       this.lowSince = 0;
-      if (this.emergency && f >= this.OK_FPS){
+      if (this.stage > 0 && f >= this.OK_FPS){
         if (!this.okSince) this.okSince = now;
-        else if (now - this.okSince >= this.OK_MS){ this.emergency = false; this.okSince = 0; this.note('fps back — floor on'); this.enforce(); }
+        else if (now - this.okSince >= Math.min(120000, this.OK_MS * Math.pow(2, this.drops || 0))){ this.drops = (this.drops || 0) + 1; this.stage = 0; this.emergency = false; this.okSince = 0; this.note('fps back — floor ' + this.FLOOR + ' on'); this.enforce(); }
       } else this.okSince = 0;
     }
   },
@@ -58,7 +64,7 @@ const GFX818 = {
   info(){
     const now = performance.now();
     return Object.assign({ on: this.on, discrete: this.discrete(), floorOn: this.floorOn(), emergency: this.emergency, warming: this.warming(now),
-      since: Math.round(now - this.t0), longN: this.longN, f818: +this.f.toFixed(1), iw: innerWidth, ih: innerHeight, key: ADG80.KEY }, ADG80.info());
+      since: Math.round(now - this.t0), longN: this.longN, f818: +this.f.toFixed(1), stage: this.stage, ema: +(this.ema || 0).toFixed(1), iw: innerWidth, ih: innerHeight, key: ADG80.KEY }, ADG80.info());
   },
   short(){
     const e = ADG80.eff();
@@ -80,7 +86,9 @@ if (typeof ADG80 !== 'undefined' && GFX818.on){
     let skip = false;
     G.safe(() => {
       const dt = G.lastT ? now - G.lastT : 0; G.lastT = now;
-      if (dt > G.LONG_MS){ G.lastLong = now; G.longN++; this.fr = 0; this.t0 = 0; }   // кадр компиляции/подгрузки — окно замера выбрасываем
+      // одиночный длинный кадр (компиляция/подгрузка) — окно замера выбрасываем; если медленно ВСЁ время (среднее до него > 120 мс) — это не всплеск, меряем
+      if (dt > G.LONG_MS && (G.ema || 0) < 120){ G.lastLong = now; G.longN++; this.fr = 0; this.t0 = 0; }
+      if (dt > 0) G.ema = G.ema ? G.ema * 0.9 + Math.min(dt, 1000) * 0.1 : Math.min(dt, 50);
       if (G.warming(now)){ this.fr = 0; this.t0 = 0; skip = true; }
       G.meter(now);
     }, 'tick');
@@ -89,7 +97,7 @@ if (typeof ADG80 !== 'undefined' && GFX818.on){
   };
   A.min = function(L){
     const m = min0.apply(this, arguments);
-    return GFX818.floorOn() ? Math.min(this.cap(L), Math.max(m, GFX818.FLOOR)) : m;
+    return GFX818.floorOn() ? Math.min(this.cap(L), Math.max(m, GFX818.fl())) : m;
   };
   A.down = function(r, probe, now){
     const L0 = this.L, s0 = this.s;
@@ -113,6 +121,15 @@ if (typeof ADG80 !== 'undefined' && GFX818.on){
     const b = st0.apply(this, arguments), c = GFX818.canvasTag();
     return b + (c ? ' · ' + tr('буфер', 'buffer', 'bộ đệm', 'מאגר') + ' ' + c : '') + (GFX818.emergency ? ' · ' + tr('аварийно (<25 FPS)', 'emergency (<25 FPS)', 'khẩn (<25 FPS)', 'חירום (<25 FPS)') : '');
   };
+  // начало боя: подгрузка 3D-моделей и компиляция новых шейдеров — снова 10 с прогрева (иначе «просадка» старта сажает масштаб)
+  if (typeof newMatch === 'function'){
+    const nm0 = newMatch;
+    newMatch = function(o){
+      const r = nm0.apply(this, arguments);
+      GFX818.safe(() => { if (!(o && o.attract) && ADG80.ready){ GFX818.t0 = performance.now(); GFX818.lowSince = 0; GFX818.note('battle start — warm-up again'); } }, 'nm');
+      return r;
+    };
+  }
   // строка FPS в углу (#dbg): масштаб + реальный буфер
   if (typeof updateHUD === 'function'){
     const hud0 = updateHUD;

@@ -154,6 +154,7 @@ if (L818.on && typeof MENU !== 'undefined'){
       const L = SET.lang, rtl = L818.RTL.has(L);
       for (const id of ['screen', 'tut', 'clicklock']){ const el = document.getElementById(id); if (!el) continue; if (rtl) el.setAttribute('dir', 'rtl'); else if (L !== 'he') el.removeAttribute('dir'); }
       document.documentElement.setAttribute('data-l818', L);
+      const bn = document.getElementById('m818'); if (bn){ bn.classList.remove('on'); bn.innerHTML = ''; }   // надпись режима на старом языке
       if (typeof VOICE66 !== 'undefined' && VOICE66.cur && L818.mute()){ try { VOICE66.cur.stop(); } catch (e){} VOICE66.cur = null; }   // фраза на старом языке — оборвать
     }, 'apply');
     return r;
