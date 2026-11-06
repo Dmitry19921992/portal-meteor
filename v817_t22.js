@@ -12,7 +12,7 @@
 // =====================================================================
 const T22 = {
   on: (() => { try { return new URLSearchParams(location.search).get('t22') !== '0'; } catch (e){ return true; } })(),
-  err: {}, open: false, t: 0, plKeys: '', cardKey: '',
+  err: {}, open: false, lastF: 0, plKeys: '', cardKey: '',
   safe(fn, tag){ try { return fn(); } catch (e){ if (!this.err[tag]){ this.err[tag] = 1; console.warn('t22 ' + tag, e); } } },
   L(ru, en){ return tr(ru, en, en, en); },
   // ---------------------------------------------------------------- DOM
@@ -171,8 +171,8 @@ if (T22.on && typeof TOUCH !== 'undefined' && TOUCH.on){
   { const fr0 = M74.frame;
     M74.frame = function(dt){
       const r = fr0.apply(this, arguments);
-      T22.t -= dt || 0.016;
-      if (T22.t <= 0){ T22.t = 0.2; T22.safe(() => T22.frame(dt || 0.016), 'frame'); }
+      const now = performance.now();
+      if (now - T22.lastF >= 200){ T22.lastF = now; T22.safe(() => T22.frame(dt || 0.016), 'frame'); }
       return r;
     }; }
 }
