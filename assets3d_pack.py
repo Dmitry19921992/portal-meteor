@@ -2,8 +2,12 @@
 # в компактные GLB для игры: позиции uint16, нормали int8, UV uint16 (KHR_mesh_quantization; разжатие — матрицей узла),
 # текстура JPEG как есть. Выход: assets3d/<имя>_<lod>.glb + assets/catalog3d.json (встраивается в страницу при сборке).
 # python assets3d_pack.py [D:\AI\pm_assets]   — build.py потом кладёт рядом со страницей dist/assets3d/*.js (base64-обёртки)
+# v8.17 (T54): + hand-built hard-surface models (pm_assets\hardsurface\_flat, see HQ below), catalog field c='hq3d'.
+#   python assets3d_pack.py --hq   — (re)pack ONLY the HQ models and merge them into the existing catalog (TRELLIS files untouched)
 import sys, os, json, struct, math
-SRC = sys.argv[1] if len(sys.argv) > 1 else r'D:\AI\pm_assets'
+ARGS = [a for a in sys.argv[1:] if not a.startswith('--')]
+HQ_ONLY = '--hq' in sys.argv
+SRC = ARGS[0] if ARGS else r'D:\AI\pm_assets'
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, 'assets3d'); os.makedirs(OUT, exist_ok=True)
 CATS = ('props', 'buildings', 'vehicles')          # оружие пока только в каталоге pm_assets (для FPS позже)
@@ -36,7 +40,7 @@ def acc(J, BIN, i):
 
 def pad4(b, fill=b'\0'): return b + fill * ((4 - len(b) % 4) % 4)
 
-def pack(src, dst):
+def pack(src, dst, tex=None):   # tex: (bytes, mime) — replace the texture (HQ lod0m); non-JPEG textures are kept as they are
     J, BIN = read_glb(src)
     prim = J['meshes'][0]['primitives'][0]; at = prim['attributes']
     P = acc(J, BIN, at['POSITION']); N = acc(J, BIN, at['NORMAL']); T = acc(J, BIN, at['TEXCOORD_0'])
@@ -53,7 +57,9 @@ def pack(src, dst):
     idx = struct.pack('<%d%s' % (len(I), 'I' if big else 'H'), *I)
     im = J['images'][0]; iv = J['bufferViews'][im['bufferView']]
     img = BIN[iv.get('byteOffset', 0): iv.get('byteOffset', 0) + iv['byteLength']]
-    if JQ:   # перекодировать JPEG (Blender пишет q82 4:4:4) -> q72 4:2:0: текстура ~в 1.7 раза легче, на глаз в игре не отличить
+    mime = im.get('mimeType', 'image/jpeg')
+    if tex: img, mime = tex
+    elif JQ and mime == 'image/jpeg':   # перекодировать JPEG (Blender пишет q82 4:4:4) -> q72 4:2:0: текстура ~в 1.7 раза легче, на глаз в игре не отличить
         import io
         from PIL import Image
         bo = io.BytesIO(); Image.open(io.BytesIO(img)).convert('RGB').save(bo, 'JPEG', quality=JQ, subsampling=2, optimize=True)
@@ -71,7 +77,7 @@ def pack(src, dst):
          'meshes': [{'primitives': [{'attributes': {'POSITION': 0, 'NORMAL': 1, 'TEXCOORD_0': 2}, 'indices': 3, 'material': 0}]}],
          'materials': [{'pbrMetallicRoughness': {'baseColorTexture': {'index': 0}, 'metallicFactor': 0, 'roughnessFactor': 0.75}}],
          'textures': [{'source': 0, 'sampler': 0}], 'samplers': [{'magFilter': 9729, 'minFilter': 9987}],
-         'images': [{'bufferView': 4, 'mimeType': im.get('mimeType', 'image/jpeg')}],
+         'images': [{'bufferView': 4, 'mimeType': mime}],
          'accessors': [{'bufferView': 0, 'componentType': 5123, 'normalized': True, 'count': nv, 'type': 'VEC3', 'min': [0, 0, 0], 'max': [1, 1, 1]},
                        {'bufferView': 1, 'componentType': 5120, 'normalized': True, 'count': nv, 'type': 'VEC3'},
                        {'bufferView': 2, 'componentType': 5123, 'normalized': True, 'count': nv, 'type': 'VEC2'},
@@ -98,6 +104,55 @@ def place(cat, typ, name=''):
     if cat == 'vehicles': return '' if typ in FLY else 'wreck'
     return ''
 
+# v8.17 (T54): hand-built hard-surface models (Blender by code, D:\AI\pm_assets\hardsurface, see INTEGRATION_v79.md there).
+# The _flat\ set = one mesh + one texture (base with baked AO, WEBP; LOD0 1024, LOD1 512), no part nodes — what this packer reads.
+# LOD0 = LOD0 mesh + 1024 texture, LOD0m (phone) = LOD0 mesh + texture scaled to 512, LOD1 = LOD1 mesh + its 512 texture.
+# Which ones the game loads is still decided by assets/allow3d.json (tools3d/allow3d.py, rating id = field r, cat hq3d).
+# grad_mlrs is not packed: INTEGRATION_v79.md says the current grad_mlrs_*.glb is an own interpretation, not for the game, and it is unrated.
+# (name, type, placement, weight, max per meteor or 0, rating name in ratings.json / ratings_3d 'hq3d/<r>')
+HQ = [('jackal', 'raider_buggy', 'wreck', 6, 0, 'hardsurface_jackal_final'),
+      ('tank_nosorog', 'tank', 'wreck', 6, 0, 'hardsurface_tank_nosorog'),
+      ('swarm_walker', 'walker', 'wreck', 6, 0, 'hardsurface_swarm_walker_final'),
+      ('buggy', 'buggy', 'wreck', 4, 0, 'hardsurface_buggy'),
+      ('sandbag_wall', 'sandbags', 'camp', 6, 0, 'hardsurface_sandbag_wall_final'),
+      ('concrete_barrier', 'barrier', 'camp', 6, 0, 'hardsurface_concrete_barrier_final'),
+      ('supply_crate', 'supply_crate', 'camp', 6, 0, 'hardsurface_supply_crate_final'),
+      # the only allowed 'nature' model: without a cap every nature cluster (~64 x 2-5) would be this crystal; it also looks like the
+      # Singing Vein anomaly of v7.8, so keep it rare
+      ('crystal_singing_vein', 'crystal_vein', 'nature', 3, 10, 'hardsurface_crystal_singing_vein_final')]
+def hq_tex512(src):
+    import io
+    from PIL import Image
+    J, BIN = read_glb(src); im = J['images'][0]; iv = J['bufferViews'][im['bufferView']]
+    I = Image.open(io.BytesIO(BIN[iv.get('byteOffset', 0): iv.get('byteOffset', 0) + iv['byteLength']])).convert('RGB')
+    bo = io.BytesIO(); I.resize((512, 512), Image.LANCZOS).save(bo, 'WEBP', quality=82, method=6)
+    return bo.getvalue(), 'image/webp'
+def hq_dims(src):
+    J, BIN = read_glb(src); P = acc(J, BIN, J['meshes'][0]['primitives'][0]['attributes']['POSITION'])
+    return [round(max(p[i] for p in P) - min(p[i] for p in P), 3) for i in range(3)]
+def hq_items():
+    HS = os.path.join(SRC, 'hardsurface', '_flat')
+    out, t = [], {l: 0 for l in LODS}
+    for nm, ty, pl, w, mx, rid in HQ:
+        s0, s1 = os.path.join(HS, nm + '_lod0.glb'), os.path.join(HS, nm + '_lod1.glb')
+        e = {'n': 'hs_' + nm, 'c': 'hq3d', 't': ty, 'p': pl, 'w': w, 'd': hq_dims(s0), 'kb': [], 'tr': [], 'r': rid}
+        if mx: e['max'] = mx
+        for l, s, tx in (('lod0', s0, None), ('lod0m', s0, hq_tex512(s0)), ('lod1', s1, None)):
+            b, tr, nv = pack(s, os.path.join(OUT, e['n'] + '_' + l + '.glb'), tx)
+            e['kb'].append(round(b / 1024)); e['tr'].append(tr); t[l] += b
+        out.append(e)
+        print('%-34s %-6s %3d/%3d/%3d KB  %d/%d tris  %s' % (e['n'], pl, *e['kb'], e['tr'][0], e['tr'][2], e['d']))
+    return out, t
+
+CP = os.path.join(HERE, 'assets', 'catalog3d.json')
+if HQ_ONLY:
+    cat = json.load(open(CP, encoding='utf-8'))
+    hq, cat['bytes_hq'] = hq_items()
+    cat['items'] = [e for e in cat['items'] if e.get('c') != 'hq3d'] + hq
+    json.dump(cat, open(CP, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    print('HQ items', len(hq), 'total KB', {k: v // 1024 for k, v in cat['bytes_hq'].items()})
+    sys.exit(0)
+
 items, tot = [], {l: 0 for l in LODS}
 for f in sorted(os.listdir(os.path.join(SRC, '_work', 'items'))):
     r = json.load(open(os.path.join(SRC, '_work', 'items', f), encoding='utf-8'))
@@ -110,7 +165,8 @@ for f in sorted(os.listdir(os.path.join(SRC, '_work', 'items'))):
         e['kb'].append(round(b / 1024)); e['tr'].append(tr); tot[l] += b
     items.append(e)
     print('%-34s %-6s %3d/%3d/%3d KB  %d/%d tris  %s' % (r['name'], pl, *e['kb'], e['tr'][0], e['tr'][2], r['dims']))
-cat = {'v': 1, 'items': items, 'bytes': tot}
+hq, tot_hq = hq_items()   # v8.17 (T54)
+cat = {'v': 1, 'items': items + hq, 'bytes': tot, 'bytes_hq': tot_hq}
 os.makedirs(os.path.join(HERE, 'assets'), exist_ok=True)
-json.dump(cat, open(os.path.join(HERE, 'assets', 'catalog3d.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+json.dump(cat, open(CP, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 print('items', len(items), 'total KB', {k: v // 1024 for k, v in tot.items()})

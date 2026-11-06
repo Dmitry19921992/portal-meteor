@@ -78,6 +78,8 @@ JS.insert(JS.index('main.js'), 'v8x_dict.js')        # v8.15 merge: translations
 JS.insert(JS.index('main.js'), 'v815_l10n.js')       # v8.15 merge: v8.15 strings + plugs V8X into v79_lang (v7.9 dictionaries win) - after v79_lang.js
 JS.insert(JS.index('main.js'), 'v816_fixes.js')      # v8.16: T42 fixes — CAM card hides under any menu (phone sheet, tour), smaller fainter building float labels, clean screen (F9) hides 3D world markers (?fix816=0)
 JS.insert(JS.index('v815_ver.js') + 1, 'v816_ver.js')   # v8.16: version label 8.16, v8.15 to old versions
+JS.insert(JS.index('v75_assets.js') + 1, 'v817_hq.js')  # v8.17 (T54): HQ hard-surface models - per-model cap for AS75 placement, ?hq817=0 off (right after v75_assets.js)
+JS.insert(JS.index('v816_ver.js') + 1, 'v817_ver.js')   # v8.17: version label 8.17, v8.16 to old versions
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'

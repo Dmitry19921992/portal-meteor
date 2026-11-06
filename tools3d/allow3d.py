@@ -21,7 +21,7 @@ def rats(c, n):
 allow, rows = [], []
 for it in cat['items']:
     n, c = it['n'], it['c']
-    rs = [x for x in rats(c, n) if isinstance(x.get('score'), (int, float)) and x.get('score') > 0]
+    rs = [x for x in rats(c, it.get('r') or n) if isinstance(x.get('score'), (int, float)) and x.get('score') > 0]   # v8.17 (T54): HQ hard-surface items carry their rating name in r (cat hq3d)
     sc = [x['score'] for x in rs]
     flag = any((x.get('flag') or '').strip() for x in rs)
     ban = any(n in (b.get('file', '') + ' ' + b.get('id', '') + ' ' + b.get('stem', '')) for b in B)
