@@ -80,6 +80,13 @@ JS.insert(JS.index('main.js'), 'v816_fixes.js')      # v8.16: T42 fixes — CAM 
 JS.insert(JS.index('v815_ver.js') + 1, 'v816_ver.js')   # v8.16: version label 8.16, v8.15 to old versions
 JS.insert(JS.index('v75_assets.js') + 1, 'v817_hq.js')  # v8.17 (T54): HQ hard-surface models - per-model cap for AS75 placement, ?hq817=0 off (right after v75_assets.js)
 JS.insert(JS.index('v816_ver.js') + 1, 'v817_ver.js')   # v8.17: version label 8.17, v8.16 to old versions
+JS.insert(JS.index('v8x_dict.js') + 1, 'dict_fill_1107.js')   # v8.18: l10n fill 07.11 (D:\AI\pm_l10n) - 100% strings on 9 languages, only adds missing V8X keys (before v815_l10n.js)
+JS[JS.index('dict_fill_1107.js') + 1:JS.index('dict_fill_1107.js') + 1] = sorted(f for f in os.listdir(src) if f.startswith('dict_') and f.endswith('_1107.js') and f not in ('dict_fill_1107.js', 'dict_fix_1107.js'))   # v8.18: new languages dict_<code>_1107.js - drop the file here, the row in v818_lang.js L818.MORE turns it on
+JS.insert(JS.index('v815_l10n.js') + 1, 'v818_subs.js')   # v8.18: subtitles of the voice lines for languages without own voice pack (SUB818)
+JS.insert(JS.index('v818_subs.js') + 1, 'v818_lang.js')   # v8.18: L818 - new languages one line each, EN fallback (never RU), silent voice + translated subtitles, RU/EN/fan in simple main menu + pause (?lang818=0)
+JS.insert(JS.index('v811_perf.js') + 1, 'v818_gfx.js')   # v8.18: GFX818 - ADG80 warm-up 10 s / long frames, floor 0.75 on discrete GPUs, new key pm_gfx818, render size in FPS line / F3 / settings (?gfx818=0)
+JS.insert(JS.index('main.js'), 'v818_ctl.js')            # v8.18 (T67): Tab = 3 modes everywhere, no P, X = possess per mode, Alt fix, mode banner, no phone buttons on PC (?ctl818=0)
+JS.insert(JS.index('v817_ver.js') + 1, 'v818_ver.js')   # v8.18: version label 8.18, v8.17 to old versions
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
