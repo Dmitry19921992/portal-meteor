@@ -80,6 +80,7 @@ JS.insert(JS.index('main.js'), 'v816_fixes.js')      # v8.16: T42 fixes — CAM 
 JS.insert(JS.index('v815_ver.js') + 1, 'v816_ver.js')   # v8.16: version label 8.16, v8.15 to old versions
 JS.insert(JS.index('v75_assets.js') + 1, 'v817_hq.js')  # v8.17 (T54): HQ hard-surface models - per-model cap for AS75 placement, ?hq817=0 off (right after v75_assets.js)
 JS.insert(JS.index('v816_ver.js') + 1, 'v817_ver.js')   # v8.17: version label 8.17, v8.16 to old versions
+JS[-1:-1] = ['v818_novinki.js']   # v8.18 (T66): «Новинки» в игре — показ сцен + оценки в Фитбу (?nov=0) (separate line)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'

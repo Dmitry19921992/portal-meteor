@@ -1,0 +1,45 @@
+// =====================================================================
+//  pm-rate: открытый приёмник оценок «Новинок» из игры (T66, v818_novinki.js)
+//  Вставить в D:\AI\pm_rate\src\index.js (в обработчик fetch, рядом с другими маршрутами).
+//  Деплой: powershell -File D:\AI\pm_rate\deploy.ps1  (идемпотентно; делает Claude после ревью).
+//
+//  Почему так: игра публичная — ключ X-PM-Key вшивать нельзя. Эндпоинт /pub/rate:
+//   - CORS: Access-Control-Allow-Origin: * (только этот путь);
+//   - принимает ТОЛЬКО id с префиксом 'ingame/' (оценки контента ключом по-прежнему защищены);
+//   - score 1..5, flag из FLAGS ('', tech, style, other), comment ≤ 1000;
+//   - позиция (items) создаётся сама (INSERT OR IGNORE): cat 'check', kind '2d', name = id,
+//     превью — встроенный 1-color webp 64×64 (плитка с названием в UI);
+//   - оценка upsert-ится как обычно → попадает в ту же ленту «★ Новое» категории check.
+// =====================================================================
+const PUBCORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'POST, OPTIONS',
+  'access-control-allow-headers': 'content-type',
+  'access-control-max-age': '86400',
+};
+// 64×64 webp, сплошной тёмно-песочный #2a2620 (как фон карточек игры), ~78 байт
+const PUB_THUMB = 'UklGRkYAAABXRUJQVlA4IDoAAACwAwCdASpAAEAAPtFor1KoJiQioggBABoJaQDQGAZdVeIZMMAuIAD+8Buz/juvvZuJ2QlZWgcQkAAA';
+
+// --- внутри fetch-роутера, до отдачи 404:
+if (path === '/pub/rate' && req.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...HDR, ...PUBCORS } });
+if (path === '/pub/rate' && req.method === 'POST') {
+  let d; try { d = await req.json(); } catch (e) { return new Response(JSON.stringify({ error: 'bad json' }), { status: 400, headers: { ...HDR, ...PUBCORS, 'content-type': 'application/json; charset=utf-8' } }); }
+  const id = String(d.id || '');
+  if (!id.startsWith('ingame/') || id.length > 80) return new Response(JSON.stringify({ error: 'bad id' }), { status: 400, headers: { ...HDR, ...PUBCORS, 'content-type': 'application/json; charset=utf-8' } });
+  const score = parseInt(d.score, 10);
+  if (!(score >= 1 && score <= 5)) return new Response(JSON.stringify({ error: 'bad score' }), { status: 400, headers: { ...HDR, ...PUBCORS, 'content-type': 'application/json; charset=utf-8' } });
+  const flag = String(d.flag || ''); if (!FLAGS.has(flag)) return new Response(JSON.stringify({ error: 'bad flag' }), { status: 400, headers: { ...HDR, ...PUBCORS, 'content-type': 'application/json; charset=utf-8' } });
+  const comment = String(d.comment || '').slice(0, 1000);
+  const ts = Date.now();
+  const thumb = Uint8Array.from(atob(PUB_THUMB), c => c.charCodeAt(0));
+  await db.prepare("INSERT OR IGNORE INTO items (id, cat, kind, name, created, src_path, thumb) VALUES (?, 'check', '2d', ?, ?, '', ?)")
+    .bind(id, id.replace(/^ingame\//, ''), ts, thumb).run();
+  await db.prepare('INSERT INTO ratings (item_id, score, flag, comment, ts) VALUES (?, ?, ?, ?, ?) ON CONFLICT(item_id) DO UPDATE SET score = excluded.score, flag = excluded.flag, comment = excluded.comment, ts = excluded.ts')
+    .bind(id, score, flag, comment, ts).run();
+  return new Response(JSON.stringify({ ok: true, ts }), { status: 200, headers: { ...HDR, ...PUBCORS, 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+}
+// ---------------------------------------------------------------------
+//  PUB_THUMB: сгенерировать реальный webp (Pillow):
+//    python -c "from PIL import Image; import base64,io; im=Image.new('RGB',(64,64),(42,38,32));
+//    b=io.BytesIO(); im.save(b,'webp',quality=50); print(base64.b64encode(b.getvalue()).decode())"
+//  и подставить строку выше (без переносов).
