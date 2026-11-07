@@ -73,6 +73,7 @@ JS[-1:-1] = ['v813_codex.js']   # v8.13 (cloud): encyclopedia - units / building
 JS[-1:-1] = ['v814_fb.js']   # v8.14 (cloud): playtest feedback mode - recording overlay (version, match timer, clock, FPS, graphics, mode, faction, device, session), notes hotkey (Backslash / View+Start / phone button) with canvas screenshot + game state into IndexedDB, notes screen with JSON export, version label (separate line)
 JS[-1:-1] = ['v815_ui.js']   # v8.15 (cloud): interface levels Simple (phone default) / Normal / Full, clean pause + More, mode reveal, phone RTS/RTT declutter (1-line messages + log, icon bar), crisp unit markers + tap snap, 3rd-person toggle, three main lessons, aim states (separate line; ?ui815=0 = off)
 JS[-1:-1] = ['v815_ver.js']   # v8.15 merge: version label once over v7.9 (v8.15 current, v7.9 in old versions) - after all v8 modules, before v79_lang.js
+JS[-1:-1] = ['v819_t31.js']   # v8.19 (T31, Claude): vegetation collisions, Verdans attack buildings, anomalies affect Verdans - after all v8 modules (?t31=0)
 JS.insert(JS.index('main.js'), 'v79_lang.js')        # v7.9 l10n: more languages (lang/*.json) + new language selector — wraps tr/N2/menus, keep last before main.js
 JS.insert(JS.index('main.js'), 'v8x_dict.js')        # v8.15 merge: translations of the v8.0-v8.14 texts (uz/tg/zh/es/pt-BR/he/vi), keyed by English
 JS.insert(JS.index('main.js'), 'v815_l10n.js')       # v8.15 merge: v8.15 strings + plugs V8X into v79_lang (v7.9 dictionaries win) - after v79_lang.js
