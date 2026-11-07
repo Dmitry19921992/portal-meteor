@@ -319,6 +319,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
   else if (m < 9.5){ alb = vec3(0.02); em = teamE(m - 8.0) * 0.45; sp = 0.8; }
   else if (m < 15.5){ int i = int(m - 10.0 + 0.5); alb = vec3(0.0); em = teamGlow(uCP[i].w) * 1.4; }
   else { alb = vec3(0.05, 0.047, 0.045) * (0.6 + 0.8 * nz(p * 0.4)); em = vec3(1.0, 0.3, 0.05) * 1.2 * smoothstep(0.68, 0.8, nz(p * 0.7 + vec3(uTime * 0.05))); }
+  MAT169w(m, p, n, alb, em, sp);   // v8.19 T169: материалы стен штаба, металл маяков, окна (= MAT169 в v819_mat169.js, ?mat169=0)
 }
 
 // ---------------------------------------------------------------- объекты (роботы, техника, здания)
@@ -1307,6 +1308,7 @@ void traceObjects(vec3 o, vec3 d, int seg, inout float bestT, inout vec3 bN, ino
   kind = 2;
   bN = hitN;
   objMaterial(hitMid, q, bA, bE, bS);
+  MAT169o(hitMid, q, hitN, hR, hU, hF, bA, bE, bS);   // v8.19 T169: швы панелей, подтёки, грязь на постройках (= MAT169 в v819_mat169.js, ?mat169=0)
   if (gT < 5.5 && gT > 0.5 && (gT < 1.5 || gT > 2.5)){
     // контурный свет по команде: свои — холодный, враги — красный (легче различать)
     float rim = pow(1.0 - clamp(dot(bN, -d), 0.0, 1.0), 2.5);
