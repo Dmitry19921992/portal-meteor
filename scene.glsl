@@ -303,6 +303,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
       }
     }
     ter81mat(p, rn, n, slope, alb, em, sp, gBump);   // v81: скалы, ангар, трещины, лава/лёд/метан
+    DET131(p, rn, n, slope, alb, em, sp, gBump);   // v131: детализация бетона площадок и грунта вблизи (= DET131 в v819_t131.js, ?t131=0)
   }
   else if (m < 3.5){
     float t = m - 2.0;

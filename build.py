@@ -89,6 +89,7 @@ JS.insert(JS.index('v811_perf.js') + 1, 'v818_gfx.js')   # v8.18: GFX818 - ADG80
 JS.insert(JS.index('main.js'), 'v818_ctl.js')            # v8.18 (T67): Tab = 3 modes everywhere, no P, X = possess per mode, Alt fix, mode banner, no phone buttons on PC (?ctl818=0)
 JS.insert(JS.index('v817_ver.js') + 1, 'v818_ver.js')   # v8.18: version label 8.18, v8.17 to old versions
 JS[-1:-1] = ['v819_tracers.js']   # v8.19 (T92): readable rifle tracers — 0.15 m bolt, muzzle flash, impact spark, glowing smoke trail at any gfx level (?t92=0)
+JS.insert(JS.index('v818_ver.js') + 1, 'v819_t131.js')   # v8.19 (T131, Kimi): детализация поверхностей — бетон площадок + грунт вблизи (?t131=0)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
