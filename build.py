@@ -87,6 +87,7 @@ JS.insert(JS.index('v818_subs.js') + 1, 'v818_lang.js')   # v8.18: L818 - new la
 JS.insert(JS.index('v811_perf.js') + 1, 'v818_gfx.js')   # v8.18: GFX818 - ADG80 warm-up 10 s / long frames, floor 0.75 on discrete GPUs, new key pm_gfx818, render size in FPS line / F3 / settings (?gfx818=0)
 JS.insert(JS.index('main.js'), 'v818_ctl.js')            # v8.18 (T67): Tab = 3 modes everywhere, no P, X = possess per mode, Alt fix, mode banner, no phone buttons on PC (?ctl818=0)
 JS.insert(JS.index('v817_ver.js') + 1, 'v818_ver.js')   # v8.18: version label 8.18, v8.17 to old versions
+JS[JS.index('v79_radio.js') + 1:JS.index('v79_radio.js') + 1] = ['mus159_data.js', 'v819_mus159.js']   # v8.19 (T159, Claude): adaptive music - menu theme + 3-layer battle music by EDMITRY that follows the fight, settings slider (?mus159=0)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
