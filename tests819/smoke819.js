@@ -3,12 +3,12 @@
 // out_<tag>/: menu.png, battle1.png, battle2.png, result.json (errors, module info, fps)
 const fs = require('fs'), path = require('path'), { spawn, spawnSync } = require('child_process');
 const PAGE = process.argv[2], TAG = process.argv[3] || 'x', MODE = process.argv[4] || 'pc', XQ = process.argv[5] || '';
-const PHONE = MODE === 'phone', W = PHONE ? 390 : 1280, H = PHONE ? 844 : 720;
+const PHONE = MODE === 'phone' || MODE === 'phoneL', LAND = MODE === 'phoneL', W = LAND ? 844 : PHONE ? 390 : 1280, H = LAND ? 390 : PHONE ? 844 : 720;
 const D = path.join(__dirname, 'out_' + TAG); fs.mkdirSync(D, { recursive: true });
 const CDP = 9600 + ([...TAG].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 97, 3));
 const LOG = m => { const s = new Date().toISOString().slice(11, 19) + ' ' + m; console.log(s); fs.appendFileSync(path.join(D, 'log.txt'), s + '\n'); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const URL0 = 'http://127.0.0.1:8817/' + PAGE + '?as3d=local' + (XQ ? '&' + XQ : '');
+const URL0 = /^https?:/.test(PAGE) ? PAGE + (XQ ? (PAGE.includes('?') ? '&' : '?') + XQ : '') : 'http://127.0.0.1:8817/' + PAGE + '?as3d=local' + (XQ ? '&' + XQ : '');
 const R = { page: URL0, mode: MODE, errors: [], warns: [], info: {} };
 (async () => {
   const prof = path.join(__dirname, 'chrome_' + TAG + '_' + Date.now());
@@ -62,7 +62,7 @@ const R = { page: URL0, mode: MODE, errors: [], warns: [], info: {} };
     const fps = () => ev('new Promise(r=>{let n=0;const t0=performance.now();const f=()=>{n++;if(performance.now()-t0<5000)requestAnimationFrame(f);else r(+(n*1000/(performance.now()-t0)).toFixed(1))};requestAnimationFrame(f)})');
     await send('Page.enable'); await send('Runtime.enable'); await send('Log.enable');
     if (PHONE){
-      await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: true, screenOrientation: { type: 'portraitPrimary', angle: 0 } });
+      await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: true, screenOrientation: LAND ? { type: 'landscapePrimary', angle: 90 } : { type: 'portraitPrimary', angle: 0 } });
       await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
       await send('Emulation.setUserAgentOverride', { userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36' });
     } else await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
