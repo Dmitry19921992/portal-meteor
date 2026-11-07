@@ -1,0 +1,4 @@
+tests159/out*/
+tests159/chrome_*/
+tests159/dummy/
+tests159/*.png
