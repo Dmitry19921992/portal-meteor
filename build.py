@@ -87,6 +87,7 @@ JS.insert(JS.index('v818_subs.js') + 1, 'v818_lang.js')   # v8.18: L818 - new la
 JS.insert(JS.index('v811_perf.js') + 1, 'v818_gfx.js')   # v8.18: GFX818 - ADG80 warm-up 10 s / long frames, floor 0.75 on discrete GPUs, new key pm_gfx818, render size in FPS line / F3 / settings (?gfx818=0)
 JS.insert(JS.index('main.js'), 'v818_ctl.js')            # v8.18 (T67): Tab = 3 modes everywhere, no P, X = possess per mode, Alt fix, mode banner, no phone buttons on PC (?ctl818=0)
 JS.insert(JS.index('v817_ver.js') + 1, 'v818_ver.js')   # v8.18: version label 8.18, v8.17 to old versions
+JS.insert(JS.index('v818_ver.js') + 1, 'v818_prev.js')  # v8.18 (T106): test-build badge + 'new test build' notice, only in tools106/mkpreview.py builds (?prev818=0 off)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
