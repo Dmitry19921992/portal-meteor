@@ -96,6 +96,7 @@ JS[-1:-1] = ['v819_tracers.js']   # v8.19 (T92): readable rifle tracers — 0.15
 JS.insert(JS.index('v818_ver.js') + 1, 'v819_t131.js')   # v8.19 (T131, Kimi): детализация поверхностей — бетон площадок + грунт вблизи (?t131=0)
 JS.insert(JS.index('v818_ver.js') + 1, 'v819_mat169.js')   # v8.19 (T169, Claude): wall materials of HQ / buildings / ST70 meshes (?mat169=0)
 JS[JS.index('v79_radio.js') + 1:JS.index('v79_radio.js') + 1] = ['mus159_data.js', 'v819_mus159.js']   # v8.19 (T159, Claude): adaptive music - menu theme + 3-layer battle music by EDMITRY that follows the fight, settings slider (?mus159=0)
+JS.insert(JS.index('v818_ver.js') + 1, 'v818_prev.js')  # v8.18 (T106): test-build badge + 'new test build' notice, only in tools106/mkpreview.py builds (?prev818=0 off)
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
