@@ -32,7 +32,7 @@ const CMD85 = {
   L: (ru, en) => tr(ru, en, en, en),
   ph(){ return typeof TOUCH !== 'undefined' && TOUCH.on; },
   allowed(){ return !S.attract && (!this.ph() || SET.cmd85ph === true || this.force); },
-  key(){ return 'KeyP'; },
+  key(){ return 'P78none'; },   // v78 (T78): P — не режим. Раньше 'KeyP' включал «Командира»; режимы — по Tab (CTL818)
   // ---------------------------------------------------------------- отряды
   ok(g){ return !!g && g.team === 0 && g.cls !== 'builder' && groupAlive(g); },
   list(){
@@ -466,7 +466,7 @@ addEventListener('keydown', e => {
   if (code.startsWith('Digit')){ const n = +code.slice(5); if (n >= 1 && n <= 4) C.press(n - 1); return; }
   switch (code){
     case 'Tab': C.cycle(e.shiftKey ? -1 : 1); return;
-    case 'KeyP': C.exit(); return;
+    // v78 (T78): 'KeyP' больше не выходит из «Командира» — P у ниндзя это «АВТО», режимы по Tab
     case 'KeyF': case 'Enter': C.dive(); return;
     case 'Space': C.pan = [0, 0, 0]; return;
     case 'KeyH': if (C.g){ setOrder(C.g, 'hold', C.anchor(C.g), { by: 'player', lock: 300 }); feed(C.L('Стоять: удерживать позицию', 'Hold position'), '#9cf'); } return;
