@@ -15,8 +15,8 @@ d.text((pad, 10), 'T159 · Музыка меню и боя — EDMITRY (своя
 d.text((pad, 56), 'v8.18 → тест v8.19 · ветка task/T159-adaptive-music · выключить: ?mus159=0 или ползунок «Музыка игры» = 0', font=F(21), fill=(190, 200, 220))
 y = 96; cw = (W - pad * 3) // 2
 A = shot('menu_off.png', cw); B = shot('menu_pc.png', cw)
-d.text((pad, y), 'ДО (v8.18): меню и бой — тишина, музыка только радио (выкл.)', font=F(22, True), fill=(255, 150, 120))
-d.text((pad * 2 + cw, y), 'ПОСЛЕ: в меню тема «New Horizon», в бою «Side By Side»', font=F(22, True), fill=(120, 230, 160))
+d.text((pad, y), 'ДО (v8.18): меню и бой без музыки', font=F(22, True), fill=(255, 150, 120))
+d.text((pad * 2 + cw, y), 'ПОСЛЕ: меню «New Horizon», бой «Side By Side»', font=F(22, True), fill=(120, 230, 160))
 card.paste(A, (pad, y + 34)); card.paste(B, (pad * 2 + cw, y + 34))
 y += 34 + max(A.height, B.height) + 16
 # timeline chart: heat + 3 layers + measured music level

@@ -78,6 +78,12 @@ const R = { page: PAGE, q: QY, tag: TAG, errors: [], warns: [], steps: [] };
     // 7) radio on -> music silent
     await ev("(()=>{ if (typeof R79==='undefined') return 0; R79.on=true; R79.st='play'; return 1})()"); await sleep(2500); await st('radio_on');
     await ev("(()=>{ if (typeof R79==='undefined') return 0; R79.on=false; R79.st='off'; return 1})()"); await sleep(2500); await st('radio_off');
+    // 7b) hidden tab (rAF stops in a real hidden tab): visibilitychange alone must silence the bus
+    R.hidden = await ev(`(async()=>{ const sl=ms=>new Promise(r=>setTimeout(r,ms)); const raf=window.requestAnimationFrame; window.requestAnimationFrame=()=>0;
+      Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'hidden'}); document.dispatchEvent(new Event('visibilitychange')); await sl(1200);
+      const g=MUS159.out.gain.value; Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'visible'}); document.dispatchEvent(new Event('visibilitychange'));
+      window.requestAnimationFrame=raf; requestAnimationFrame(frame); await sl(1500); return {hiddenGain:+g.toFixed(4), backGain:+MUS159.out.gain.value.toFixed(3)}; })()`);
+    LOG('hidden ' + JSON.stringify(R.hidden));
     // 8) volume 0 -> off
     await ev("(()=>{SET.mus159vol=0; return 1})()"); await sleep(2000); await st('vol0'); await ev("(()=>{SET.mus159vol=0.5; return 1})()");
     // 9) back to main menu -> menu theme again

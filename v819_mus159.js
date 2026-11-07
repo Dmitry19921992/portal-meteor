@@ -19,7 +19,7 @@ const MUS159 = {
   ctx: null, out: null, lpf: null, layers: [], t0: 0, bar: 2, started: false, decoding: false, decErr: false,
   menuEl: null, menuSrc: null, menuG: null, menuUrl: '', menuV: 0,
   heat: 0, level: 0, want: 0, holdT: 0, calmT: 0, restT: 0, resting: false, lastBar: -1, gainV: -1, duckV: 1,
-  an: null, anBuf: null, recDest: null, err: 0, credT: 0, credTxt: '', credSig: '', ui: null, mode: '', lt: 0,
+  an: null, anBuf: null, recDest: null, err: 0, credT: 0, credTxt: '', credSig: '', credDone: false, ui: null, mode: '', lt: 0,
   safe(f, w){ try { return f(); } catch (e){ if (this.err++ < 4) console.warn('mus159 ' + w, e); } },
   vol(){ const v = +SET.mus159vol; return isFinite(v) ? clamp(v, 0, 1) : 0.5; },
   tut(){ return (typeof TUT !== 'undefined' && TUT.on) || (typeof T72 !== 'undefined' && T72.on); },
@@ -54,6 +54,7 @@ const MUS159 = {
         return { s, g, v: 0 };
       });
       this.t0 = t0; this.started = true; this.lastBar = -1;
+      D.l1 = D.l2 = D.l3 = null;   // decoded: drop the base64 strings (~1 MB), only the menu theme is still needed
     }, e => { this.decoding = false; this.decErr = true; if (this.err++ < 4) console.warn('mus159 decode', e); });
   },
   // menu theme: <audio> + blob url, looped, through the same bus
@@ -120,7 +121,8 @@ const MUS159 = {
       this.holdT -= dt;
       if (bi !== this.lastBar){   // bar line: commit level changes (up at once, down only after the hold)
         this.lastBar = bi;
-        if (want > this.level || (want < this.level && this.holdT <= 0)){ this.level = want; this.holdT = this.bar * 4; }
+        if (want >= this.level){ if (want > this.level) this.level = want; this.holdT = this.bar * 4; }   // the hold restarts while the level is still wanted
+        else if (this.holdT <= 0){ this.level = want; this.holdT = this.bar * 4; }
       }
       const tut = this.tut(), on = !menu && !S.over && !this.resting;
       const tg = [on ? 1 : 0, on && this.level >= 1 ? 0.95 : 0, on && this.level >= 2 && !tut ? 0.9 : 0];
@@ -192,8 +194,25 @@ if (!MUS159.off){
   { const p0 = AU.process; AU.process = function(ev){ const r = p0.apply(this, arguments); MUS159.safe(() => MUS159.feel(ev), 'feel'); return r; }; }
   { const uf0 = uixFrame; uixFrame = function(dt){ uf0(dt); const n = performance.now(), d = Math.min((n - (MUS159.lt || n)) / 1000, 0.5); MUS159.lt = n; MUS159.safe(() => MUS159.step(d), 'step'); MUS159.safe(() => MUS159.render(), 'ui'); }; }
   { const nm0 = newMatch; newMatch = function(o){ const r = nm0.apply(this, arguments); MUS159.heat = 0; MUS159.level = 0; MUS159.calmT = 0; MUS159.resting = false; MUS159.credDone = false; return r; }; }
-  // the audio context needs a gesture: the first tap / key in the main menu starts the menu theme
-  for (const ev of ['pointerdown', 'touchend', 'keydown']) addEventListener(ev, () => { if (!AU.ctx) MUS159.safe(() => AU.init(), 'init'); }, { capture: true, passive: true, once: true });
+  // the audio context needs a gesture: the first tap / key creates it and plays the menu <audio> inside the gesture (iOS needs that
+  // transient activation on play() itself; outside the menu it is a play+pause unlock, later play() calls from the frame then pass)
+  { let done = false;
+    const go = () => { if (done) return; done = true; MUS159.safe(() => {
+      if (!AU.ctx) AU.init();
+      if (!AU.ctx || SET.mus159vol <= 0) return;
+      const a = MUS159.menuElem(); if (!a) return;
+      const p = a.play();
+      if (!S.attract){ if (p && p.then) p.then(() => { if (!S.attract) a.pause(); }, () => {}); else a.pause(); }
+      else if (p && p.catch) p.catch(() => {});
+    }, 'unlock'); };
+    for (const ev of ['pointerdown', 'touchend', 'keydown']) addEventListener(ev, go, { capture: true, passive: true });
+  }
+  // hidden tab: rAF (and so step) stops — silence the bus right here, step restores the level when the tab is back
+  document.addEventListener('visibilitychange', () => MUS159.safe(() => {
+    const M = MUS159; if (!M.out || !M.ctx) return;
+    if (document.visibilityState === 'hidden'){ M.gainV = 0; M.out.gain.cancelScheduledValues(M.ctx.currentTime); M.out.gain.setTargetAtTime(0, M.ctx.currentTime, 0.05); if (M.menuEl && !M.menuEl.paused) M.menuEl.pause(); }
+    else M.gainV = -1;
+  }, 'vis'));
   // settings rows: PC (after the radio rows / «voice of hints»), phone (☰ → Settings → Sound)
   MUS159.setRows = function(phone){
     const v = Math.round(this.vol() * 100), lab = tr('Музыка игры (EDMITRY): меню и бой', 'Game music (EDMITRY): menu and battle', 'Nhạc game (EDMITRY): menu và trận', 'מוזיקת המשחק (EDMITRY)');
