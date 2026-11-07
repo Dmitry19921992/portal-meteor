@@ -6,9 +6,9 @@
 const fs = require('fs'), path = require('path'), { spawn } = require('child_process');
 const MODE = process.argv[2] || 'pc', PAGE0 = process.argv[3] || 't168_test.html';
 const PAGE = PAGE0 + '?as3d=local' + (MODE === 'off' ? '&gnd168=0' : '');
-const PHONE = MODE === 'phone', W = PHONE ? 844 : 1920, H = PHONE ? 390 : 1080;
+const PHONE = MODE === 'phone', W = PHONE ? 844 : 1280, H = PHONE ? 390 : 720;
 const D = path.join(__dirname, 'out_' + MODE); fs.mkdirSync(D, { recursive: true });
-const CDP = 9870 + ['pc', 'phone', 'off'].indexOf(MODE);
+const CDP = 9890 + ['pc', 'phone', 'off'].indexOf(MODE);
 const LOG = m => { const s = new Date().toISOString().slice(11, 19) + ' ' + m; console.log(s); fs.appendFileSync(path.join(D, 'log.txt'), s + '\n'); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const R = { mode: MODE, page: PAGE, errors: [], warns: [], views: {} };

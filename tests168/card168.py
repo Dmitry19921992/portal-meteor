@@ -17,7 +17,7 @@ A = crop(rf'{T}\{src}\{v}_off.png'); B = crop(rf'{T}\{src}\{v}_on.png')
 W, H = A.size; pad = 54
 out = Image.new('RGB', (W, H * 2 + pad * 2 + 16), (14, 18, 30)); d = ImageDraw.Draw(out)
 fs = 30 if W > 900 else 18
-d.text((14, 8), 'ДО — v8.18: постройка «висит» над грунтом, тени нет', font=F(fs, True), fill=(255, 150, 120))
+d.text((14, 8), 'ДО — v8.18: модель «висит» над грунтом, тени нет', font=F(fs, True), fill=(255, 150, 120))
 out.paste(A, (0, pad))
 d.text((14, H + pad + 14), 'ПОСЛЕ — T168: тень по рельефу + тёмное основание (?gnd168=0 — выкл.)', font=F(fs, True), fill=(120, 230, 160))
 out.paste(B, (0, H + pad * 2 + 16))

@@ -53,7 +53,7 @@ out vec4 frag;
 void main(){
   vec2 q = abs(vQ.xy);
   float r = vQ.z > 0.0 ? pow(pow(q.x, 4.0) + pow(q.y, 4.0), 0.25) : length(q);
-  float a = (1.0 - smoothstep(0.62, 1.5, r)) * abs(vQ.z);
+  float a = (1.0 - smoothstep(0.72, 1.62, r)) * abs(vQ.z);
   a *= 1.0 - 0.25 * smoothstep(0.0, 0.5, 1.0 - r);        // под самой моделью чуть светлее — не «чёрная дыра», если видно сквозь щели
   a *= 1.0 - smoothstep(uFar * 0.55, uFar, vZ);              // вдали тень плавно тает (без скачка на границе дальности)
   frag = vec4(vec3(1.0 - a), 1.0);
@@ -231,8 +231,8 @@ GND168.draw = function(c){
         if (h > 0.45 || h < -1.5){ rej.h++; continue; }          // турели на крыше, дроны, утопленные шахты — не трогаем
         aoList.push([it, f, s]);
         if (decals.length < this.cap){
-          const e = this.verts(key, P, it.X, it.Z, f.ex * s * 1.08, f.ez * s * 1.08, budget, f.H * s, mv ? this.mcache : this.cache);
-          if (e) decals.push([e, 0.72, mv ? sub(it.pos, P) : null]);
+          const e = this.verts(key, P, it.X, it.Z, f.ex * s * 1.15, f.ez * s * 1.15, budget, f.H * s, mv ? this.mcache : this.cache);
+          if (e) decals.push([e, 0.85, mv ? sub(it.pos, P) : null]);
         }
       }
     }
@@ -250,7 +250,7 @@ GND168.draw = function(c){
         const s = it.s || 1, ex = max(0.4, it.e.d[0] * s * 0.5), ez = max(0.4, it.e.d[2] * s * 0.5);
         const key = 'a' + it.key + '|' + it.pos.map(x => Math.round(x * 4)).join(',');
         const e = this.verts(key, it.pos, it.X, it.Z, ex * 1.1, ez * 1.1, budget, it.e.d[1] * s);
-        if (e){ decals.push([e, it.e.p === 'nature' ? -0.5 : 0.5, null]); nas++; }
+        if (e){ decals.push([e, it.e.p === 'nature' ? -0.55 : 0.6, null]); nas++; }
       }
     }
     this.stats.as = nas;
@@ -269,7 +269,7 @@ GND168.draw = function(c){
         GND168_UM.set([it.X[0] * s, it.X[1] * s, it.X[2] * s, 0, it.Y[0] * s, it.Y[1] * s, it.Y[2] * s, 0, it.Z[0] * s, it.Z[1] * s, it.Z[2] * s, 0,
                        it.pos[0] - c.pos[0], it.pos[1] - c.pos[1], it.pos[2] - c.pos[2], 1]);
         gl.uniformMatrix4fv(this.aU.uM, false, GND168_UM);
-        gl.uniform2f(this.aU.uH, ft.y0 + clamp(ft.H * 0.22, 0.7, 2.6), 0.5);
+        gl.uniform2f(this.aU.uH, ft.y0 + clamp(ft.H * 0.25, 0.8, 2.8), 0.58);
         gl.bindVertexArray(M.vao);
         gl.drawElements(gl.TRIANGLES, M.n, M.type, 0);
       }
