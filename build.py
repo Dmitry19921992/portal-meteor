@@ -86,6 +86,7 @@ JS.insert(JS.index('v815_l10n.js') + 1, 'v818_subs.js')   # v8.18: subtitles of 
 JS.insert(JS.index('v818_subs.js') + 1, 'v818_lang.js')   # v8.18: L818 - new languages one line each, EN fallback (never RU), silent voice + translated subtitles, RU/EN/fan in simple main menu + pause (?lang818=0)
 JS.insert(JS.index('v811_perf.js') + 1, 'v818_gfx.js')   # v8.18: GFX818 - ADG80 warm-up 10 s / long frames, floor 0.75 on discrete GPUs, new key pm_gfx818, render size in FPS line / F3 / settings (?gfx818=0)
 JS.insert(JS.index('main.js'), 'v818_ctl.js')            # v8.18 (T67): Tab = 3 modes everywhere, no P, X = possess per mode, Alt fix, mode banner, no phone buttons on PC (?ctl818=0)
+JS.insert(JS.index('main.js'), 'v78_bugs.js')            # T78: pointer-lock pause fix, P=ninja only, tutorial-finish pauses battle (?t78=0)
 JS.insert(JS.index('v817_ver.js') + 1, 'v818_ver.js')   # v8.18: version label 8.18, v8.17 to old versions
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
