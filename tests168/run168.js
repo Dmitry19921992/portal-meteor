@@ -31,7 +31,22 @@ const R = { mode: MODE, page: PAGE, errors: [], warns: [], views: {} };
     };
     const send = (method, params = {}) => new Promise((r, j) => { const n = ++id; P.set(n, { r, j, t: setTimeout(() => { P.delete(n); j(Error('timeout ' + method)); }, 300000) }); ws.send(JSON.stringify({ id: n, method, params })); });
     const ev = async e => { const r = await send('Runtime.evaluate', { expression: e, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw Error(JSON.stringify(r.exceptionDetails).slice(0, 500)); return r.result && r.result.value; };
-    const shot = async name => { const r = await send('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync(path.join(D, name + '.png'), Buffer.from(r.data, 'base64')); LOG('shot ' + name); };
+    // headless: captureScreenshot on the main connection sometimes never answers; a fresh CDP connection per shot works
+    const wsUrl = t.find(x => x.type === 'page').webSocketDebuggerUrl;
+    const shot = async name => {
+      for (let k = 0; k < 4; k++){
+        const w2 = new WebSocket(wsUrl);
+        try {
+          await new Promise((r, j) => { w2.onopen = r; w2.onerror = j; });
+          const data = await new Promise((r, j) => { const tm = setTimeout(() => j(Error('timeout shot')), 30000);
+            w2.onmessage = e => { const m = JSON.parse(e.data); if (m.id === 1){ clearTimeout(tm); m.error ? j(Error(JSON.stringify(m.error))) : r(m.result.data); } };
+            w2.send(JSON.stringify({ id: 1, method: 'Page.captureScreenshot', params: { format: 'png' } })); });
+          fs.writeFileSync(path.join(D, name + '.png'), Buffer.from(data, 'base64')); LOG('shot ' + name + (k ? ' (try ' + (k + 1) + ')' : '')); return;
+        } catch (e){ LOG('shot ' + name + ' retry: ' + e.message); await sleep(1500); }
+        finally { try { w2.close(); } catch {} }
+      }
+      R.errors.push('shot failed ' + name);
+    };
     await send('Page.enable'); await send('Runtime.enable'); await send('Log.enable');
     if (PHONE){
       await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: true, screenOrientation: { type: 'landscapePrimary', angle: 90 } });
