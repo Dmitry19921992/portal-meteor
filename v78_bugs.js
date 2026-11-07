@@ -45,3 +45,24 @@ if (BUG78.on && BUG78.q('lock')){
       #t78lock.on{opacity:1;transform:translateX(-50%) translateY(0)}`;
     document.head.appendChild(st); })();
 }
+if (BUG78.on && BUG78.q('fin') && typeof T72 !== 'undefined'){
+  // ---------------------------------------------------------------- фикс 3
+  // «Обучение пройдено!» вылезало посреди боя поверх живого боя (игрока чуть не убило
+  // под затемнённым экраном). Финальный экран теперь сам ставит бой на паузу и снимает её.
+  const fin0 = T72.finish;
+  T72.finish = function(){
+    const was = this.fin;
+    fin0.apply(this, arguments);
+    BUG78.safe(() => {
+      if (was || !this.fin) return;
+      if (S.attract || S.over) return;   // не в бою — пауза не нужна
+      S.paused = true; AU.duck(true); this.t78pause = true;
+    }, 'fin');
+  };
+  const act0 = T72.act;
+  T72.act = function(k){
+    if (this.t78pause){ this.t78pause = false; if (k === 'again' || k === 'nextk'){ S.paused = false; AU.duck(false); } }
+    // 'play' -> MENU.newGame() (newMatch сбрасывает паузу), 'menu'/'exit' -> MENU.toMenu() сбрасывает
+    return act0.apply(this, arguments);
+  };
+}
