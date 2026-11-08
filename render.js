@@ -530,7 +530,7 @@ function renderScene(dt, now, V){
   gl.uniform1i(U.uNP, np);
   gl.uniform4fv(U.uLP, LP); gl.uniform4fv(U.uLC, LC); gl.uniform1i(U.uNL, nl);
   gl.uniform4fv(U.uCP, CPU);
-  gl.uniform2f(U.uHQ, HQ_ALIVE[0] ? 1 : 0, HQ_ALIVE[1] ? 1 : 0);
+  gl.uniform2f(U.uHQ, HQ_ALIVE[0] ? (typeof T243 !== 'undefined' && T243.hqMesh(0) ? 2 : 1) : 0, HQ_ALIVE[1] ? (typeof T243 !== 'undefined' && T243.hqMesh(1) ? 2 : 1) : 0);   // v8.19 T243: 2 = корпус штаба рисуется мешом Tripo
   gl.uniform1i(U.uZero, 0);
   gl.uniform1i(U.uNV, veinUniforms()); gl.uniform4fv(U.uVein, VEIN_U);
   if (!GP_U) GP_U = new Float32Array(gpNormals().flat());
