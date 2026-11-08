@@ -33,8 +33,8 @@ window.STAND243 = Object.assign(window.STAND243 || {}, {
     tryf('baz', () => { const L = inf(0, 'rocket', false, 0, 2); return L.find(u => (u.id & 1) === 1) || L[0]; });
     tryf('med', () => { const L = inf(0, 'medic', false, 4, 2); return L.find(u => (u.id & 1) === 1) || L[0]; });
     tryf('rif', () => { const L = inf(0, 'assault', false, 8, 2); return L.find(u => u.leader) || L[0]; });
-    tryf('dra', () => { const d = fix(makeDrone(add(surfacePoint(at(12, -10)), mul(up0, 3)), 0)); return d; });
-    tryf('drr', () => { const d = fix(makeDrone(add(surfacePoint(at(15, -10)), mul(up0, 3)), 0)); return d; });
+    tryf('dra', () => { const a = fix(makeDrone(add(surfacePoint(at(12, -10)), mul(up0, 3)), 0)), b = fix(makeDrone(add(surfacePoint(at(15, -10)), mul(up0, 3)), 0));
+      E.drr = (b.id & 1) ? b : a; return (b.id & 1) ? a : b; });   // even id = drone_attack, odd = drone_recon
     tryf('apc', () => fix(V2.make(surfacePoint(at(22, -14), 1.5), 0, 'raider')));
     if (!this.hooked){
       const u0 = window.update, self = this;
@@ -53,7 +53,7 @@ window.STAND243 = Object.assign(window.STAND243 || {}, {
       if (!v.fix) continue;
       v.alive = true; v.pos = v.fix.pos.slice(); v.vel = [0, 0, 0]; v.fwd = v.fix.fwd.slice(); v.aim = v.fix.aim.slice(); v.up = v.fix.up;
       v.target = null; v.goal = null; v.order = 'idle'; v.cd = 99; v.mgCd = 99; v.hp = v.maxhp; v.flash = 0;
-      if (v.cls === 'bld'){ v.built = 1; v.done = true; v.queue = []; }
+      if (v.cls === 'bld'){ v.built = 1; v.done = true; v.queue = []; v.known0 = true; }   // known0: Swarm building not hidden by RTS fog
       if (v.seen) { v.seen[0] = 5; v.seen[1] = 5; }
     }
   },

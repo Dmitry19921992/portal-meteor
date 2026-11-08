@@ -37,8 +37,8 @@ const T243 = {
   // a: 0 статичный, 1 двуногий (как T120), 3 турель (верх выше g[0]·H поворачивается вокруг точки g[1], g[2]), 4 парит (дрон)
   // d0 / d0l — до какой дистанции LOD0 (ПК / телефон), дальше LOD1
   DEF: {
-    hq:      { a: 0, d0: 170, d0l: 100 },
-    ehq:     { a: 0, d0: 170, d0l: 100 },
+    hq:      { a: 0, d0: 170, d0l: 100, alb: 1.15 },
+    ehq:     { a: 0, d0: 170, d0l: 100, alb: 1.5 },
     outpost: { a: 0, d0: 110, d0l: 60 }, factory: { a: 0, d0: 130, d0l: 70 }, hub: { a: 0, d0: 120, d0l: 65 },
     airdock: { a: 0, d0: 120, d0l: 65 }, extr: { a: 0, d0: 70, d0l: 40 },
     tur:     { a: 3, d0: 60, d0l: 35, g: [0.42, 0, 0] },
@@ -210,7 +210,7 @@ T243.one = function(U, m, D, kind, org, eu, fw, sc, s, flash, yaw, c){
   } else if (D.a === 3){
     gl.uniform4f(U.uA, 3, 0, 0, 0); gl.uniform4f(U.uG, D.g[0] * m.h, D.g[1], D.g[2], m.h); gl.uniform4f(U.uAmp, 0, 0, 0, yaw);
   } else { gl.uniform4f(U.uA, 0, 0, 0, 0); gl.uniform4f(U.uAmp, 0, 0, 0, 0); }
-  gl.uniform4f(U.uP, 0.25 + 0.75 * s.sh, flash || 0, m.h || 1.8, this.ALB);
+  gl.uniform4f(U.uP, 0.25 + 0.75 * s.sh, flash || 0, m.h || 1.8, D.alb || this.ALB);
   gl.uniform3fv(U.uQo, m.qo); gl.uniform3fv(U.uQs, m.qs);
   gl.bindVertexArray(m.vao); gl.bindTexture(gl.TEXTURE_2D, m.tex);
   gl.drawElements(gl.TRIANGLES, m.n, m.type, 0);
@@ -261,7 +261,9 @@ T243.draw = function(c, nl){
       if (D.a === 1){ s.yaw += (yaw - s.yaw) * 0.25; yaw = s.yaw; }
       count(kind, o.t243lod, this.one(U, m, D, kind, org, eu, fw, e.cls === 'inf' && e.leader ? 1.06 : 1, s, e.flash, yaw, c));
     }
-    // штабы (часть рельефа; ставим на площадку: 1.6 м над радиусом метеорита)
+    // штабы (часть рельефа; ставим на площадку: 1.6 м над радиусом метеорита). Фонари штаба (render.js gatherLights) стоят
+    //   внутри корпуса меша — без точечных источников, иначе стены пересвечены
+    if (this.hqR[0] || this.hqR[1]) gl.uniform1i(U.uNL, 0);
     for (let t = 0; t < 2; t++){
       if (!this.hqR[t]) continue;
       const kind = this.hqKind(t), up = BASES[t].slice(), P = mul(up, RM + 1.6);
