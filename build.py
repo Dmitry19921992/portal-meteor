@@ -101,6 +101,8 @@ JS.insert(JS.index('v818_ver.js') + 1, 'v818_prev.js')  # v8.18 (T106): test-bui
 JS.insert(JS.index('v818_ver.js') + 1, 'v819_ver.js')   # v8.19 TEST (test/v819-0811): version label 8.19 only, version list unchanged (?ver819=0)
 JS.insert(JS.index('main.js'), 'v819_tanks.js')         # v8.19 (T94): Tripo tank meshes (Bulldog 6 wheels + turret, Spider legs) instead of sdTank + tank silhouettes for strategist/commander + minimap (?t94=0)
 JS.insert(JS.index('main.js'), 'v819_units120.js')      # v8.19 (T120): Tripo unit meshes for the Consortium (assault/jetpack, elite MG, rocket/flamer, medic/engineer, scout/saboteur, builder/robodog, Grad + Hammer = mechs) instead of SDF (?t120=0)
+JS.insert(JS.index('main.js'), 'v819_t243.js')          # v8.19 (T243): Tripo wave 2 - buildings (turret/AA/outpost/factory/hub/airdock/extractor), both HQs (scene.glsl uHQ=2), Swarm infantry, sniper, drones, Jackal - visuals only, after T120 (?t243=0)
+JS.insert(JS.index('v819_ver.js') + 1, 'v820_ver.js')   # v8.20 release (T243 Tripo wave 2): version label 8.20, v8.19 to old versions
 JS.insert(0, 'v820_quest.js')                            # v8.20 (VR): Quest / Oculus Browser boot preset - FIRST module, before any flag is read (lite, no Tripo / extra passes, no 15 MB dictionaries) (?quest=0 off)
 JS.insert(JS.index('main.js'), 'combat_core.js')        # v8.20 (T141): shared pure-JS combat layer (CombatCore global, profile 'main') - used by the VR client below
 JS.insert(JS.index('main.js'), 'v820_xr.js')            # v8.20 (VR in the main game): WebXR for Quest - XR frame loop, stereo ray-march, ninja katana on the controller, gaze aim, aimRay(); LAST before main.js (outermost wrappers); ?vr=0 off
