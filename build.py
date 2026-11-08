@@ -91,6 +91,7 @@ JS.insert(JS.index('v818_lang.js') + 1, 'dict_fix_1107.js')   # v8.18: reviewed 
 JS[JS.index('dict_fix_1107.js') + 1:JS.index('dict_fix_1107.js') + 1] = ['dict_v819_new_1108.js', 'dict_fix_opus_1108.js']   # v8.19 l10n (T181, 08.11): 8 new v8.19 strings x 51 languages (adds only missing keys), then Opus 5.5 second review of the 44 new languages (OVERWRITES V8X_DICT values) - last of the l10n files
 JS.insert(JS.index('v811_perf.js') + 1, 'v818_gfx.js')   # v8.18: GFX818 - ADG80 warm-up 10 s / long frames, floor 0.75 on discrete GPUs, new key pm_gfx818, render size in FPS line / F3 / settings (?gfx818=0)
 JS.insert(JS.index('main.js'), 'v818_ctl.js')            # v8.18 (T67): Tab = 3 modes everywhere, no P, X = possess per mode, Alt fix, mode banner, no phone buttons on PC (?ctl818=0)
+JS.insert(JS.index('main.js'), 'v78_bugs.js')            # T78: pointer-lock pause fix, P=ninja only, tutorial-finish pauses battle (?t78=0)
 JS.insert(JS.index('main.js'), 'v819_gnd168.js')         # v8.19 (T168): models sit on the ground - terrain-conforming contact shadows (ST70 buildings + AS75 models, old flat AS75 disc off) + base darkening of ST70 meshes (?gnd168=0)
 JS.insert(JS.index('v817_ver.js') + 1, 'v818_ver.js')   # v8.18: version label 8.18, v8.17 to old versions
 JS[-1:-1] = ['v819_tracers.js']   # v8.19 (T92): readable rifle tracers — 0.15 m bolt, muzzle flash, impact spark, glowing smoke trail at any gfx level (?t92=0)
