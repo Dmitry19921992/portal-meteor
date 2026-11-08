@@ -1,0 +1,7 @@
+13:18:31 boot… Compiling shaders… 65 s
+13:23:21 boot done in 354 s
+13:23:21 mem boot {"heapMB":47,"totalMB":62,"q820":{"quest":true,"on":true,"added":["lite","t120","t94","t243","mus159","hq817","t131","gnd168","mat169"],"dictsSkipped":true,"shaderLow":true,"capped":0.292},"lite":true,"as75":false,"t120":false,"canvas":[535,561],"scale":0.292,"url":"?lite=1&t120=0&t94=0&t243=0&mus159=0&hq817=0&t131=0&gnd168=0&mat169=0"}
+13:23:24 menu {"xr8":{"on":true,"sup":false,"btn":false,"bar":false},"navxr":true,"menu":"main","touch":false,"rafShim":true}
+13:23:40 battle {"mode":"fps","me":"inf","t":8.8,"fps":15.5,"btn":"none"}
+13:23:57 fps {"t":16.283200000000377,"mode":"fps","me":"inf","fps":14.7} -> {"t":20.2821000000002,"fps":16.5,"aim":"camera"} game time advanced 4.00
+13:24:30 mem battle {"heapMB":46,"totalMB":77,"q820":{"quest":true,"on":true,"added":["lite","t120","t94","t243","mus159","hq817","t131","gnd168","mat169"],"dictsSkipped":true,"shaderLow":true,"capped":0.292},"lite":true,"as75":false,"t120":false,"canvas":[469,492],"scale":0.256,"url":"?lite=1&t120=0&t94=0&t243=0&mus159=0&hq817=0&t131=0&gnd168=0&mat169=0"}

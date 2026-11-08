@@ -1,0 +1,21 @@
+13:35:42 boot done in 0 s
+13:35:44 PASS xr_supported 
+13:35:44 PASS menu_buttons 
+13:35:53 PASS battle_button "◉ Enter VR"
+13:35:54 PASS session_active 
+13:35:57 layer {"fb":"null(canvas)","fbw":1280,"fbh":720,"canvas":[1280,720],"views":[[0,0,1280,720],[640,0,0,720]],"st":{"frames":178,"gameFrames":178,"cuts":0,"gashes":0,"scratches":0,"blocks":0,"swings":0,"dashes":0,"teles":0,"snaps":0,"eyeW":320,"eyeH":180,"ms":16.73,"starts":1,"ends":0,"fallback":0},"q":1,"side":4,"err":{}}
+13:35:59 PASS xr_frames_and_game_draws {"frames":20,"game":277,"fallback":0,"eye":[320,180],"k":0.25}
+13:36:02 PASS ninja_possessed {"cls":"inf","role":"ninja","ninja":true}
+13:36:10 PASS aimRay_headset 
+13:36:16 PASS gaze_drives_unit {"ang":0.014815140246051347}
+13:36:18 xrshot {"w":1280,"h":720,"mean":104.7464916087963}
+13:36:18 PASS vr_image_not_black 104.7464916087963
+13:36:18 PASS katana_hits_enemy {"hp0":129,"hp1":-49.640000000000015,"alive":false,"cuts":1,"gashes":0,"scratches":0,"swings":1,"last":{"kind":"cut","part":"head","sp":25.48,"r":"hit","cls":"inf"},"bladeLocal":[0.0913452071300973,0.7495332945656493,-0.7439461583864923],"pieces":1}
+13:36:19 PASS dash_trigger {"dashes":1,"moved":6.57,"snaps":1,"turn":30}
+13:36:19 PASS snap_turn_30 {"dashes":1,"moved":6.57,"snaps":1,"turn":30}
+13:36:20 PASS teleport_left_aim {"aim":{"ok":true,"d":10.3},"started":true,"teles":1,"moved":10.3,"fadeSeen":0}
+13:36:22 PASS vr_menu {"a":{"open":true,"paused":true,"items":["resume","switch","arena","exit"]},"b":{"open":false,"paused":false}}
+13:36:25 FAIL soldier_gaze_fire {"me":true,"shots":0,"ang":0.01,"third":false}
+13:36:29 PASS exit_restores {"active":false,"menu":"pause","q":1,"lite":true,"loop":true,"dT":1516}
+13:36:36 PASS second_session {"game":1677,"starts":2,"loop":true,"active":false}
+13:36:36 RESULT {"xr_supported":true,"menu_buttons":true,"battle_button":true,"session_active":true,"xr_frames_and_game_draws":true,"ninja_possessed":true,"aimRay_headset":true,"gaze_drives_unit":true,"vr_image_not_black":true,"katana_hits_enemy":true,"dash_trigger":true,"snap_turn_30":true,"teleport_left_aim":true,"vr_menu":true,"soldier_gaze_fire":false,"exit_restores":true,"second_session":true} passed 16/17
