@@ -329,7 +329,7 @@ T120.draw = function(c, nl){
       gl.uniformMatrix4fv(U.uM, false, T120_UM);
       // поворот корпуса за прицелом (в системе корпуса, плавно, до ±55°)
       let yaw = 0;
-      if (D.amp[3] > 0 && e.aim){ const lx = dot(e.aim, xs), lz = dot(e.aim, fw); yaw = clamp(Math.atan2(lx, lz), -0.96, 0.96) * D.amp[3]; }
+      if (D.amp[3] > 0 && e.aim){ const lx = dot(e.aim, xs), lz = dot(e.aim, fw); yaw = clamp(-Math.atan2(lx, lz), -0.96, 0.96) * D.amp[3]; }   // T243: знак — rot(xz, a) в шейдере поворачивает +Z к −X при a > 0 (проверено турелью T243)
       s.yaw += (yaw - s.yaw) * 0.25;
       gl.uniform4f(U.uA, D.a, s.ph, s.mv, s.air);
       if (D.a === 2) gl.uniform4f(U.uG, D.q[0], D.q[1], D.q[2], D.q[3]); else gl.uniform4f(U.uG, D.g[0], D.g[1], D.g[2], D.g[3]);

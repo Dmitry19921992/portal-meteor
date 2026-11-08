@@ -50,6 +50,7 @@ const vec3 EMER = vec3(0.10, 1.0, 0.40);   // v6.2: изумрудное све�
 float gDist = 0.0;
 float gBump = 1.0;
 float gDetail = 1.0;
+float gHQm = 0.0;   // v8.19 T243: 1 — прямой луч по рельефу (штаб с uHQ = 2 рисуется мешом Tripo: здесь только площадка, мачта, маяк)
 
 // ---------------------------------------------------------------- утилиты
 float nz(vec3 p){ return texture(uNoise, p).r; }
@@ -125,12 +126,12 @@ vec2 map(vec3 p){
     float top = max(oct - 4.2, abs(b.y - 11.0) - 1.2);
     vec3 bq = vec3(abs(b.x), b.y, abs(b.z)) - vec3(8.6, 2.6, 8.6);
     float pyl = sdBox(bq, vec3(1.3, 2.4, 1.3));
-    float hq = min(min(plat, blk), min(top, pyl));
+    float hq = hqAlive > 1.5 && gHQm > 0.5 ? plat : min(min(plat, blk), min(top, pyl));   // v8.19 T243: корпус штаба — меш
     float win = max(oct - 7.56, abs(b.y - 7.0) - 0.35);
     float mast = sdCapsule(b, vec3(0.0, 12.0, 0.0), vec3(0.0, 36.0, 0.0), 0.45);
     float bc = length(b - vec3(0.0, 37.2, 0.0)) - 1.6;
     if (hq < res.x) res = vec2(hq, 2.0 + team);
-    if (win < res.x) res = vec2(win, 8.0 + team);
+    if (win < res.x && !(hqAlive > 1.5 && gHQm > 0.5)) res = vec2(win, 8.0 + team);
     if (mast < res.x) res = vec2(mast, 7.0);
     if (bc < res.x) res = vec2(bc, 4.0 + team);
   }
@@ -1703,6 +1704,7 @@ void main(){
       float s = sqrt(hb);
       float t = max(-B - s, 0.0);
       float t1 = min(-B + s, tExit);
+      gHQm = b == 0 ? 1.0 : 0.0;   // v8.19 T243
       for (int i = ZERO; i < 220; i++){
         if (t > t1) break;
         vec3 p = o + d * t;
@@ -1710,6 +1712,7 @@ void main(){
         if (r.x < 0.003 * (1.0 + t * 0.03) || i == (b == 0 || uC811.y == 0 ? 219 : uC811.z)){ bestT = t; mat = r.y; kind = 1; break; }   // v811: предел шагов сквозь портал (на «Низкой» меньше)
         t += r.x * (r.x > 3.0 ? 0.85 : 0.62);
       }
+      gHQm = 0.0;   // v8.19 T243: нормали, тени, AO — с полным штабом
     }
     traceObjects(o, d, b, bestT, bN, bA, bE, bS, bAO, kind);
     traceParticles(o, d, bestT, bE, kind);
