@@ -29,7 +29,9 @@ const T94 = {
   lite(){ return (typeof LITE73 !== 'undefined' && LITE73.on) || (typeof TOUCH !== 'undefined' && TOUCH.on); },
   is(e){ return !!e && e.cls === 'tank' && !e.vk && e.alive; },   // боевой танк (не «Шакал»/«Град»/«Молот» v6)
   kind(e){ return e.team ? 'spider' : 'bulldog'; },
-  base(){ return (typeof AS75 !== 'undefined' && AS75.base) || 'assets3d/'; },
+  // свои модели — из папки assets3d/ рядом со страницей (превью test.*.pages.dev, боевой сайт, localhost, file://);
+  //   на других хостах (itch) — как окружение AS75 (CDN боевого сайта)
+  base(){ const h = location.hostname; return (location.protocol === 'file:' || /[?&]as3d=local/.test(location.search) || /(^|\.)pages\.dev$|^(127\.0\.0\.1|localhost)$/.test(h)) ? 'assets3d/' : ((typeof AS75 !== 'undefined' && AS75.base) || 'assets3d/'); },
   enable(v){ this.user = v !== false; return this.ok(); },
 };
 
