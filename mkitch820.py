@@ -36,6 +36,12 @@ def oldver(vid, s, label, text=None):   # = mkitch816.oldver (text= : already lo
 a = live.index('<!-- T134 PWA'); b = live.index('</script>', a) + len('</script>')
 PWA = live[a:b]; VP = 'viewport-fit=cover">\n'
 assert live[:a].endswith(VP)
+# iOS home-screen install (Dmitry 08.11: icon on iPhone like on Android) - icons/icon-180.png is 180x180 RGB without alpha
+AT = '<link rel="apple-touch-icon" href="icons/icon-180.png">'
+assert PWA.count(AT) == 1 and 'apple-mobile-web-app-capable' not in live[:300000]
+PWA = PWA.replace(AT, '<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">\n'
+                  '<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="mobile-web-app-capable" content="yes">\n'
+                  '<meta name="apple-mobile-web-app-title" content="Portal Meteor">\n<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">')
 def pwa(t):
     i = t.index(VP) + len(VP); assert i < 200000
     return t[:i] + PWA + '\n' + t[i:]

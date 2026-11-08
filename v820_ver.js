@@ -5,7 +5,7 @@
 try {
   const BD820 = (typeof BUILD_DATE === 'string' && BUILD_DATE) || '08.11.2026';
   if (new URLSearchParams(location.search).get('ver820') !== '0'){
-    if (typeof FX87 !== 'undefined'){ FX87.VER = '8.20'; FX87.VERD = '8.20 · ' + BD820; const f820 = FX87.ver; FX87.ver = h => { h = f820 ? f820(h) : h; return typeof h === 'string' ? h.replace(/v8\.19 · /g, 'v8.20 · ' + BD820 + ' · ') : h; }; }
+    if (typeof FX87 !== 'undefined'){ FX87.VER = '8.20'; FX87.VERD = '8.20 · ' + BD820; const f820 = FX87.ver; FX87.ver = h => { h = f820 ? f820(h) : h; if (typeof h !== 'string') return h; const bd = BD820.replace(/[.]/g, '\\.'); return h.replace(new RegExp('v8\\.19 · [^·<]{0,24}' + bd + ' · ', 'g'), 'v8.20 · ' + BD820 + ' · ').replace(/v8\.19 · /g, 'v8.20 · ' + BD820 + ' · '); }; }   // "v8.19 · build <date> · " -> "v8.20 · <date> · " (no double date)
     if (typeof STATS75 !== 'undefined') STATS75.ver = '8.20';
     if (typeof UI815 !== 'undefined' && typeof UI815.main === 'function'){   // simple menu header: 'v8.19' (v819_ver.js) -> 'v8.20 · <date time>'
       const m820 = UI815.main;
