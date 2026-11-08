@@ -2,7 +2,7 @@
 import { waitBoot } from './wait_boot.mjs';
 export default async ({ ev, J, shot, sleep, log }) => {
   if (!await waitBoot(ev, sleep, log)) return;
-  const mem = async (tag) => { const m = await J(`({ heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null, totalMB: performance.memory ? Math.round(performance.memory.totalJSHeapSize / 1048576) : null, q820: typeof Q820 !== 'undefined' ? Q820 : null, lite: LITE73.on, as75: SET.as75, t120: typeof T120 !== 'undefined' ? !!T120.on : null, canvas: [canvas.width, canvas.height], url: location.search })`); log('mem ' + tag, JSON.stringify(m)); return m; };
+  const mem = async (tag) => { const m = await J(`({ heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null, totalMB: performance.memory ? Math.round(performance.memory.totalJSHeapSize / 1048576) : null, q820: typeof Q820 !== 'undefined' ? Q820 : null, lite: LITE73.on, as75: SET.as75, t120: typeof T120 !== 'undefined' ? !!T120.on : null, canvas: [canvas.width, canvas.height], scale: S.scale, url: location.search })`); log('mem ' + tag, JSON.stringify(m)); return m; };
   await mem('boot');
   await sleep(3000);
   log('menu', JSON.stringify(await J(`({ xr8: typeof XR8 !== 'undefined' ? { on: XR8.on, sup: XR8.supported, btn: !!document.getElementById('xr8b'), bar: !!document.getElementById('xr8m') } : null, navxr: !!navigator.xr, menu: MENU.cur, touch: TOUCH.on, rafShim: window.requestAnimationFrame !== XR8.rafO })`)));

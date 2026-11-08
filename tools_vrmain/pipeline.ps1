@@ -17,7 +17,7 @@ foreach ($s in $Scen) {
   if ($s -eq 'phone') { L 'run phone'; & powershell -ExecutionPolicy Bypass -File "$w\tools_vrmain\run.ps1" -Scen flat -Url 'http://127.0.0.1:8820/' -Out "tests_vrmain\phone_$Tag" -Size 390x844 -Mobile *>> $lg }
   if ($s -eq 'pcoff') { L 'run pc ?vr=0'; & powershell -ExecutionPolicy Bypass -File "$w\tools_vrmain\run.ps1" -Scen flat -Url 'http://127.0.0.1:8820/?vr=0' -Out "tests_vrmain\pcoff_$Tag" -Size 1280x720 *>> $lg }
   if ($s -eq 'xrq') { L 'run xr with the Quest UA (Q820 preset)'; & powershell -ExecutionPolicy Bypass -File "$w\tools_vrmain\run.ps1" -Scen xr -Url 'http://127.0.0.1:8819/' -Out "tests_vrmain\xrq_$Tag" -Quest *>> $lg }
-  if ($s -eq 'quest') { L 'run quest UA (2D page on Quest)'; & powershell -ExecutionPolicy Bypass -File "$w\tools_vrmain\run.ps1" -Scen flat -Url 'http://127.0.0.1:8820/' -Out "tests_vrmain\quest_$Tag" -Size 1280x720 -Quest *>> $lg }
+  if ($s -eq 'quest') { L 'run quest UA (2D page on Quest)'; & powershell -ExecutionPolicy Bypass -File "$w\tools_vrmain\run.ps1" -Scen flat -Url 'http://127.0.0.1:8820/' -Out "tests_vrmain\quest_$Tag" -Size 1832x1920 -Quest *>> $lg }
   if ($s -eq 'pcmem') { L 'run pc ?quest=0 memory baseline'; & powershell -ExecutionPolicy Bypass -File "$w\tools_vrmain\run.ps1" -Scen flat -Url 'http://127.0.0.1:8820/' -Out "tests_vrmain\pc_$Tag" -Size 1280x720 *>> $lg }
   L "done $s"
 }

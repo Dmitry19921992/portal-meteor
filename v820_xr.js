@@ -683,6 +683,11 @@ function aimRay(){
 }
 // Quest boot preset (Q820, first module): no environment 3D props on a headset browser (saved settings are loaded in boot -> after MENU.load)
 if (typeof Q820 !== 'undefined' && Q820.on && typeof MENU !== 'undefined'){ const ld0 = MENU.load; MENU.load = function(){ const r = ld0.apply(this, arguments); try { SET.as75 = false; } catch (e){} return r; }; }
+// Quest 2D page: the canvas at most ~0.3 MPix (a phone renders ~0.15), whatever the adaptive graphics or a big Quest window asks for
+if (typeof Q820 !== 'undefined' && Q820.on && typeof resize === 'function'){
+  const rz0 = resize;
+  resize = function(){ try { const cap = Math.sqrt(300000 / max(1, innerWidth * innerHeight)); if (!S.fixedRes && S.scale > cap){ S.scale = +cap.toFixed(3); Q820.capped = S.scale; } } catch (e){} return rz0.apply(this, arguments); };
+}
 XR8.rafO = window.requestAnimationFrame.bind(window);
 XR8.init();
 if (XR8.on){
