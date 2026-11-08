@@ -507,13 +507,13 @@ function renderScene(dt, now, V){
 
   // --- сцена
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-  gl.viewport(V ? V.x : 0, 0, fboW, fboH);
+  gl.viewport(V ? V.x : 0, V && V.y || 0, fboW, fboH);   // v8.20 XR8: V.y — eye offset (asymmetric VR frustum)
   gl.useProgram(SCENE.p);
   const U = SCENE.U;
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texObj); gl.uniform1i(U.uObj, 0);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texPar); gl.uniform1i(U.uPar, 1);
   gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_3D, texNoise); gl.uniform1i(U.uNoise, 2);
-  gl.uniform2f(U.uRes, V ? V.rx : fboW, fboH);   // v7.5: правая половина сплитскрина — сдвиг центра через uRes.x
+  gl.uniform2f(U.uRes, V ? V.rx : fboW, V && V.ry || fboH);   // v7.5: правая половина сплитскрина — сдвиг центра через uRes.x (v8.20 XR8: и uRes.y)
   gl.uniform3fv(U.uCam, c.pos);
   gl.uniformMatrix3fv(U.uRot, false, [...c.right, ...c.up, ...mul(c.fwd, -1)]);
   gl.uniform1f(U.uR, S.R);
@@ -522,7 +522,7 @@ function renderScene(dt, now, V){
   gl.uniform1f(U.uGrid, S.grid);
   gl.uniform1f(U.uSelf, S.self);
   gl.uniform1f(U.uTiles, S.tiles);
-  gl.uniform1f(U.uFov, c.fov);
+  gl.uniform1f(U.uFov, V && V.fovS || c.fov);   // v8.20 XR8: shader-side fov for an off-centre eye
   gl.uniform1f(U.uTime, now / 1000 % 1000);
   gl.uniform1i(U.uQ, S.quality);
   gl.uniform1i(U.uMe, meIdx);
@@ -554,19 +554,20 @@ function renderScene(dt, now, V){
   if (vmMesh) WPN69.draw(c, nl, eyeSh, vm3, wk, me);       // v6.9: оружие в руках — поверх всего
   gl.disable(gl.DEPTH_TEST);
 }
-function renderPost(now, split){
+function renderPost(now, split, T){   // v8.20 XR8: T = { fb, w, h } — post into an own target instead of the canvas
   const fpsLike = S.mode === 'fps' || S.attract;
   // --- пост
   const [nw, nt] = split ? [0, 0] : gatherDistortion();   // v7.5: в сплитскрине искажения (экранные координаты одной камеры) выключены
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  const pw = T ? T.w : canvas.width, ph = T ? T.h : canvas.height;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, T ? T.fb : null);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, fboTex);
   gl.generateMipmap(gl.TEXTURE_2D);
-  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.viewport(0, 0, pw, ph);
   gl.useProgram(POST.p);
   const P = POST.U;
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, fboTex); gl.uniform1i(P.uTex, 0);
-  gl.uniform2f(P.uRes, canvas.width, canvas.height);
+  gl.uniform2f(P.uRes, pw, ph);
   gl.uniform1f(P.uTime, now / 1000 % 1000);
   gl.uniform1f(P.uExpo, expo * (fpsLike ? 0.85 : 0.72) * SET.bright);
   gl.uniform1f(P.uFlash, min(1, S.flashT * 1.6));
