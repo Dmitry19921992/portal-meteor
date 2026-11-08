@@ -322,7 +322,9 @@ T120.draw = function(c, nl){
       if (S.time - s.shAt > 0.4){ s.shAt = S.time + Math.random() * 0.1; s.sh = shadowJS(add(o.origin, mul(e.up, Math.min(1.4, m.h * 0.6)))); }
       // модель: X = Up × F (правая тройка), Y = нормаль поверхности, Z = вперёд; ступни на o.origin (грунт)
       const eu = e.kdUp || e.up, fw = tangent(e.fwd, eu), xs = cross(eu, fw), sc = e.cls === 'inf' && e.leader ? 1.06 : 1;
-      const ox = o.origin[0] - c.pos[0], oy = o.origin[1] - c.pos[1], oz = o.origin[2] - c.pos[2];
+      // строитель в игре парит (ECO.HOVER) — робопёс стоит лапами на грунте под ним
+      const org = e.cls === 'builder' && typeof surfacePoint === 'function' ? surfacePoint(norm(e.pos)) : o.origin;
+      const ox = org[0] - c.pos[0], oy = org[1] - c.pos[1], oz = org[2] - c.pos[2];
       T120_UM.set([xs[0] * sc, xs[1] * sc, xs[2] * sc, 0, eu[0] * sc, eu[1] * sc, eu[2] * sc, 0, fw[0] * sc, fw[1] * sc, fw[2] * sc, 0, ox, oy, oz, 1]);
       gl.uniformMatrix4fv(U.uM, false, T120_UM);
       // поворот корпуса за прицелом (в системе корпуса, плавно, до ±55°)
