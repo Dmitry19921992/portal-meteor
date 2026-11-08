@@ -3,7 +3,7 @@
 //  Dmitry 08.11: 8.19 in Quest Browser loaded for a while, froze, then the whole browser crashed (≈30 MB page + Tripo models).
 //  On a headset browser (UA "OculusBrowser" / "Quest" / "Pico") — before anything else reads the address line:
 //   * lite=1 (phone preset: render scale 0.55, quality 0, 1 bounce, fewer particles / lights, half the bots, 30 fps cap outside VR),
-//     t120=0 / t94=0 (no Tripo unit and tank meshes — SDF bodies), mus159=0 (no decoded 3-layer music), hq817=0, t131=0,
+//     t120=0 / t94=0 / t243=0 (no Tripo unit, tank and building meshes — SDF bodies), mus159=0 (no decoded 3-layer music), hq817=0, t131=0,
 //     gnd168=0, mat169=0 (no extra surface / material / contact-shadow passes), as75 3D props off (SET.as75 = false, see below);
 //   * the 44 extra language dictionaries (l106/dicts.js, 15 MB of text) are not downloaded (RU / EN / VI are built in).
 //   * the scene shader is compiled with quality fixed at low (const uQ = 0: medium / high branches are dropped) — ?qsh=0 keeps it dynamic.
@@ -18,7 +18,7 @@ const Q820 = (() => {
     if (sp.get('quest') === '1') q.quest = true;
     if (sp.get('quest') === '0' || !q.quest) return q;
     q.on = true;
-    const want = { lite: '1', t120: '0', t94: '0', mus159: '0', hq817: '0', t131: '0', gnd168: '0', mat169: '0' };
+    const want = { lite: '1', t120: '0', t94: '0', t243: '0', mus159: '0', hq817: '0', t131: '0', gnd168: '0', mat169: '0' };
     for (const k in want) if (!sp.has(k)){ sp.set(k, want[k]); q.added.push(k); }
     if (q.added.length) history.replaceState(history.state, '', location.pathname + '?' + sp.toString() + location.hash);
     // the ray-marching shader with the quality switch fixed at «low»: the compiler drops the medium / high branches (shorter compile, fewer registers)
