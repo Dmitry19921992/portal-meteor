@@ -61,7 +61,7 @@ export default async ({ ev, J, shot, save, sleep, log }) => {
   ok('snap_turn_30', ds.snaps === 1 && Math.abs(ds.turn - 30) < 3, ds);
   // aimed far teleport with the left controller
   const tp = await J(`(async () => { const L = XRDEV.controllers.left, P = XRDEV.position, N = NJ.N(S.me); N.teleCd = 0; const p0 = S.me.pos.slice(), t0 = XR8.stats.teles;
-    L.position.set(P.x - 0.2, P.y - 0.3, P.z - 0.3); L.quaternion.set(Math.sin(-0.2), 0, 0, Math.cos(-0.2)); await __fr(2);
+    L.position.set(P.x - 0.2, P.y - 0.3, P.z - 0.3); L.quaternion.set(Math.sin(-0.06), 0, 0, Math.cos(-0.06)); await __fr(2);
     L.updateButtonValue('trigger', 1); await __fr(4); const aim = XR8.tele ? { ok: XR8.tele.ok, d: +dist(XR8.tele.pos, S.me.pos).toFixed(1) } : null;
     L.updateButtonValue('trigger', 0); await __fr(3); const started = !!N.tp;
     for (let i = 0; i < 40 && N.tp; i++) await __fr(5);

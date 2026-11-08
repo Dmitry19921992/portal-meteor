@@ -31,6 +31,7 @@ try {
   if (mobile) { await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 }); await send('Emulation.setUserAgentOverride', { userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36' }); }
   else if (quest) { await send('Emulation.setTouchEmulationEnabled', { enabled: false }); await send('Emulation.setUserAgentOverride', { userAgent: 'Mozilla/5.0 (X11; Linux x86_64; Quest 2) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/35.2.0.4.58 SamsungBrowser/4.0 Chrome/128.0.6613.187 VR Safari/537.36' }); }
   else { await send('Emulation.setTouchEmulationEnabled', { enabled: false }); await send('Emulation.setUserAgentOverride', { userAgent: '' }); }
+  try { const o = new URL(url).origin; await send('Storage.clearDataForOrigin', { origin: o, storageTypes: 'local_storage,indexeddb,service_workers,cache_storage' }); } catch (e) {}   // every run starts like a new player (no saved lite / settings)
   await send('Page.navigate', { url }); await sleep(3000);
   const mod = await import(pathToFileURL(scen).href + '?' + Date.now());
   await mod.default({ ev, J, shot, save, sleep, out, log, send });
