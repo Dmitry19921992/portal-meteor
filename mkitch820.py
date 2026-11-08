@@ -69,9 +69,11 @@ assert len(tp) == 60, len(tp)
 for f in tp: shutil.copy2(PREV + f, CF + 'assets3d/' + f)
 for f in os.listdir(LIVE + 'assets3d'): assert md5(LIVE + 'assets3d/' + f) == md5(CF + 'assets3d/' + f)
 shutil.copy2(LIVE + '_headers', CF + '_headers')
-commit = git('rev-parse', '--short', 'HEAD'); now = datetime.datetime.now()
-info = {'id': f'main · {commit} · {now:%d.%m %H:%M}', 'ver': '8.20', 'branch': 'main', 'commit': commit, 'subject': git('log', '-1', '--format=%s'),
-        'built': now.isoformat(timespec='seconds'), 'src': SRC, 'sha256': hashlib.sha256(rb).hexdigest(), 'bytes': len(rb)}
+commit = git('rev-parse', '--short', 'HEAD')
+BD = re.search(r'const BUILD_DATE = "([^"]+)"', src).group(1)   # = the date/time shown in the game (Dmitry: version always with date and time)
+now = datetime.datetime.strptime(BD, '%d.%m.%Y %H:%M')
+info = {'id': f'main · {commit} · 8.20 · {BD}', 'ver': '8.20', 'label': f'8.20 · {BD}', 'branch': 'main', 'commit': commit, 'subject': git('log', '-1', '--format=%s'),
+        'built': now.isoformat(timespec='seconds'), 'tz': 'UTC+7 (PC time)', 'src': SRC, 'sha256': hashlib.sha256(rb).hexdigest(), 'bytes': len(rb)}
 w(CF + 'version.json', json.dumps(info, ensure_ascii=False, indent=1))
 for r_, _, fs in os.walk(CF):
     for f in fs: assert os.path.getsize(os.path.join(r_, f)) < LIMIT, 'Cloudflare Pages: file over 25 MiB: ' + f
