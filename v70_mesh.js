@@ -324,7 +324,7 @@ ST70.build = function(){
   try {
     const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
     const p = gl.createProgram();
-    gl.attachShader(p, sh(gl.VERTEX_SHADER, ST70_VS)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, ST70_FS)); gl.linkProgram(p);
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, ST70_VS)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, typeof MAT169 !== 'undefined' ? MAT169.st70src(ST70_FS) : ST70_FS)); gl.linkProgram(p);   // v8.19 T169: материалы мешей (v819_mat169.js, ?mat169=0)
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
     const U = {};
     for (const n of ['uM', 'uV', 'uPr', 'uCamW', 'uPaint', 'uGlow', 'uP', 'uLP', 'uLC', 'uNL', 'uLamp', 'uStorm', 'uMode', 'uNoise']) U[n] = gl.getUniformLocation(p, n);

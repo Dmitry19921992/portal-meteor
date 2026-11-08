@@ -50,6 +50,7 @@ const vec3 EMER = vec3(0.10, 1.0, 0.40);   // v6.2: изумрудное све�
 float gDist = 0.0;
 float gBump = 1.0;
 float gDetail = 1.0;
+float gHQm = 0.0;   // v8.19 T243: 1 — прямой луч по рельефу (штаб с uHQ = 2 рисуется мешом Tripo: здесь только площадка, мачта, маяк)
 
 // ---------------------------------------------------------------- утилиты
 float nz(vec3 p){ return texture(uNoise, p).r; }
@@ -125,12 +126,12 @@ vec2 map(vec3 p){
     float top = max(oct - 4.2, abs(b.y - 11.0) - 1.2);
     vec3 bq = vec3(abs(b.x), b.y, abs(b.z)) - vec3(8.6, 2.6, 8.6);
     float pyl = sdBox(bq, vec3(1.3, 2.4, 1.3));
-    float hq = min(min(plat, blk), min(top, pyl));
+    float hq = hqAlive > 1.5 && gHQm > 0.5 ? plat : min(min(plat, blk), min(top, pyl));   // v8.19 T243: корпус штаба — меш
     float win = max(oct - 7.56, abs(b.y - 7.0) - 0.35);
     float mast = sdCapsule(b, vec3(0.0, 12.0, 0.0), vec3(0.0, 36.0, 0.0), 0.45);
     float bc = length(b - vec3(0.0, 37.2, 0.0)) - 1.6;
     if (hq < res.x) res = vec2(hq, 2.0 + team);
-    if (win < res.x) res = vec2(win, 8.0 + team);
+    if (win < res.x && !(hqAlive > 1.5 && gHQm > 0.5)) res = vec2(win, 8.0 + team);
     if (mast < res.x) res = vec2(mast, 7.0);
     if (bc < res.x) res = vec2(bc, 4.0 + team);
   }
@@ -303,6 +304,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
       }
     }
     ter81mat(p, rn, n, slope, alb, em, sp, gBump);   // v81: скалы, ангар, трещины, лава/лёд/метан
+    DET131(p, rn, n, slope, alb, em, sp, gBump);   // v131: детализация бетона площадок и грунта вблизи (= DET131 в v819_t131.js, ?t131=0)
   }
   else if (m < 3.5){
     float t = m - 2.0;
@@ -319,6 +321,7 @@ void material(float m, vec3 p, vec3 n, out vec3 alb, out vec3 em, out float sp){
   else if (m < 9.5){ alb = vec3(0.02); em = teamE(m - 8.0) * 0.45; sp = 0.8; }
   else if (m < 15.5){ int i = int(m - 10.0 + 0.5); alb = vec3(0.0); em = teamGlow(uCP[i].w) * 1.4; }
   else { alb = vec3(0.05, 0.047, 0.045) * (0.6 + 0.8 * nz(p * 0.4)); em = vec3(1.0, 0.3, 0.05) * 1.2 * smoothstep(0.68, 0.8, nz(p * 0.7 + vec3(uTime * 0.05))); }
+  MAT169w(m, p, n, alb, em, sp);   // v8.19 T169: материалы стен штаба, металл маяков, окна (= MAT169 в v819_mat169.js, ?mat169=0)
 }
 
 // ---------------------------------------------------------------- объекты (роботы, техника, здания)
@@ -1307,6 +1310,7 @@ void traceObjects(vec3 o, vec3 d, int seg, inout float bestT, inout vec3 bN, ino
   kind = 2;
   bN = hitN;
   objMaterial(hitMid, q, bA, bE, bS);
+  MAT169o(hitMid, q, hitN, hR, hU, hF, bA, bE, bS);   // v8.19 T169: швы панелей, подтёки, грязь на постройках (= MAT169 в v819_mat169.js, ?mat169=0)
   if (gT < 5.5 && gT > 0.5 && (gT < 1.5 || gT > 2.5)){
     // контурный свет по команде: свои — холодный, враги — красный (легче различать)
     float rim = pow(1.0 - clamp(dot(bN, -d), 0.0, 1.0), 2.5);
@@ -1700,6 +1704,7 @@ void main(){
       float s = sqrt(hb);
       float t = max(-B - s, 0.0);
       float t1 = min(-B + s, tExit);
+      gHQm = b == 0 ? 1.0 : 0.0;   // v8.19 T243
       for (int i = ZERO; i < 220; i++){
         if (t > t1) break;
         vec3 p = o + d * t;
@@ -1707,6 +1712,7 @@ void main(){
         if (r.x < 0.003 * (1.0 + t * 0.03) || i == (b == 0 || uC811.y == 0 ? 219 : uC811.z)){ bestT = t; mat = r.y; kind = 1; break; }   // v811: предел шагов сквозь портал (на «Низкой» меньше)
         t += r.x * (r.x > 3.0 ? 0.85 : 0.62);
       }
+      gHQm = 0.0;   // v8.19 T243: нормали, тени, AO — с полным штабом
     }
     traceObjects(o, d, b, bestT, bN, bA, bE, bS, bAO, kind);
     traceParticles(o, d, bestT, bE, kind);

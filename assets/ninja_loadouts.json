@@ -1,0 +1,39 @@
+{
+  "version": "0.1.0",
+  "note": "T141 этап 4.3: один список оружия/спецударов ниндзя для VR и основной игры. Числа ударов — в combat_core.js (cfg.weapons/cost). Ввод: VR — жесты, ПК — клавиши, телефон — тап/свайп по существующим кнопкам (новых кнопок в центре экрана нет). Решение 26.10; асимметрия турелей (c) — уточнить у Дмитрия кнопкой в ntfy.",
+  "factions": {
+    "consortium": {
+      "name": ["Консорциум", "Consortium"],
+      "skin": "D:/AI/pm_3d/parts/ninja/skin2",
+      "melee": ["katana"],
+      "ranged": ["uzi", "uzi"],
+      "switch": ["katana", "uzi"],
+      "specials": ["shield", "rockets", "turret"],
+      "eliteSkin": "D:/AI/pm_3d/parts/ninja/skin6"
+    },
+    "swarm": {
+      "name": ["Рой", "Swarm"],
+      "skin": "D:/AI/pm_3d/parts/ninja/skin1",
+      "melee": ["wrist"],
+      "ranged": ["needles"],
+      "switch": ["wrist", "uzi"],
+      "specials": ["drones", "tunnel_dive", "walker"],
+      "eliteSkin": "D:/AI/pm_3d/parts/ninja/skin6"
+    }
+  },
+  "specials": {
+    "shield":      { "charge": "shield",    "cost": 0,  "dur": 4 },
+    "rockets":     { "auto": true, "cfg": "rockets", "note": "из-за спины сама, раз в N с, 3 неточные самонаводящиеся; не по своим" },
+    "turret":      { "cost": "turret", "dur": 7, "cd": 3, "aim": "aimRay", "note": "турель за плечами, стреляет по тому, на кого смотришь" },
+    "walker":      { "cost": "walker", "life": 25, "hp": 120, "cd": 4, "aim": "aimRay", "needsBase": true, "note": "капсула стартует с площадки у штаба; без базы — нет" },
+    "drones":      { "cost": "cross", "dur": 8 },
+    "tunnel_dive": { "cost": "slam", "note": "нырок через туннель (Рой)" },
+    "needles":     { "cost": 0, "note": "игольчатые пусковые (Рой), стрелковый режим" }
+  },
+  "input": {
+    "switch":  { "vr": "жест: обе руки к поясу / клик стика", "pc": "Q", "phone": "свайп по кнопке атаки" },
+    "special": { "vr": "жест + курок (иконка жеста над руками 3–4 с)", "pc": "E / F", "phone": "существующая кнопка спецудара" },
+    "turret":  { "vr": "клик правого стика", "pc": "через кнопку спецудара", "phone": "через кнопку спецудара" },
+    "walker":  { "vr": "клик левого стика",  "pc": "через кнопку спецудара", "phone": "через кнопку спецудара" }
+  }
+}

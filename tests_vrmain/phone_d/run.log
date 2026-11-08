@@ -1,0 +1,6 @@
+13:34:58 boot done in 0 s
+13:34:58 mem boot {"heapMB":134,"totalMB":166,"q820":{"quest":false,"on":false,"added":[],"dictsSkipped":false,"shaderLow":false},"lite":true,"as75":true,"t120":true,"canvas":[254,549],"scale":0.65,"url":""}
+13:35:01 menu {"xr8":{"on":true,"sup":false,"btn":false,"bar":false},"navxr":true,"menu":"main","touch":true,"rafShim":true}
+13:35:14 battle {"mode":"fps","me":"inf","t":11.6,"fps":30,"btn":"none"}
+13:35:26 fps {"t":19.98640000000004,"mode":"fps","me":"inf","fps":29.5} -> {"t":23.905500000000043,"fps":27.5,"aim":"camera"} game time advanced 3.92
+13:35:26 mem battle {"heapMB":132,"totalMB":171,"q820":{"quest":false,"on":false,"added":[],"dictsSkipped":false,"shaderLow":false},"lite":true,"as75":true,"t120":true,"canvas":[254,549],"scale":0.65,"url":""}
