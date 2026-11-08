@@ -33,7 +33,7 @@ function dronePlayerStep(d, dt){
   d.cd -= dt;
   if (inp.fire && d.cd <= 0){
     const m = add(d.pos, mul(d.aim, 1.0));
-    fire(m, d.aim, d.team, 0.02, 8, 130, d, 'b');
+    gunShootSimple(d, m, d.aim, 0.012, WEAPONS.drone);   // v6: мгновенная пуля
     d.cd = 0.16; S.recoil = 0.5;
     emit('shot', { pos: d.pos, team: d.team, src: d, me: true });
   }
@@ -55,6 +55,8 @@ function update(rdt){
   const fps = S.mode === 'fps' && !S.attract;
   const ctrl = ctrlEntity();
   if (!S.attract) kitStep(dt, rdt);
+  gunStep(dt, rdt);   // v6: трассеры, отдача, разброс, перелёт камеры
+  if (typeof FPS61 !== 'undefined') FPS61.step(dt, rdt);   // v6.1: помощь в прицеливании, сброс эффектов
 
   // ---- пехота
   for (const u of [...S.units]){
@@ -68,6 +70,7 @@ function update(rdt){
     if (u.repT > 0){ u.repT -= edt; u.hp = min(u.maxhp, u.hp + 14 * edt); if (random() < edt * 8) S.sparks.push({ pos: add(u.pos, mul(randUnit(), 0.5)), vel: mul(u.up, 2), life: 0.4, heal: 1 }); }
     else if (S.time - u.lastHurt > 10 && u.hp < u.maxhp) u.hp = min(u.maxhp, u.hp + 2.5 * edt);
     const inp = isMe ? playerInput(u) : botInput(u, edt);
+    if (isMe && typeof FPS61 !== 'undefined') FPS61.coreInput(u, inp, edt);   // v6.1: выход из ядра / лифт в шахте
     const skipPhys = isMe && !S.freecam && parkourStep(u, inp, edt);
     if (!skipPhys) physStep(u, inp, edt, isMe && S.freecam);
     if (isMe && u.justTeleported){ S.flashT = 0.25; emit('portal', {}); }
@@ -82,25 +85,8 @@ function update(rdt){
       let aim = inp.fire ? inp.aim : null;
       // подавление: стреляем по площади, если нет цели
       if (!aim && u.squad.suppUntil > S.time && u.squad.suppPos){ aim = norm(sub(add(u.squad.suppPos, mul(randUnit(), 6)), u.pos)); }
-      if (aim){
-        const eye = add(u.pos, mul(u.up, RULES.EYE * 0.8));
-        const td = u.target ? dist(centerOf(u.target), eye) : 60;
-        const acc = (u.team === 1 ? DK().acc : 1) * (u.suppT > 0 ? 2.2 : 1) * (u.crouch ? 0.8 : 1);
-        const supp = u.squad.suppUntil > S.time;
-        const R = roleOf(u);
-        if (R.rail){
-          const p = fire(eye, aim, u.team, 0.004 * acc * R.spread, R.dmg * (u.elite ? 1.2 : 1), 600, u, 'l');
-          S.beams.push({ a: add(eye, mul(aim, 0.8)), b: add(eye, mul(norm(p.vel), min(td + 2, 160))), t: 0, life: 0.3, team: u.team, rail: 1 });
-          addLight(add(eye, mul(aim, 1)), [3, 6, 12], 10, 0.1, 0.006);
-          emit('rail', { pos: eye, src: u });
-          u.cd = R.cd + random() * R.cdr; u.lastShotT = S.time;
-        } else {
-          fire(eye, aim, u.team, (0.01 + td * 0.00035 + (u.grounded ? 0 : 0.015)) * acc * R.spread, R.dmg * (u.elite ? 1.2 : 1), 115, u, 'b');
-          u.cd = supp && !R.supp ? 0.12 + random() * 0.05 : R.cd + random() * R.cdr;
-          emit('shot', { pos: eye, team: u.team, src: u, heavy: !!R.supp });
-        }
-        if (random() < 0.35) addLight(add(eye, mul(aim, 1.2)), u.team ? [6, 1.2, 0.5] : [4, 5, 7], 7, 0.05, 0.003);
-      }
+      // v6: то же оружие, что у игрока — мгновенные пули, очереди, магазины, модель точности (gun.js)
+      if (aim) gunBotFire(u, aim, u.squad.suppUntil > S.time);
     }
     if (inp.rocket && u.rocketCd <= 0 && !(isMe && S.freecam)) fireRocket(u, isMe ? u.fwd : inp.aim);
     if (!isMe){
@@ -121,12 +107,12 @@ function update(rdt){
     v.seen[0] = max(0, v.seen[0] - edt); v.seen[1] = max(0, v.seen[1] - edt);
     v.overT = max(0, (v.overT || 0) - edt);
     if (S.time - v.lastHurt > 12 && v.hp < v.maxhp) v.hp = min(v.maxhp, v.hp + 4 * edt);
-    const inp = isMe ? tankPlayerInput(v, edt) : tankInput(v, edt);
+    const inp = v.vk ? (isMe ? V2.playerInput(v, edt) : V2.aiInput(v, edt)) : isMe ? tankPlayerInput(v, edt) : tankInput(v, edt);
     physStep(v, inp, edt, false);
     if (isMe && v.justTeleported){ S.flashT = 0.25; emit('portal', {}); }
     if (!isMe && len(inp.wish) > 0) v.fwd = tangent(turnToward(v.fwd, norm(inp.wish), 1.4 * edt), v.up);
     v.cd -= edt; v.mgCd -= edt;
-    vehicleAimAndFire(v, edt, isMe, inp);
+    if (v.vk) V2.aimFire(v, edt, isMe, inp); else vehicleAimAndFire(v, edt, isMe, inp);
     if (v.overT > 0 && random() < edt * 10) S.sparks.push({ pos: sub(add(v.pos, mul(v.up, 0.8)), mul(v.fwd, 2.4)), vel: add(mul(v.fwd, -5), mul(randUnit(), 2)), life: 0.3 });
     if (v.hp < v.maxhp * 0.4 && random() < edt * 1.5) fxSmoke(add(v.pos, mul(v.up, 1)), 0.7, 0.12);
   }
@@ -145,11 +131,6 @@ function update(rdt){
     b.seen[0] = max(0, b.seen[0] - dt); b.seen[1] = max(0, b.seen[1] - dt);
     builderStep(b, dt);
   }
-  for (const t of [0, 1]){
-    const T = S.teams[t];
-    T.builderT = max(0, T.builderT - dt);
-    if (S.builders.filter(b => b.team === t).length < 2 && T.builderT <= 0 && builderHome(t)){ makeBuilder(t); T.builderT = 20; }
-  }
   // ---- здания
   for (const b of [...S.buildings]){
     if (!b.alive) continue;
@@ -167,10 +148,13 @@ function update(rdt){
   strikesStep(dt);
   suppStep(dt);
   for (let i = SCREENS.length - 1; i >= 0; i--){ SCREENS[i].t += dt; if (SCREENS[i].t > SCREENS[i].life) SCREENS.splice(i, 1); }
+  V2.projStep(dt);   // наведение ракет РСЗО, кассеты, «люстры» (vehicles2.js)
 
   // ---- снаряды
   for (let i = S.proj.length - 1; i >= 0; i--){
-    const p = S.proj[i]; p.life -= dt;
+    const p = S.proj[i];
+    if (p.g62 && typeof G62 !== 'undefined'){ if (G62.projStep(p, dt)) S.proj.splice(i, 1); continue; }   // v6.2: гранаты — grenade62.js
+    p.life -= dt;
     let dead = p.life <= 0, hitP = null, hitE = null, hitProp = null;
     if (p.fuse !== undefined){ p.fuse -= dt; if (p.fuse <= 0){ dead = true; hitP = p.pos; } }
     const n = max(1, Math.ceil(len(p.vel) * dt / 1.5)), h = dt / n;
@@ -212,9 +196,9 @@ function update(rdt){
     }
     if (hitP){
       if (p.splash){
-        splash(hitP, p.team, p.dmg, p.splash, p.from, p.type === 'r' ? 'r' : p.type === 'g' ? 'g' : p.type === 'a' ? 'a' : 's');
-        if (hitE && (p.type === 's' || p.type === 'r') && hitE.alive !== false) damage(hitE, p.dmg * 0.35, p.from, p.type);
-        fxExplosion(hitP, p.type === 's' ? 2.2 : p.type === 'a' ? 2.6 : p.type === 'g' ? 1.8 : 1.4);
+        splash(hitP, p.team, p.dmg, p.splash, p.from, p.ptype || (p.type === 'r' ? 'r' : p.type === 'g' ? 'g' : p.type === 'a' ? 'a' : 's'));
+        if (hitE && (p.type === 's' || p.type === 'r') && hitE.alive !== false) damage(hitE, p.dmg * 0.35, p.from, p.ptype || p.type);
+        fxExplosion(hitP, p.boom || (p.type === 's' ? 2.2 : p.type === 'a' ? 2.6 : p.type === 'g' ? 1.8 : 1.4));
       } else {
         let dmg = p.dmg;
         if (p.type === 'b') dmg *= rangeFactor(dist(hitP, p.org || hitP));
@@ -277,10 +261,11 @@ function update(rdt){
   }
   for (const t of [0, 1]){
     const T = S.teams[t];
-    T.income = (GAME.INC_BASE + GAME.INC_PT * surfOwned[t] + GAME.INC_CORE * coreOwned[t]) * GAME.INC_MUL * (t === 1 ? DK().eco : 1);
+    T.income = ecoIncome(t, surfOwned[t], coreOwned[t]);   // v6: штаб + точки + экстракторы (rts_build.js)
     T.ore += T.income * dt;
     T.cmdT = (T.cmdT || 0) + dt; if (T.cmdT > 75){ T.cmdT = 0; addCmd(t, 1); }
   }
+  ecoStep(dt);
 
   // ---- находки: склады и модули первой экспедиции (кто первым подошёл — тому руда)
   S.lootT = (S.lootT || 0) - dt;

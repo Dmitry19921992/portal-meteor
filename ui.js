@@ -25,9 +25,11 @@ function bk(act){ return keyLabel(SET.bind[act]); }
 document.addEventListener('pointerlockchange', () => {
   if (!isLocked()){
     mouseL = mouseR = false;
-    if (!wantUnlock && S.mode === 'fps' && !S.attract && !S.over && !MENU.isOpen()) MENU.pause();
+    if (!wantUnlock && S.mode === 'fps' && !S.attract && !S.over && !MENU.isOpen()){ if (MENU.waitLock){ MENU.waitLock = false; } MENU.pause(); }
     wantUnlock = false;
-  }
+  } else if (MENU.waitLock){ MENU.waitLock = false; S.paused = false; AU.duck(false); }   // мышь снова захвачена — продолжаем
+  // v7.3: в стратегии мышь захватывать не нужно (запрос на захват из «Новой игры» мог дойти уже после перехода в стратегию → пропадал курсор)
+  if (isLocked() && S.mode === 'rts'){ wantUnlock = true; try { document.exitPointerLock(); } catch (e) {} }
   updateModeUI();
 });
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -60,12 +62,12 @@ function lookBy(mx, my){
   if (S.mode !== 'fps' || S.attract || !S.me || CAMFX.busy()) return;
   const c = ctrlEntity(); if (!c) return;
   if (c.cls === 'inf'){
-    const p = c, s = 0.0022 * SET.sens / (1 + S.slow * 0.6) * (S.aiming ? 0.6 : 1);
+    const p = c, s = 0.0022 * SET.sens / (1 + S.slow * 0.6) * (S.aiming ? (S.adsSens || 0.6) : 1) * (typeof AIMA !== 'undefined' ? AIMA.sens : 1);
     p.fwd = norm(rotAxis(p.fwd, p.up, -mx * s));
     const right = norm(cross(p.fwd, p.up));
     const nf = norm(rotAxis(p.fwd, right, -my * s * (SET.invertY ? -1 : 1)));
     if (abs(dot(nf, p.up)) < 0.995) p.fwd = nf;
-  } else if (c.cls === 'tank') aimRotate(c, mx, my, -0.2, 0.6);
+  } else if (c.cls === 'tank') aimRotate(c, mx, my, c.vk ? -0.35 : -0.2, c.vk ? 0.8 : 0.6);
   else if (c.cls === 'drone') aimRotate(c, mx, my, -1.2, 0.5);
   else if (c.type === 'aa') aimRotate(c, mx, my, -0.05, 1.5);
   else aimRotate(c, mx, my, -0.35, 0.9);
@@ -76,7 +78,7 @@ addEventListener('keydown', e => {
   if (['Space', 'Tab', 'Slash', 'Quote', 'Backquote', 'F1'].includes(e.code) || (e.ctrlKey && /Digit|KeyA|KeyS|KeyD/.test(e.code))) e.preventDefault();
   if (e.repeat) return;
   AU.init();
-  if (MENU.isOpen()){ if (e.code === 'Escape') MENU.back(); return; }
+  if (MENU.isOpen()){ if (e.code === 'Escape' && !(MENU.cur === 'pause' && performance.now() - (MENU.openedAt || 0) < 350)) MENU.back(); return; }
   if (OPER.on){
     if (e.code === 'Escape'){ OPER.end(); MENU.show('main'); }
     else if (e.code === 'KeyR'){ if (REC.active) REC.stop(); else REC.start(0); }
@@ -86,6 +88,10 @@ addEventListener('keydown', e => {
     return;
   }
   if (S.attract) return;
+  // Esc без захвата мыши (оверлей «кликни», телефон) — меню паузы
+  if (e.code === 'Escape' && S.mode === 'fps' && !isLocked()){ MENU.waitLock = false; MENU.pause(); return; }
+  if (typeof MISSION !== 'undefined' && MISSION.key(e)) return;
+  if (typeof FPS61 !== 'undefined' && FPS61.key(e)) return;
   // общие
   switch (e.code){
     case 'KeyM': AU.toggle(); feed(tr('Звук: ', 'Sound: ', 'Âm thanh: ') + (AU.on ? tr('вкл', 'on', 'bật') : tr('выкл', 'off', 'tắt'))); return;
@@ -148,7 +154,8 @@ function playerInput(p){
   // v5.3: C в воздухе — тормоз ранцем (на земле C — подкат)
   const brake = K('down') && !p.grounded;
   if (brake) HINTS.used('airbrake');
-  return { wish, speedMul: run ? (S.onRoute ? 2.35 : 1.8) : 1, jump: K('jump') || hop, thrust: jetBtn, thrustDir: norm(add(F, mul(wish, 0.8))), lift: K('jump'),
+  // v6: ранец всегда немного «поднимает» (держит высоту, даже если смотришь на горизонт); пригнувшись — медленнее
+  return { wish, speedMul: (run ? (S.onRoute ? 2.35 : 1.8) : 1) * (GUNS.crouchK > 0.5 ? 0.45 : 1), jump: K('jump') || hop, thrust: jetBtn, thrustDir: norm(add(add(F, mul(wish, 0.8)), mul(Uu, RULES.JET_LIFT || 0))), lift: K('jump'),
            brake, fire: fireBtn, aim: F, wish3, freeSpeed: run ? 40 : 10, rocket: K('rocket') };
 }
 function tankPlayerInput(v, dt){
@@ -167,6 +174,7 @@ function dronePlayerInput(d){
 function turretPlayerInput(b){ S.aiming = false; return { fire: SET.swapMouse ? mouseR : mouseL }; }
 function vehAbility(k){
   const c = ctrlEntity(); if (!c) return;
+  if (c.vk){ const kk = abilList(c).find(a => ABIL[a].key === ABIL[k].key); if (!kk) return; k = kk; }   // новая техника: та же клавиша
   let pt = null;
   if (ABIL[k].target === 'point'){ const r = rayCast(S.cam.pos, S.cam.fwd, ABIL[k].range + 40, c.team, false); pt = r.pos; }
   const why = useAbility(c, k, pt);
@@ -180,6 +188,7 @@ function takeControl(u){
   const prev = S.me;
   if (prev && prev.cls === 'inf' && prev !== u){ prev.isPlayerBody = false; prev.jet = jetOf(prev); }
   S.me = u; S.mode = 'fps'; S.freecam = false;
+  if (typeof FPS61 !== 'undefined') FPS61.onPossess(u);   // v6.1: сброс рефлекса и прочих временных эффектов
   if (u.cls === 'inf'){ u.hopT = 0; u.leapT = 0; u.isPlayerBody = true; u.jet = jetOf(u); S.lastInf = u;
     if (S.kit && !S.attract){ const w = roleOf(u).w; if (w !== 'rifle' || !weaponAvail(S.kit.w)){ S.kit.w = weaponAvail(w) ? w : 'rifle'; S.kit.mag[S.kit.w] = WEAPONS[S.kit.w].mag; } } }
   if (u.cls === 'drone'){ u.aim = tangent(u.fwd, u.up); u.kamikaze = null; }
@@ -190,29 +199,36 @@ function takeControl(u){
   CAMFX.onSwitch(u);
 }
 function enterRTS(){
+  const fromCam = S.mode === 'fps' && S.cam ? { pos: S.cam.pos, fwd: S.cam.fwd, up: S.cam.up } : null;
   S.mode = 'rts';
+  if (typeof FPS61 !== 'undefined') FPS61.resetFx('rts');
   unlockMouse();
   const c = ctrlEntity();
-  if (c){ S.rts.dir = norm(c.pos); S.rts.fwd = tangent(c.fwd || c.aim || anyTangent(S.rts.dir), S.rts.dir); S.rts.h = min(S.rts.h, 60); }
+  if (c){ S.rts.dir = norm(c.pos); S.rts.fwd = tangent(c.fwd || c.aim || anyTangent(S.rts.dir), S.rts.dir); S.rts.h = min(S.rts.h, 42); }   // v61: ближе — юниты крупнее (было 60)
+  rtsCamReset(c ? fromCam : null);
   S.sel.clear();
   const g = c ? (c.cls === 'bld' ? null : groupOf(c)) : null;
   if (g) S.sel.add(g);
   updateModeUI();
 }
 function releasePlayerUnits(){
+  releaseBuilders();   // v6
   let n = 0;
   for (const g of groupsOf(0)) if (g.byPlayer){ g.byPlayer = false; if (g.manualUntil > S.time + 60) g.manualUntil = S.time + 20; n++; }
   if (n) feed(tr(`Стратег принял командование твоими группами (${n})`, `The strategist takes over your groups (${n})`, `Chiến lược gia tiếp quản các nhóm của bạn (${n})`), '#9cf');
 }
-function enterFPS(){
+function enterFPS(want){
   releasePlayerUnits();
-  let u = null;
-  if (S.selB && S.selB.alive && S.selB.team === 0 && (S.selB.type === 'turret' || S.selB.type === 'aa') && S.selB.done) u = S.selB;
-  if (!u) for (const g of S.sel){ if (g.team !== 0 || !groupAlive(g)) continue; u = isSquad(g) ? g.units.find(x => x.alive) : g; if (u) break; }
+  let u = want && want.team === 0 && (want.alive || (want.cls === 'bld' && want.done)) && want.cls !== 'builder' ? want : null;
+  if (!u && S.selB && S.selB.alive && S.selB.team === 0 && (S.selB.type === 'turret' || S.selB.type === 'aa') && S.selB.done) u = S.selB;
+  if (!u) for (const g of S.sel){ if (g.team !== 0 || !groupAlive(g) || g.cls === 'builder') continue; u = isSquad(g) ? ((typeof FPS61 !== 'undefined' && FPS61.inSquad(g)) || g.units.find(x => x.alive)) : g; if (u) break; }
   if (!u && S.me && (S.me.alive || S.me.cls === 'bld')) u = S.me;
-  if (!u) u = nearestToAction(0);
-  if (!u){ feed(tr('Нет живых роботов — закажи отряд', 'No robots alive — order a squad', 'Không còn robot nào — hãy gọi một đội'), '#f88'); return; }
+  if (!u) u = typeof FPS61 !== 'undefined' ? FPS61.pickAuto() : nearestToAction(0);   // v6.1: свой класс в приоритете
+  if (!u){ feed(tr('Нет живых роботов — закажи отряд', 'No robots alive — order a squad', 'Không còn robot nào — hãy gọi một đội'), '#f88'); if (typeof uiExplainShow === 'function') uiExplainShow('possess'); return; }
+  // плавный «нырок» камеры из стратегии к бойцу (тот же пролёт, что при переключении)
+  if (S.mode === 'rts' && S.cam && !S.attract) CAMFX.last = { pos: S.cam.pos, fwd: S.cam.fwd };
   takeControl(u);
+  if (CAMFX.fly) CAMFX.fly.dur = min(CAMFX.fly.dur, 1.0);
   lockMouse();
 }
 function actionDist(e, team){
@@ -243,7 +259,7 @@ function switchCandidates(){
   for (const d of S.drones) if (d.alive && d.team === 0) L.push({ e: d, d: actionDist(d, 0), label: groupLabel(d), kind: 'drone' });
   for (const b of S.buildings) if (b.alive && b.done && b.team === 0 && (b.type === 'turret' || b.type === 'aa')){ const d = actionDist(b, 0); if (d < 120) L.push({ e: b, d, label: bname(b.type), kind: 'bld' }); }
   L.sort((a, b) => a.d - b.d);
-  return L;
+  return typeof FPS61 !== 'undefined' ? FPS61.sortCands(L) : L;
 }
 const SW = { list: null, idx: 0, t: -99 };
 function switchUnit(dir){
@@ -262,7 +278,7 @@ function switchUnit(dir){
 }
 function autoSwitch(){
   if (S.turretBody && S.turretBody.alive){ const b = S.turretBody; b.parked = false; S.turretBody = null; takeControl(b); return; }
-  const u = nearestToAction(0);
+  const u = typeof FPS61 !== 'undefined' ? FPS61.pickAuto() : nearestToAction(0);   // v6.1: свой класс в приоритете
   if (u){ takeControl(u); S.flashT = 0.2; }
   else { enterRTS(); }
 }
@@ -325,7 +341,8 @@ function updateModeUI(){
 function helpFPS(c){
   const L = [];
   const row = (k, t) => L.push(`<b>${k}</b> ${t}`);
-  if (c && c.cls === 'tank'){
+  if (c && c.cls === 'tank' && c.vk) V2.help(c, row);
+  else if (c && c.cls === 'tank'){
     row(`${bk('fwd')}/${bk('back')}`, tr('ход', 'drive', 'lái')); row(`${bk('left')}/${bk('right')}`, tr('поворот корпуса', 'turn hull', 'xoay thân'));
     row(tr('мышь', 'mouse', 'chuột'), tr('башня', 'turret', 'tháp súng')); row(tr('ЛКМ', 'LMB', 'Chuột trái'), tr('пушка', 'cannon', 'pháo')); row(tr('ПКМ', 'RMB', 'Chuột phải'), tr('пулемёт', 'machine gun', 'súng máy'));
     row(bk('reload'), tr('залп', 'barrage', 'loạt pháo')); row(bk('reflex'), tr('дым', 'smoke', 'khói')); row(bk('grenade'), tr('форсаж', 'overdrive', 'tăng tốc'));
@@ -339,20 +356,33 @@ function helpFPS(c){
     row(bk('rocket'), tr('ракета', 'rocket', 'tên lửa')); row(bk('grenade'), tr('граната', 'grenade', 'lựu đạn')); row(bk('reflex'), tr('рефлекс', 'reflex', 'phản xạ')); row(bk('strike'), tr('артудар', 'strike', 'pháo kích'));
     row(`${bk('w1')} ${bk('w2')} ${bk('w3')}`, tr('оружие', 'weapons', 'vũ khí')); row(bk('interact'), tr('танк / турель', 'tank / turret', 'xe tăng / tháp súng'));
   }
-  row(bk('switch'), tr('другой отряд или техника (Shift — назад)', 'another squad or vehicle (Shift — back)', 'đội hoặc xe khác (Shift — lùi lại)'));
-  row(bk('rts'), tr('стратегия', 'strategy', 'chiến thuật')); row(bk('third'), tr('3-е лицо', '3rd person', 'góc nhìn 3')); row(bk('follow'), tr('ведомый', 'follower', 'đi theo')); row(bk('ai'), tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI'));
+  row(bk('switch'), tr('быстрая смена бойца, не выходя из боя (Shift — назад)', 'quick unit switch, staying in battle (Shift — back)', 'đổi nhanh đơn vị (Shift — lùi lại)'));
+  if (SET.bind.redeploy){
+    row(bk('redeploy'), tr('переброска капсулой к цели (Shift — в гущу боя)', 'drop pod to the objective (Shift — into the fight)', 'khoang tới mục tiêu (Shift — vào trận)')); row(bk('track'), tr('за какой целью вести маршрут', 'which objective the route leads to', 'chọn mục tiêu dẫn đường'));
+    row(`${bk('freeplay')} · F2`, tr('приказы/свобода · пресеты', 'orders/free · presets', 'lệnh/tự do · cài sẵn'));
+  }
+  row(bk('rts'), tr('стратегия (там та же клавиша — вселиться в выделенного)', 'strategy (the same key there possesses the selection)', 'chiến thuật')); row(bk('third'), tr('3-е лицо', '3rd person', 'góc nhìn 3')); row(bk('follow'), tr('ведомый', 'follower', 'đi theo')); row(bk('ai'), tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI'));
   row('M', tr('звук', 'sound', 'âm thanh')); row('O', tr('качество', 'quality', 'chất lượng')); row('Esc', tr('меню', 'menu', 'menu'));
   return L.join('<br>');
 }
 function fmtTime(s){ s = max(0, floor(s)); return `${floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 let navPts = [];
-function objectivePos(){ return TACT.navPos(); }
+function objectivePos(){ return typeof MISSION !== 'undefined' ? MISSION.navPos() : TACT.navPos(); }
+// точка для маркера: дальняя цель скрыта за горизонтом метеорита (R = 500 м, горизонт ~40 м),
+// поэтому маркер ставим на поверхности по пути к ней, над землёй — стрелка показывает, куда идти
+function navAnchor(p){
+  const c = ctrlEntity(); if (!c || len(p) < 80) return p;
+  const sd = surfDist(c.pos, p); if (sd < 70) return p;
+  const dir = stepToward(norm(c.pos), norm(p), 46 / RM);
+  return mul(dir, groundR(dir) + 6);
+}
 function navTargetFor(p, from){
   if (len(p) < 80){ return mul(bestAxis(norm(from)), RM); }   // в ядро — через ближайшую шахту
   return p;
 }
 function computeNav(){
   navPts = [];
+  if (typeof MISSION !== 'undefined') MISSION.updateNav();
   const c = ctrlEntity(); const p = objectivePos();
   if (!c || !p || c.cls === 'bld' || underground(c.pos)) return;
   const tgt = navTargetFor(p, c.pos);
@@ -375,6 +405,7 @@ function project(p){
   return [innerWidth / 2 + dot(v, c.right) / z / c.fov * H, H / 2 - dot(v, c.up) / z / c.fov * H, z];
 }
 function edgeMarker(p, color, label, subt){
+  p = navAnchor(p);
   const W = innerWidth, H = innerHeight;
   const c = S.cam, v = sub(p, c.pos);
   const z = dot(v, c.fwd);
@@ -452,7 +483,7 @@ function drawMinimap(){
   const dot2 = (p, col, r) => { const m = toMap(p); if (!m) return; octx.fillStyle = col; octx.beginPath(); octx.arc(m[0], m[1], r, 0, PI * 2); octx.fill(); };
   const myG = playerGroup();
   for (const u of S.units){ if (!u.alive || u === S.me) continue; if (u.team === 1 && u.seen[0] <= 0) continue; dot2(u.pos, u.team ? TEAM[1].css : TEAM[0].css, u.squad === myG ? 2.8 : 2.2); }
-  for (const v of S.vehicles){ if (!v.alive || v === c || (v.team === 1 && v.seen[0] <= 0)) continue; const m = toMap(v.pos); if (m){ octx.fillStyle = v.team ? TEAM[1].css : TEAM[0].css; octx.fillRect(m[0] - 4, m[1] - 3, 8, 6); } }
+  for (const v of S.vehicles){ if (!v.alive || v === c || (v.team === 1 && v.seen[0] <= 0)) continue; const m = toMap(v.pos); if (m){ if (v.vk){ V2.icon(m[0], m[1], v, v.team ? TEAM[1].css : TEAM[0].css); continue; } octx.fillStyle = v.team ? TEAM[1].css : TEAM[0].css; octx.fillRect(m[0] - 4, m[1] - 3, 8, 6); } }
   for (const d of S.drones){ if (!d.alive || d === c || (d.team === 1 && d.seen[0] <= 0)) continue; const m = toMap(d.pos); if (m){ octx.fillStyle = d.team ? TEAM[1].css : TEAM[0].css; octx.beginPath(); octx.moveTo(m[0], m[1] - 4); octx.lineTo(m[0] + 3.5, m[1] + 3); octx.lineTo(m[0] - 3.5, m[1] + 3); octx.fill(); } }
   for (const s of S.strikes){ const m = toMap(s.pos); if (m){ octx.strokeStyle = s.team ? '#ff5040' : '#ffb070'; octx.lineWidth = 1.5; octx.beginPath(); octx.arc(m[0], m[1], 6 + 2 * sin(S.rtime * 10), 0, PI * 2); octx.stroke(); } }
   octx.restore();
@@ -524,14 +555,17 @@ function drawWorldMarkers(rts){
     const s = project(p); if (!s) continue;
     if (!rts && s[2] > 160) continue;
     const col = TEAM[b.team].css;
-    octx.font = '11px "Exo 2", Consolas, sans-serif';
+    octx.font = (window.FIX816 && FIX816.bldFont()) || '11px "Exo 2", Consolas, sans-serif';   // v816: плавающая надпись над зданием — меньше
     octx.fillStyle = col;
+    octx.globalAlpha = (window.FIX816 && FIX816.bldAlpha()) || 1;   // v816: и полупрозрачнее
     const label = bname(b.type) + (!b.done ? ` ${Math.floor(b.built * 100)}%` : '') + (b.queue.length ? ` [${b.queue.length}]` : '');
-    if (rts || s[2] < 70) octx.fillText(label, s[0], s[1] - 7);
+    if ((rts || s[2] < 70) && !(b.type === 'wall82' && typeof V84 !== 'undefined' && V84.wallSkip(b))) octx.fillText(b.type === 'wall82' && typeof V84 !== 'undefined' ? V84.wallLabel(b, label) : label, s[0], s[1] - 7);   // v84: one label per barrier chain
+    octx.globalAlpha = 1;   // v816
     octx.fillStyle = 'rgba(0,0,0,.6)'; octx.fillRect(s[0] - 18, s[1] - 3, 36, 4);
     octx.fillStyle = col; octx.fillRect(s[0] - 18, s[1] - 3, 36 * max(0, b.hp) / b.maxhp, 4);
     if (rts && S.selB === b){ octx.strokeStyle = '#fff'; octx.lineWidth = 1.5; octx.strokeRect(s[0] - 21, s[1] - 20, 42, 26); }
   }
+  drawEcoWorld(rts);   // v6: жилы, стройки, «+N», чертёж (rts_build.js)
   // удары, сканы, метки
   for (const st of S.strikes){
     if (!vis(st.pos)) continue;
@@ -555,10 +589,11 @@ function drawOverlay(dt){
   const me = S.me, c = ctrlEntity();
   // навигационная линия
   const t = TACT.task;
-  if ((S.navLine || S.navT > 0) && navPts.length && t && !t.done){
-    const alpha = S.navLine ? 0.75 : min(0.75, S.navT / 2);
+  const MI = typeof MISSION !== 'undefined';
+  if (!(window.FIX816 && FIX816.cleanSafe()) && (MI ? MISSION.navVisible() : (S.navLine || S.navT > 0) && t && !t.done) && navPts.length){   // v816: чистый экран прячет шевроны маршрута
+    const alpha = S.navLine || (MI && MISSION.nav && MISSION.nav.mode !== 'order') ? 0.75 : min(0.75, S.navT / 2);
     const tt = performance.now() / 600;
-    const col = t.kind === 'strat' || t.kind === 'player' ? '140,255,170' : '255,190,90';
+    const col = MI ? MISSION.navColor() : t.kind === 'strat' || t.kind === 'player' ? '140,255,170' : '255,190,90';
     octx.lineWidth = 2.5;
     for (let i = 0; i < navPts.length - 1; i++){
       const a = project(navPts[i]), b = project(navPts[i + 1]);
@@ -576,13 +611,14 @@ function drawOverlay(dt){
     }
   }
   drawWorldMarkers(false);
+  if (c && c.vk) V2.overlay(c);
   TUT.overlay();
   SIDEQ.overlay();
   // юниты
   octx.font = '600 12px "Exo 2", Consolas, sans-serif';
   const tgts = t && t.targets && !t.done ? t.targets : null;
   const all = [...S.units, ...S.vehicles, ...S.drones];
-  for (const u of all){
+  if (!(window.FIX816 && FIX816.cleanSafe())) for (const u of all){   // v816: чистый экран прячет метки юнитов
     if (!u.alive || u === c) continue;
     if (u.team === 1 && u.seen[0] <= 0) continue;
     const big = u.cls === 'tank';
@@ -601,8 +637,9 @@ function drawOverlay(dt){
     }
   }
   // маркер задачи
-  const op = objectivePos();
-  if (op && t && !t.done && c){
+  const op = MI ? TACT.navPos() : objectivePos();
+  if (MI && c){ MISSION.drawObjMarker(c); MISSION.overlay(c); }
+  else if (op && t && !t.done && c){
     const tgt = navTargetFor(op, c.pos);
     const tac = t.kind !== 'strat' && t.kind !== 'player';
     edgeMarker(tgt, tac ? '#ffbe5a' : '#8fffaa', len(op) < 80 ? tr('ШАХТА → ЯДРО', 'SHAFT → CORE', 'GIẾNG → LÕI') : (tac ? tr('ТАКТИКА', 'TACTICAL', 'CHIẾN THUẬT') : tr('ЗАДАЧА', 'OBJECTIVE', 'NHIỆM VỤ')), `${Math.round(dist(tgt, c.pos))} ${tr('м', 'm', 'm')}`);
@@ -615,7 +652,7 @@ function drawOverlay(dt){
     octx.fillStyle = g; octx.fillRect(0, 0, innerWidth, innerHeight);
   }
   // попадание
-  if (S.hitT > 0){
+  if (S.hitT > 0 && !S.newMarks){   // v6: метки попаданий рисует gun.js
     const cx = innerWidth / 2, cy = innerHeight / 2;
     octx.strokeStyle = '#fff'; octx.lineWidth = 2; octx.beginPath();
     octx.moveTo(cx - 10, cy - 10); octx.lineTo(cx - 4, cy - 4); octx.moveTo(cx + 10, cy - 10); octx.lineTo(cx + 4, cy - 4);
@@ -661,7 +698,7 @@ function updateHUD(){
   const left = GAME.MATCH - S.time;
   const hqTxt = h => h.alive ? Math.round(max(0, h.hp) / h.maxhp * 100) + '%' : '✖' + keyBuildings(h.team).length;
   hudEl.innerHTML =
-    hb(tr('РУДА', 'ORE', 'QUẶNG'), Math.floor(T.ore), `+${T.income.toFixed(1)}/${tr('с', 's', 'giây')}`) +
+    ecoHB(T) +   // v6: руда, доход в минуту, клик — «Откуда руда» (rts_build.js)
     hb(tr('КО', 'CP', 'ĐCH'), `${T.cmd}`, tr('командные очки', 'command points', 'điểm chỉ huy')) +
     (S.endless ? hb(tr('БОЙ ИДЁТ', 'BATTLE', 'TRẬN ĐẤU'), fmtTime(S.time), `${N2(SCALES[clamp(SET.battle | 0, 0, 2)].n).toLowerCase()} · ∞`) : hb(tr('ВРЕМЯ', 'TIME', 'THỜI GIAN'), fmtTime(left), tr('из 60:00', 'of 60:00', 'trên 60:00'))) +
     hb(tr('ТОЧКИ', 'POINTS', 'ĐIỂM'), `<span style="color:${TEAM[0].css}">${pts[0]}</span> : <span style="color:${TEAM[1].css}">${pts[1]}</span>`, tr('из 7', 'of 7', 'trên 7')) +
@@ -672,7 +709,7 @@ function updateHUD(){
   const card = fps ? TACT.card() : null;
   if (card && (!card.done || TACT.task && S.time - TACT.task.doneT < 4)){
     objEl.style.display = 'block';
-    objEl.className = (card.done ? (card.ok ? 'done' : 'fail') : '') + (card.tac ? ' tac' : '');
+    objEl.className = (card.done ? (card.ok ? 'done' : 'fail') : '') + (card.free ? ' free' : card.tac ? ' tac' : '');
     objEl.innerHTML = `<small>${card.head}</small><b>${card.title}</b>${card.sub ? `<em>${card.sub}</em>` : ''}` +
       (card.mult ? `<i class="mult ${card.on ? 'on' : ''}">XP ×${card.mult}${card.on ? '' : tr(' · выполняй задачу', ' · stay on task', ' · bám nhiệm vụ')}</i>` : '');
   } else objEl.style.display = 'none';
@@ -685,7 +722,7 @@ function updateHUD(){
     const hpE = $('hpFill'), jE = $('jetFill'), jL = $('jetLbl'), hL = $('hpLbl'), rk = $('rocket');
     hpE.style.width = (max(0, c.hp) / c.maxhp * 100).toFixed(1) + '%';
     const g = c.cls === 'bld' ? null : groupOf(c);
-    hL.textContent = c.cls === 'tank' ? `${groupLabel(c)} ${tankName(c.team)}` : c.cls === 'drone' ? groupLabel(c) : c.cls === 'bld' ? bname(c.type).toUpperCase()
+    hL.textContent = c.cls === 'tank' ? `${groupLabel(c)} ${c.vk ? V2.name(c) : tankName(c.team)}` : c.cls === 'drone' ? groupLabel(c) : c.cls === 'bld' ? bname(c.type).toUpperCase()
       : (N2(roleOf(c).n).toUpperCase() + (c.elite ? ' ✦' : '') + (c.leader ? ' · ' + tr('ЛИДЕР', 'LEADER', 'TRƯỞNG ĐỘI') : '')) + (g ? ` · ${groupLabel(g).toUpperCase()}${g.vet ? ' ' + '★'.repeat(g.vet) : ''}` : '');
     rk.textContent = `${Math.round(max(0, c.hp))}/${c.maxhp}`; rk.className = '';
     if (c.cls === 'inf'){
@@ -695,7 +732,8 @@ function updateHUD(){
       jL.textContent = S.freecam ? tr('свободная камера', 'free camera', 'camera tự do') : c.locked ? tr('ранец перезаряжается…', 'jetpack recharging…', 'ba lô đang nạp…') : c.lifting ? tr('гравилифт', 'grav lift', 'thang trọng lực') :
         r < CORE_R + 3 ? tr('ядро — невесомость', 'core — zero-g', 'lõi — không trọng lực') : `${N2(c.jet.n).toUpperCase()} · ${tr('высота', 'alt', 'độ cao')} ${Math.round(altitude(c.pos))} ${tr('м', 'm', 'm')}`;
       $('jetBar').style.display = 'block';
-    } else if (c.cls === 'tank'){
+    } else if (c.cls === 'tank' && c.vk) V2.hudBar(c, jE, jL);
+    else if (c.cls === 'tank'){
       jE.style.width = (clamp(1 - c.cd / 2.6, 0, 1) * 100).toFixed(1) + '%';
       jE.style.background = c.cd > 0 ? '#887' : '#e8dcb8';
       jL.textContent = c.cd > 0 ? tr('пушка перезаряжается', 'cannon reloading', 'pháo đang nạp') : tr('ПУШКА ГОТОВА · ЛКМ', 'CANNON READY · LMB', 'PHÁO SẴN SÀNG · CHUỘT TRÁI');
@@ -707,8 +745,8 @@ function updateHUD(){
       jL.textContent = c.type === 'aa' ? tr('ЗЕНИТКА · ЛКМ', 'AA GUN · LMB', 'PHÁO PHÒNG KHÔNG · CHUỘT TRÁI') : tr('ПУЛЕМЁТ · ЛКМ', 'MACHINE GUN · LMB', 'SÚNG MÁY · CHUỘT TRÁI');
     }
     // звание
-    const nx = PROG.nextXP(), base = RANKS[PROG.rank][0];
-    $('rankLbl').innerHTML = `<b>${PROG.rankName().toUpperCase()}</b> · ${PROG.xp}${nx ? ' / ' + nx : ''} XP`;
+    const nx = PROG.nextXP(), base = PROG.rankXP ? PROG.rankXP(PROG.rank) : RANKS[PROG.rank][0];
+    $('rankLbl').innerHTML = `${typeof CAREER !== 'undefined' ? CAREER.badge() : ''}<b>${PROG.rankName().toUpperCase()}</b> · ${PROG.xp}${nx ? ' / ' + nx : ''} XP`;
     $('xpFill').style.width = (nx ? (PROG.xp - base) / (nx - base) * 100 : 100).toFixed(1) + '%';
     updateKit(c);
   }
@@ -745,13 +783,14 @@ function updateKit(c){
   const el = $('kit'), K = S.kit;
   let h = '';
   if (c.cls === 'inf'){
-    const W = WEAPONS[K.w];
-    const wl = ['rifle', 'rail', 'hmg'].map((w, i) => `<span class="${K.w === w ? 'cur' : weaponAvail(w) ? '' : 'na'}">${i + 1}</span>`).join('');
-    h += `<div class="weap"><small>${N2(W.n).toUpperCase()}${K.incT > 0 ? ' · ' + tr('ЗАЖИГ.', 'INC.', 'ĐẠN CHÁY') + ' ' + Math.ceil(K.incT) : ''}${K.w === 'hmg' ? ' · ' + Math.ceil(K.hmgT) + tr('с', 's', 'giây') : ''}</small>` +
-         `<b>${K.reloadT > 0 ? tr('ПЕРЕЗАРЯДКА', 'RELOADING', 'ĐANG NẠP') : K.mag[K.w]}<em>/${W.mag}</em></b><div class="wl">${wl}</div></div>`;
+    const W0 = typeof pW === 'function' ? pW(K.w) : WEAPONS[K.w], W = { n: W0.n, mag: gstat(W0, 'mag'), reload: gstat(W0, 'reload') };   // v6.1: с обвесами
+    const wl = [roleOf(c).w === 'smg' ? 'smg' : 'rifle', 'rail', 'hmg'].map((w, i) => `<span class="${K.w === w ? 'cur' : weaponAvail(w) ? '' : 'na'}">${i + 1}</span>`).join('');
+    const lowA = K.reloadT <= 0 && K.mag[K.w] <= W.mag * 0.25, rlP = K.reloadT > 0 ? 1 - K.reloadT / (W.reload || 1) : 0;
+    h += `<div class="weap${lowA ? ' low' : ''}${K.reloadT > 0 ? ' rl' : ''}"><small>${N2(W.n).toUpperCase()}${K.incT > 0 ? ' · ' + tr('ЗАЖИГ.', 'INC.', 'ĐẠN CHÁY') + ' ' + Math.ceil(K.incT) : ''}${K.w === 'hmg' ? ' · ' + Math.ceil(K.hmgT) + tr('с', 's', 'giây') : ''}</small>` +
+         `<b>${K.reloadT > 0 ? tr('ПЕРЕЗАРЯДКА', 'RELOADING', 'ĐANG NẠP') : K.mag[K.w]}<em>/${W.mag}</em></b>${K.reloadT > 0 ? `<div class="rbar"><s style="width:${(rlP * 100).toFixed(0)}%"></s></div>` : ''}<div class="wl">${wl}</div></div>`;
     h += '<div class="slots">';
     h += slot(bk('rocket'), tr('Ракета', 'Rocket', 'Tên lửa'), c.rocketCd > 0 ? 'cd' : 'ok', c.rocketCd > 0 ? 1 - c.rocketCd / (roleOf(c).rocket * (c.elite ? 0.65 : 1)) : null, K.freeRockets ? '×' + K.freeRockets : (c.rocketCd > 0 ? Math.ceil(c.rocketCd) : ''));
-    h += PROG.has('grenade') ? slot(bk('grenade'), tr('Граната', 'Grenade', 'Lựu đạn'), K.grenCd > 0 ? 'cd' : 'ok', K.grenCd > 0 ? 1 - K.grenCd / 9 : null, K.grenCd > 0 ? Math.ceil(K.grenCd) : '') : lockedSlot(bk('grenade'), tr('Граната', 'Grenade', 'Lựu đạn'), 'grenade');
+    h += PROG.has('grenade') && typeof G62 !== 'undefined' ? G62.slot() : PROG.has('grenade') ? slot(bk('grenade'), tr('Граната', 'Grenade', 'Lựu đạn'), K.grenCd > 0 ? 'cd' : 'ok', K.grenCd > 0 ? 1 - K.grenCd / 9 : null, K.grenCd > 0 ? Math.ceil(K.grenCd) : '') : lockedSlot(bk('grenade'), tr('Граната', 'Grenade', 'Lựu đạn'), 'grenade');
     h += PROG.has('reflex') ? slot(bk('reflex'), tr('Рефлекс', 'Reflex', 'Phản xạ'), K.reflexOn ? 'on' : (K.reflex < 0.25 ? 'cd' : 'ok'), K.reflex, K.reflexOn ? tr('АКТИВЕН', 'ACTIVE', 'ĐANG BẬT') : '') : lockedSlot(bk('reflex'), tr('Рефлекс', 'Reflex', 'Phản xạ'), 'reflex');
     const strikeOk = PROG.has('strike') || K.strikeCharges > 0;
     h += strikeOk ? slot(bk('strike'), PROG.has('orbital') ? tr('Орбита', 'Orbital', 'Quỹ đạo') : tr('Артудар', 'Strike', 'Pháo kích'), K.strikeCd > 0 && !K.strikeCharges ? 'cd' : 'ok', K.strikeCd > 0 && !K.strikeCharges ? 1 - K.strikeCd / 90 : null, K.strikeCharges ? '×' + K.strikeCharges : (K.strikeCd > 0 ? Math.ceil(K.strikeCd) : '')) : lockedSlot(bk('strike'), tr('Артудар', 'Strike', 'Pháo kích'), 'strike');
@@ -759,7 +798,7 @@ function updateKit(c){
   } else if (c.cls === 'tank' || c.cls === 'drone'){
     const keysFor = { barrage: bk('reload'), smoke: bk('reflex'), overdrive: bk('grenade'), kamikaze: bk('reload') };
     h += '<div class="slots">';
-    for (const k of abilList(c)){ const left = abilLeft(c, k), A = ABIL[k]; h += slot(keysFor[k], N2(A.n), left > 0 ? 'cd' : 'ok', left > 0 && A.cd ? 1 - left / A.cd : null, left > 0 ? Math.ceil(left) : ''); }
+    for (const k of abilList(c)){ const left = abilLeft(c, k), A = ABIL[k]; h += slot(keysFor[k] || (A.key === 'KeyR' ? bk('reload') : A.key === 'KeyF' ? bk('reflex') : bk('grenade')), N2(A.n), left > 0 ? 'cd' : 'ok', left > 0 && A.cd ? 1 - left / A.cd : null, left > 0 ? Math.ceil(left) : ''); }
     h += '</div>';
   }
   if (PROG.has('reflex') && (c.cls === 'drone' || c.cls === 'bld')) h += `<div class="slots">${slot(bk('reflex'), tr('Рефлекс', 'Reflex', 'Phản xạ'), K.reflexOn ? 'on' : 'ok', K.reflex, '')}</div>`;

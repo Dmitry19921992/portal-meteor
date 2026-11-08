@@ -148,10 +148,23 @@ const AU = {
     o.start(t); o.stop(t + dur + 0.02);
   },
   // ---------------- звуки
-  shot(pos, team, kind){
+  shot(pos, team, kind, gun){
     const me = kind === 'me';
     if (!this.allow(me ? null : pos, 230)) return;
-    const t = this.ctx.currentTime, out = this.out(me ? null : pos, me ? 0.15 : 0.25);
+    const t = this.ctx.currentTime;
+    if (me && gun){
+      // v6: свой выстрел — три слоя: щелчок затвора, «тело» с низким ударом, хвост эха; у каждого ствола свой характер
+      const out = this.out(null, 0.32);
+      const H = gun === 'hmg', P = gun === 'smg';
+      const v = H ? 0.62 : P ? 0.42 : 0.5;
+      this.nz(out, t, 0.018, 'highpass', P ? 5200 : 4200, 0, 0.7, v * 0.7, 0.001);                          // щелчок
+      this.nz(out, t, H ? 0.12 : 0.07, 'bandpass', H ? 900 : P ? 1900 : 1400, H ? 260 : 600, 0.9, v, 0.002);   // тело
+      this.osc(out, t, H ? 0.16 : 0.09, 'sine', H ? 120 : P ? 190 : 150, 38, v * (H ? 1.25 : 0.95), 0.002);     // удар
+      this.nz(out, t + 0.01, H ? 0.4 : 0.26, 'lowpass', 1100, 140, 0.5, v * 0.35, 0.01);                        // хвост
+      if (H) this.osc(out, t, 0.05, 'square', 70, 50, v * 0.25, 0.002);
+      return;
+    }
+    const out = this.out(me ? null : pos, me ? 0.15 : 0.25);
     const v = me ? 0.55 : kind === 'heavy' ? 0.9 : 0.7;
     if (team === 0){
       this.nz(out, t, 0.11, 'bandpass', 1300, 500, 0.8, v);
@@ -164,8 +177,10 @@ const AU = {
     }
     if (kind === 'heavy') this.osc(out, t, 0.12, 'triangle', 90, 40, v * 0.6);
   },
-  rail(){
+  rail(pos){
     if (!this.ready()) return;
+    // v6: чужая рельса — позиционный звук (раньше любая рельса звучала как своя)
+    if (pos && S.cam && dist(pos, S.cam.pos) > 4){ if (!this.allow(pos, 400)) return; const t = this.ctx.currentTime, o = this.out(pos, 0.6); this.osc(o, t, 0.4, 'sawtooth', 2000, 140, 0.3); this.nz(o, t, 0.3, 'highpass', 2500, 700, 0.5, 0.5); this.osc(o, t + 0.02, 0.5, 'sine', 80, 30, 0.6); return; }
     const t = this.ctx.currentTime, out = this.out(null, 0.5);
     this.osc(out, t, 0.5, 'sawtooth', 2400, 120, 0.35);
     this.osc(out, t, 0.35, 'sine', 900, 60, 0.6);
@@ -355,7 +370,8 @@ const AU = {
     const tank = fps && me && me.cls === 'tank';
     const sp = tank ? len(me.vel) : 0;
     this.engG.gain.setTargetAtTime(tank ? 0.12 + sp * 0.015 : 0, t, 0.1);
-    this.engO.frequency.setTargetAtTime(32 + sp * 4, t, 0.1); this.engO2.frequency.setTargetAtTime(16 + sp * 2, t, 0.1);
+    const ek = tank && me.vk === 'raider' ? 1.9 : tank && me.vk ? 1.25 : 1;   // багги звучит выше и злее
+    this.engO.frequency.setTargetAtTime((32 + sp * 4) * ek, t, 0.1); this.engO2.frequency.setTargetAtTime((16 + sp * 2) * ek, t, 0.1);
     let nd = null, best = 60;
     for (const d of S.drones){ if (!d.alive) continue; const dd = dist(d.pos, c.pos); if (dd < best){ best = dd; nd = d; } }
     this.droneG.gain.setTargetAtTime(nd ? (nd === me ? 0.04 : 0.07) : 0, t, 0.1);
@@ -385,10 +401,10 @@ const AU = {
     const fps = S.mode === 'fps', me = S.me, live = !S.attract;
     for (const e of events){
       switch (e.type){
-        case 'shot': this.shot(e.pos, e.team, e.me ? 'me' : (e.heavy ? 'heavy' : 'rifle')); break;
-        case 'rail': this.rail(); break;
+        case 'shot': this.shot(e.pos, e.team, e.me ? 'me' : (e.heavy ? 'heavy' : 'rifle'), e.gun); break;
+        case 'rail': this.rail(e.src === me ? null : e.pos); break;
         case 'cannon': this.cannon(e.pos); break;
-        case 'boom': this.boom(e.pos, e.size); if (S.cam && dist(e.pos, S.cam.pos) < 40 * e.size) S.shake = max(S.shake, 0.4 * e.size); break;
+        case 'boom': this.boom(e.pos, e.size); if (S.cam){ const dd = dist(e.pos, S.cam.pos); if (dd < 40 * e.size) S.shake = max(S.shake, 0.4 * e.size * (1.3 - 0.8 * dd / (40 * e.size))); } break;
         case 'impact': this.impact(e.pos, e.hit, e.cls); break;
         case 'step': this.step(e.pos, e.e.leader, fps && e.e === me); if (random() < 0.15) this.servo(e.pos); break;
         case 'land': this.land(e.pos, e.hard, fps && e.e === me); break;
@@ -423,6 +439,7 @@ const AU = {
         case 'built': if (live && e.b.team === 0){ this.chime(true); this.radio(tr(`Построено: ${bname(e.b.type)}`, `Construction complete: ${bname(e.b.type)}`, `Xây xong: ${bname(e.b.type)}`), 0); } break;
         case 'place': if (live && e.b.team === 0) this.ui('ok'); break;
         case 'hqdown': this.boom(S.hq[e.team].pos, 8); break;
+        case 'v2': V2.sound(e); break;
         case 'over': if (live) this.radio(S.winner === 0 ? tr('Победа. Противник разгромлен', 'Victory. The enemy is crushed', 'Chiến thắng. Quân địch đã bị nghiền nát') : tr('Поражение', 'Defeat', 'Thất bại'), 3); break;
       }
     }

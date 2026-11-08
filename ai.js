@@ -27,7 +27,7 @@ function launchSpot(team, from){
 function entName(e){
   if (!e) return '';
   if (e.cls === 'inf') return groupLabel(e.squad) + (e.team ? tr(' Роя', ' (Swarm)', ' (Bầy Đàn)') : '');
-  if (e.cls === 'tank') return e.team ? tr('танк Роя', 'Swarm tank', 'xe tăng Bầy Đàn') : groupLabel(e);
+  if (e.cls === 'tank') return e.team ? (e.vk ? V2.name(e) + tr(' Роя', ' (Swarm)', ' (Bầy Đàn)') : tr('танк Роя', 'Swarm tank', 'xe tăng Bầy Đàn')) : groupLabel(e);
   if (e.cls === 'drone') return e.team ? tr('дрон Роя', 'Swarm drone', 'drone Bầy Đàn') : groupLabel(e);
   if (e.cls === 'bld') return bname(e.type) + (e.team ? tr(' Роя', ' (Swarm)', ' (Bầy Đàn)') : '');
   if (e.cls === 'hq') return e.team ? tr('штаб Роя', 'Swarm HQ', 'sở chỉ huy Bầy Đàn') : tr('наш штаб', 'our HQ', 'sở chỉ huy của ta');
@@ -36,6 +36,7 @@ function entName(e){
 }
 function orderText(g){
   if (!g) return '';
+  if (g.cls === 'builder') return builderDoing(g);
   switch (g.order){
     case 'cap': return g.cp ? (g.cp.core ? tr('Захватить Ядро', 'Capture the Core', 'Chiếm Lõi') : tr(`Захватить точку ${g.cp.name}`, `Capture point ${g.cp.name}`, `Chiếm điểm ${g.cp.name}`)) : tr('Захват', 'Capture', 'Chiếm');
     case 'attack': return S.hq[1 - g.team].alive ? (g.team === 0 ? tr('Атаковать штаб Роя', 'Assault the Swarm HQ', 'Tấn công sở chỉ huy Bầy Đàn') : tr('Атаковать наш штаб', 'Assault our HQ', 'Tấn công sở chỉ huy của ta')) : tr('Уничтожить ключевые здания', 'Destroy key buildings', 'Phá các công trình then chốt');
@@ -255,7 +256,7 @@ function botInput(u, dt){
     inp.thrustDir = norm(add(mul(Up, 0.55), len(inp.wish) > 0 ? inp.wish : tangent(u.fwd, Up)));
   }
   // мягкая посадка после полёта
-  if (!u.grounded && u.airT > 1.5 && dot(u.vel, Up) < -9 && altitude(u.pos) < 60){
+  if (!u.grounded && u.airT > 1.5 && dot(u.vel, Up) < -9 && altitude(u.pos) < 15 + dot(u.vel, Up) * dot(u.vel, Up) / (2 * max(4, u.jet.thrust - RULES.G))){
     inp.thrust = true; inp.thrustDir = norm(mul(u.vel, -1));
   }
   return withFire(u, inp);
@@ -295,7 +296,7 @@ function skyInput(u, inp, dt){
     const t = tangent(sub(goal, u.pos), Up);
     inp.wish = t;
     const vr = dot(u.vel, Up), alt = altitude(u.pos);
-    if (alt < 90 && vr < -7){ inp.thrust = true; inp.thrustDir = norm(add(mul(u.vel, -1), mul(t, 3))); }
+    if ((alt < 90 || alt < 20 + vr * vr / (2 * max(4, u.jet.thrust - RULES.G))) && vr < -7){ inp.thrust = true; inp.thrustDir = norm(add(mul(u.vel, -1), mul(t, 3))); }
     else if (alt > 90 && u.energy > 1){ inp.thrust = random() < 0.3; inp.thrustDir = norm(add(mul(Up, -0.2), t)); }
     if (u.grounded){ u.skyState = null; if (S.stats.landed && surfDist(u.pos, BASES[1 - u.team]) < 200) S.stats.landed[u.team]++; }
   }
@@ -323,7 +324,7 @@ function tankInput(v, dt){
     const vv = sub(goal, v.pos), t = sub(vv, mul(Up, dot(vv, Up))), dd = len(t);
     if (dd > (v.order === 'escort' ? 6 : 9)){
       let w = norm(t);
-      if (v.target && dist(centerOf(v.target), v.pos) < 45 && v.target.cls !== 'hq') w = mul(w, 0.0);   // стоять и стрелять
+      if (v.target && dist(centerOf(v.target), v.pos) < 45 && v.target.cls !== 'hq' && !v.rush) w = mul(w, 0.0);   // стоять и стрелять (марш — стреляет на ходу)
       if (v.evadeT > 0){ v.evadeT -= dt; w = norm(cross(Up, w)); }
       for (const a of AXES){
         const m = mul(a, RM), dm = surfDist(v.pos, m);
@@ -374,7 +375,7 @@ function fireCannon(v){
 }
 function fireMG(v, spread){
   const m = add(add(v.pos, mul(v.up, 0.5)), mul(v.aim, 2.8));
-  fire(m, v.aim, v.team, spread, 6, 130, v, 'b');
+  gunShootSimple(v, m, v.aim, spread, WEAPONS.tankmg);   // v6: мгновенная пуля
   v.mgCd = v === ctrlEntity() ? 0.1 : 0.22;
   emit('shot', { pos: m, team: v.team, src: v, heavy: true });
 }
@@ -439,15 +440,19 @@ function droneStep(d, dt){
     goal = add(c, add(mul(side, 18 * d.orbit), mul(toT, -10)));
     d.aim = norm(sub(c, d.pos));
     d.cd -= dt;
-    if (d.cd <= 0 && dist(c, d.pos) < 75 && los(d.pos, c)){
-      fire(add(d.pos, mul(d.aim, 1.0)), d.aim, d.team, 0.035 * (d.team === 1 ? DK().acc : 1), 6, 120, d, 'b');
+    // v6: новая цель — дрон «зависает» и наводится 0.5–0.9 с (окно, чтобы его сбить), затем стреляет мгновенными пулями
+    if (d.lastTgt !== d.target){ d.lastTgt = d.target; d.windT = 0.5 + random() * 0.4; }
+    if (d.windT > 0){ d.windT -= dt; goal = add(d.pos, mul(d.vel, 0.2)); }
+    else if (d.cd <= 0 && dist(c, d.pos) < 75 && los(d.pos, c)){
+      gunShootSimple(d, add(d.pos, mul(d.aim, 1.0)), d.aim, 0.03, WEAPONS.drone);
       d.cd = 0.28 + random() * 0.1;
       emit('shot', { pos: d.pos, team: d.team, src: d });
     }
   } else d.aim = d.fwd;
   flyTo(d, goal, d.alt, 13, dt);
 }
-function builderStep(b, dt){
+// v5: летающие дроны-строители (больше не используется; v6 — инженеры, rts_build.js: builderStep)
+function builderStepV5(b, dt){
   if (!b.job || !b.job.alive || (b.job.done && b.job.hp >= b.job.maxhp)){
     b.job = null;
     let best = null, bd = 1e9;
@@ -524,7 +529,7 @@ function turretShoot(b, gun, dir, spread){
   const side = norm(cross(dir, b.up));
   const m = add(add(gun, mul(dir, isAA ? 2.2 : 1.4)), mul(side, (b.barrel = -(b.barrel || 1)) * (isAA ? 0.22 : 0.14)));
   if (isAA) fire(m, dir, b.team, spread, 8, 220, b, 'f');
-  else fire(m, dir, b.team, spread, 7, 150, b, 'm');
+  else gunShootSimple(b, m, dir, spread, WEAPONS.turret);   // v6: мгновенная пуля
   b.cd = isAA ? 0.14 : 0.16;
   if (b === S.me) b.cd *= 0.8;
   emit('shot', { pos: m, team: b.team, src: b, heavy: isAA });
@@ -580,7 +585,7 @@ function reinforcePoint(sq){
 }
 function reinforceStep(dt){
   for (const sq of S.squads){
-    if (sq.units.length >= 4 || sq.order === 'sky' || sq.solo) continue;
+    if (sq.units.length >= 4 || sq.order === 'sky' || sq.solo || sq.lone) continue;
     sq.reinfT = (sq.reinfT || 0) - dt;
     if (sq.reinfT > 0) continue;
     sq.reinfT = 1;
@@ -612,6 +617,10 @@ function podStep(p, dt){
   if (random() < 0.7) S.fx.push({ type: 'fire', pos: p.pos, r0: 0.9, r1: 2.2, life: 0.35, t: 0, inten: 0.8 });
   if (random() < 0.35) S.fx.push({ type: 'smoke', pos: p.pos, vel: mul(randUnit(), 0.4), r0: 1.2, r1: 4, life: 3.5, t: 0, grey: 0.25, dens: 0.9, heat: 0.4 });
   addLight(p.pos, [6, 3, 1.2], 26, 0.05, 0.01);
+  if (k >= 1 && p.carry){   // капсула переброски игрока: бойцы уже на месте, только удар о землю
+    fxExplosion(p.to, 1.8); splash(p.to, p.team, 90, 6, S.me, 'g'); S.shake = max(S.shake, 0.6);
+    p.done = true; return null;
+  }
   if (k >= 1){
     fxExplosion(p.to, 2.6);
     splash(p.to, p.team, 140, 7, null, 'g');
@@ -691,8 +700,15 @@ function economy(t){
                    S.buildings.some(b => b.team !== t && b.type === 'airdock' && b.alive);
   const ownedCP = S.cps.filter(c => !c.core && c.owner === t).length;
   const plan = [];
+  // v6: инженеры и добыча — те же правила, что у игрока
+  aiBuilderJobs(t);
+  const nB = countProduct(t, 'builder'), wantB = aiWantBuilders(t), nExt = n('extractor');
+  if (nB < 2) plan.push(['p', 'builder']);
   if (!S.hq[t].alive && ownedCP && n('outpost') < 2) plan.push(['b', 'outpost']);
+  if (nExt < 2) plan.push(['b', 'extractor']);
   if (squads < 4) plan.push(['p', 'squad']);
+  if (nB < wantB) plan.push(['p', 'builder']);
+  if (nExt < 3 + ownedCP) plan.push(['b', 'extractor']);
   if (n('turret') < 1) plan.push(['b', 'turret']);
   if (time > 60 && n('factory') < 1) plan.push(['b', 'factory']);
   if (n('factory') && tanks < 2) plan.push(['p', 'tank']);
@@ -709,25 +725,28 @@ function economy(t){
   if (enemyAir && n('aa') < 2 + (time > 900 ? 1 : 0)) plan.push(['b', 'aa']);
   if (n('turret') < 2 + floor(time / 500)) plan.push(['b', 'turret']);
   if (tanks < 4) plan.push(['p', 'tank']);
+  if (nExt >= 3 && (time > 240 || T.ore > 400)) plan.push(['p', 'drill']);
   if (time > 300 || T.ore > 500){ plan.push(['p', 'weapons']); plan.push(['p', 'armor']); }
   if (n('factory') < 2 && time > 900) plan.push(['b', 'factory']);
   if (drones < GAME.MAX_DRONES) plan.push(['p', 'drone']);
   if (squads < GAME.MAX_SQUADS) plan.push(['p', 'squad']);
   if (T.ore > 600 * GAME.INC_MUL) plan.push(['p', 'pod']);
   if (tanks < GAME.MAX_TANKS) plan.push(['p', 'tank']);
+  V2.plan(t, plan, n('factory'));   // рейдеры, миномёты/катапульты, РСЗО (vehicles2.js)
   for (const [kind, key] of plan){
     if (kind === 'p'){
       // ИИ нашей команды оставляет в очередях место для заказов игрока
-      if (t === 0 && !S.attract){ const site = productionSite(t, key); if (site && site.queue.length >= 3) continue; }
+      if (t === 0 && !S.attract){ const site = productionSite(t, key); if (site && site.queue.length >= (key === 'builder' ? 4 : 3)) continue; }
       const why = canProduce(t, key);
       if (!why){ produce(t, key); if (T.ore < 150) return; continue; }
       if (why === tr('Мало руды', 'Not enough ore', 'Không đủ quặng')) return;
     } else {
       if (unfinished >= 2) continue;
+      if (t === 0 && T.autoBuild === false && !S.attract) continue;   // «Автостройка» выключена игроком
       const why = canBuild(t, key);
       if (!why){
-        const dir = findSite(t, key);
-        if (dir && !placeBuilding(t, key, dir)) return;
+        const dir = aiSiteFor(t, key);
+        if (dir && !aiPlace(t, key, dir)) return;
       } else if (why === tr('Мало руды', 'Not enough ore', 'Không đủ quặng')) return;
     }
   }
@@ -832,7 +851,7 @@ function army(t){
     const has = mine.some(g => g.escort === pg && groupAlive(g));
     if (PL && !has){
       let best = null, bd = 380;
-      for (const g of free){ if (g.cls !== 'tank' || g.order === 'attack' && S.time < (g.waveUntil || 0)) continue; const d = surfDist(g.pos, PL.pos); if (d < bd){ bd = d; best = g; } }
+      for (const g of free){ if (g.cls !== 'tank' || g.vk || g.order === 'attack' && S.time < (g.waveUntil || 0)) continue; const d = surfDist(g.pos, PL.pos); if (d < bd){ bd = d; best = g; } }
       const drones = free.filter(g => g.cls === 'drone' && surfDist(g.pos, PL.pos) < 300).slice(0, 2);
       if (best || drones.length){
         if (best) setOrder(best, 'escort', PL.pos, { escort: pg });
@@ -851,6 +870,7 @@ function army(t){
     for (const s of S.squads){ if (s.team !== t || (s.order !== 'attack' && s.order !== 'cap')) continue; const L = leaderOf(s); if (!L) continue; const dd = dist(L.pos, d.pos) + 60 * S.drones.filter(o => o.escort === s).length; if (dd < bd){ bd = dd; best = s; } }
     d.escort = best; d.order = best ? 'escort' : 'idle';
   }
+  aiRaid(t, free);   // v6: набеги на вражеские экстракторы
   // способности
   for (const g of mine) aiAbilities(g);
 }

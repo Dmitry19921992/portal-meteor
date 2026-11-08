@@ -1,0 +1,238 @@
+{
+ "site": "D:\\AI\\pm_v6\\dist\\preview106_v818",
+ "errors": [],
+ "warns": [],
+ "runs": {
+  "pc": {
+   "bootS": 438,
+   "menu": {
+    "prev": {
+     "on": true,
+     "id": "v818 · 1456476+ · 07.11 19:07",
+     "ver": "8.18",
+     "next": "",
+     "w": 1280,
+     "h": 720,
+     "touch": false
+    },
+    "badge": "TEST · v8.18 · 1456476+ · 07.11 19:07",
+    "badgeBox": [
+     3,
+     702,
+     174,
+     17
+    ],
+    "upd": {
+     "show": "",
+     "text": ""
+    },
+    "langs": 52,
+    "ar": 3313,
+    "touch": false,
+    "iw": 1280,
+    "ih": 720,
+    "menu": "main"
+   },
+   "open": {
+    "prev": {
+     "on": true,
+     "id": "v818 · 1456476+ · 07.11 19:07",
+     "ver": "8.18",
+     "next": "",
+     "w": 1280,
+     "h": 720,
+     "touch": false
+    },
+    "badge": "Test build (not the live version). v8.18 · v818 · 1456476+ · 07.11 19:07 · 1280×720 · Notes: \\ key or the feedback button. Tap to fold.",
+    "badgeBox": [
+     3,
+     689,
+     719,
+     29
+    ],
+    "upd": {
+     "show": "",
+     "text": ""
+    },
+    "langs": 52,
+    "ar": 3313,
+    "touch": false,
+    "iw": 1280,
+    "ih": 720,
+    "menu": "main"
+   },
+   "battle": {
+    "prev": {
+     "on": true,
+     "id": "v818 · 1456476+ · 07.11 19:07",
+     "ver": "8.18",
+     "next": "",
+     "w": 1280,
+     "h": 720,
+     "touch": false
+    },
+    "badge": "TEST · v8.18 · 1456476+ · 07.11 19:07",
+    "badgeBox": [
+     3,
+     702,
+     174,
+     17
+    ],
+    "upd": {
+     "show": "",
+     "text": ""
+    },
+    "langs": 52,
+    "ar": 3313,
+    "touch": false,
+    "iw": 1280,
+    "ih": 720,
+    "menu": ""
+   },
+   "upd": {
+    "prev": {
+     "on": true,
+     "id": "v818 · 1456476+ · 07.11 19:07",
+     "ver": "8.18",
+     "next": "task/T106-preview · fff0000 · 07.11 23:59",
+     "w": 1280,
+     "h": 720,
+     "touch": false
+    },
+    "badge": "TEST · v8.18 · 1456476+ · 07.11 19:07",
+    "badgeBox": [
+     3,
+     702,
+     174,
+     17
+    ],
+    "upd": {
+     "show": "block",
+     "text": "⟳ New test build — reload (fff0000)"
+    },
+    "langs": 52,
+    "ar": 3313,
+    "touch": false,
+    "iw": 1280,
+    "ih": 720,
+    "menu": ""
+   }
+  },
+  "phone": {
+   "bootS": 9,
+   "menu": {
+    "prev": {
+     "on": true,
+     "id": "v818 · 1456476+ · 07.11 19:07",
+     "ver": "8.18",
+     "next": "",
+     "w": 844,
+     "h": 390,
+     "touch": true
+    },
+    "badge": "TEST · v8.18 · 1456476+ · 07.11 19:07",
+    "badgeBox": [
+     3,
+     372,
+     174,
+     17
+    ],
+    "upd": {
+     "show": "",
+     "text": ""
+    },
+    "langs": 52,
+    "ar": 3313,
+    "touch": true,
+    "iw": 844,
+    "ih": 390,
+    "menu": "main"
+   },
+   "open": {
+    "prev": {
+     "on": true,
+     "id": "v818 · 1456476+ · 07.11 19:07",
+     "ver": "8.18",
+     "next": "",
+     "w": 844,
+     "h": 390,
+     "touch": true
+    },
+    "badge": "Test build (not the live version). v8.18 · v818 · 1456476+ · 07.11 19:07 · 844×390 · Notes: \\ key or the feedback button. Tap to fold.",
+    "badgeBox": [
+     3,
+     344,
+     613,
+     44
+    ],
+    "upd": {
+     "show": "",
+     "text": ""
+    },
+    "langs": 52,
+    "ar": 3313,
+    "touch": true,
+    "iw": 844,
+    "ih": 390,
+    "menu": "main"
+   },
+   "battle": {
+    "prev": {
+     "on": true,
+     "id": "v818 · 1456476+ · 07.11 19:07",
+     "ver": "8.18",
+     "next": "",
+     "w": 844,
+     "h": 390,
+     "touch": true
+    },
+    "badge": "TEST · v8.18 · 1456476+ · 07.11 19:07",
+    "badgeBox": [
+     3,
+     372,
+     174,
+     17
+    ],
+    "upd": {
+     "show": "",
+     "text": ""
+    },
+    "langs": 52,
+    "ar": 3313,
+    "touch": true,
+    "iw": 844,
+    "ih": 390,
+    "menu": ""
+   },
+   "upd": {
+    "prev": {
+     "on": true,
+     "id": "v818 · 1456476+ · 07.11 19:07",
+     "ver": "8.18",
+     "next": "task/T106-preview · fff0000 · 07.11 23:59",
+     "w": 844,
+     "h": 390,
+     "touch": true
+    },
+    "badge": "TEST · v8.18 · 1456476+ · 07.11 19:07",
+    "badgeBox": [
+     3,
+     372,
+     174,
+     17
+    ],
+    "upd": {
+     "show": "block",
+     "text": "⟳ New test build — reload (fff0000)"
+    },
+    "langs": 52,
+    "ar": 3313,
+    "touch": true,
+    "iw": 844,
+    "ih": 390,
+    "menu": ""
+   }
+  }
+ },
+ "ok": true
+}

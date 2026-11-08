@@ -114,7 +114,7 @@ const SQUADUI = {
     g.fill();
     g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1.5; g.stroke();
     // визор
-    const visor = u.team ? '#ff3020' : v === 2 ? '#ffd040' : '#9fdcff';
+    const visor = FI76(u.team) ? '#ff3020' : v === 2 ? '#ffd040' : '#9fdcff';
     g.shadowColor = visor; g.shadowBlur = 10; g.fillStyle = visor;
     if (v === 1){ g.fillRect(19, 26, 9, 5); g.fillRect(36, 26, 9, 5); }               // два «глаза»
     else if (v === 3){ g.fillRect(20, 27, 24, 3); }                                       // тонкая щель
@@ -139,10 +139,11 @@ const SQUADUI = {
       const hp = max(0, u.hp) / u.maxhp;
       const st = u === S.me ? tr('ТЫ', 'YOU', 'BẠN') : u.healTo ? '⚕ ' + tr('чинит', 'repairing', 'đang sửa') : (u.squad.units.some(x => x.healTo === u) ? '✚ ' + tr('ремонт', 'patched', 'được sửa') : u.suppT > 0 ? '⊘ ' + tr('подавлен', 'pinned', 'bị áp chế') : u.target && u.target.alive ? '✸ ' + tr('в бою', 'engaging', 'giao chiến') : '');
       const talk = now - (u.talkT || -99) < 2.5;
-      return `<div class="sm ${u === S.me ? 'me' : ''} ${talk ? 'talk' : ''} ${hp < 0.35 ? 'low' : ''}"><img src="${this.portrait(u)}"><div><b>${callsign(u)} <span class="role">${roleOf(u).icon}</span>${u.elite ? ' ✦' : ''}</b><small>${st || N2(roleOf(u).n).toLowerCase()}</small><i><s style="width:${(hp * 100).toFixed(0)}%"></s></i></div></div>`;
+      // v6: крупнее — класс всегда виден, здоровье числом
+      return `<div class="sm ${u === S.me ? 'me' : ''} ${talk ? 'talk' : ''} ${hp < 0.35 ? 'low' : ''}"><img src="${this.portrait(u)}"><div><b>${callsign(u)} <span class="role">${roleOf(u).icon}</span>${u.elite ? ' ✦' : ''}<span class="hpn">${Math.ceil(max(0, u.hp))}</span></b><small><span class="cls">${N2(roleOf(u).n)}</span>${st ? ' · ' + st : ''}</small><i><s style="width:${(hp * 100).toFixed(0)}%"></s></i></div></div>`;
     }).join('');
     const lines = this.lines.filter(l => now - l.t < 6).map(l => `<p><b>${l.name}:</b> ${l.text}</p>`).join('');
-    const h = `<h5>${groupLabel(sq).toUpperCase()}${sq.vet ? ' ' + '★'.repeat(sq.vet) : ''} · ${orderText(sq)}</h5>${rows}<div class="chat">${lines}</div>`;
+    const h = `<h5>${groupLabel(sq).toUpperCase()}${sq.vet ? ' ' + '★'.repeat(sq.vet) : ''} · ${orderText(sq)}</h5>${typeof MISSION !== 'undefined' ? MISSION.chip() : ''}${rows}<div class="chat">${lines}</div>`;
     if (h !== this.sig){ this.sig = h; el.innerHTML = h; }
   },
 };

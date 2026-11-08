@@ -14,6 +14,11 @@ uniform vec4  uTrc[8];   // трассеры у камеры: отрезки в 
 uniform int   uNT;
 uniform float uSlow;     // рефлекс (замедление времени)
 uniform float uDist;     // искажения вкл/выкл
+uniform float uXfer;     // v6: «передача сигнала» при перелёте камеры между бойцами
+uniform float uG72;      // v7.2gfx: новая пост-обработка (0 — как в v7.1)
+uniform float uDen;      // v7.5 «Денди»: без зерна плёнки (иначе пиксели палитры мерцают каждый кадр)
+uniform vec4  uVx87;     // v87: вихрь вселения — xy центр (uv), z сила (+ засасывает, − выплёвывает), w радиус
+uniform float uK87;      // v87: сила марева пуль (F.E.A.R.), растёт в «рефлексе»
 out vec4 frag;
 
 vec3 aces(vec3 x){
@@ -36,8 +41,15 @@ void main(){
     float line = floor(uv.y * uRes.y * 0.5);
     uv.x += (hash(vec2(line, floor(uTime * 24.0))) - 0.5) * 0.0025;
   }
+  if (uXfer > 0.0){
+    // срыв строк: полосы сдвигаются рывками
+    float band = floor(uv.y * 38.0 + floor(uTime * 15.0) * 7.0);
+    float jit = step(0.72, hash(vec2(band, floor(uTime * 20.0))));
+    uv.x += (hash(vec2(band * 1.7, floor(uTime * 30.0))) - 0.5) * 0.06 * jit * uXfer;
+  }
   // ---- искажение пространства (как в F.E.A.R.): ударная волна-линза и марево трассеров
   vec2 asp = vec2(uRes.x / uRes.y, 1.0);
+  if (abs(uVx87.z) > 0.001){ vec2 dv = (uv - uVx87.xy) * asp; float f = exp(-dot(dv, dv) / (uVx87.w * uVx87.w)); float an = uVx87.z * 2.6 * f * (0.4 + length(dv)); dv = mat2(cos(an), sin(an), -sin(an), cos(an)) * dv * (1.0 - uVx87.z * 0.55 * f); uv = uVx87.xy + dv / asp; }   // v87
   vec2 off = vec2(0.0);
   float ring = 0.0;
   if (uDist > 0.5){
@@ -66,12 +78,12 @@ void main(){
       vec2 q = p - (a + ba * h);
       float dd = length(q);
       float k = exp(-dd * dd / 0.00009);
-      off += (dd > 1e-6 ? q / dd : vec2(0.0)) * k * 0.0035 * sin(dd * 1400.0 - uTime * 50.0);
+      off += (dd > 1e-6 ? q / dd : vec2(0.0)) * k * 0.0035 * (1.0 + uK87) * sin(dd * 1400.0 - uTime * 50.0);   // v87: × (1 + uK87)
     }
     off = clamp(off, vec2(-0.06), vec2(0.06)) / asp;
   }
   vec2 cc = uv - 0.5;
-  float ca = dot(cc, cc) * (0.012 + uSlow * 0.03) + ring * 0.004;
+  float ca = dot(cc, cc) * (0.012 + uSlow * 0.03) + ring * 0.004 + uXfer * 0.035 + abs(uVx87.z) * 0.05;   // v87: + вихрь
   vec2 u2 = uv + off;
   vec3 col;
   col.r = texture(uTex, u2 - cc * ca + off * 0.35).r;
@@ -87,6 +99,16 @@ void main(){
   vec3 bl = blurLod(u2, 1.5) * 0.18 + blurLod(u2, 3.0) * 0.26 + blurLod(u2, 4.5) * 0.30 + blurLod(u2, 6.0) * 0.26;
   col += max(bl - vec3(0.18), 0.0) * (0.55 + 0.4 * uSlow) * uBloom;
   col += vec3(1.0, 0.85, 0.7) * ring * 0.035;
+  if (uG72 > 0.75){
+    // v7.2gfx: горизонтальный «анаморфный» блик от ярких источников и «грязь» на линзе в ореоле
+    vec3 st = vec3(0.0);
+    for (int k = -3; k <= 3; k++){ if (k == 0) continue; float fx = float(k) / 3.0; st += max(textureLod(uTex, u2 + vec2(fx * 0.09, 0.0), 4.0).rgb - vec3(1.6), 0.0) * (1.0 - abs(fx) * 0.8); }
+    col += st * vec3(0.55, 0.75, 1.0) * 0.05 * uBloom;
+    vec2 dq = uv * vec2(11.0, 6.5), di = floor(dq), df = smoothstep(0.0, 1.0, fract(dq));
+    float dn = mix(mix(hash(di), hash(di + vec2(1.0, 0.0)), df.x), mix(hash(di + vec2(0.0, 1.0)), hash(di + vec2(1.0, 1.0)), df.x), df.y);
+    float dirt = smoothstep(0.5, 0.95, dn * 0.7 + 0.3 * sin(uv.x * 9.0 + uv.y * 5.0) * sin(uv.y * 7.0));
+    col += max(bl - vec3(0.3), 0.0) * dirt * 0.3 * uBloom;
+  }
 
   col *= uExpo;
   col = aces(col);
@@ -98,6 +120,17 @@ void main(){
   col = mix(col, col * vec3(1.08, 1.0, 0.86), uSlow * 0.6);
   col = pow(col, vec3(1.0 / 2.2));
   col = mix(col, smoothstep(0.0, 1.0, col), 0.25);
+  if (uG72 > 0.25){
+    // v7.2gfx: «военная плёнка» — тени в холодный сине-зелёный, света в беж/охру, поднятый чёрный, мягкое плечо
+    float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+    col = mix(col, col * vec3(0.9, 1.0, 1.06) + vec3(0.0, 0.006, 0.012), smoothstep(0.45, 0.0, l) * 0.8);
+    col = mix(col, col * vec3(1.05, 1.0, 0.9), smoothstep(0.35, 0.9, l) * 0.55);
+    col = mix(vec3(l), col, 0.92);
+    col = col * 0.965 + 0.022;
+    // зерно плёнки: сильнее в тенях и полутонах, крупнее VHS-шума
+    float gr = hash(floor(gl_FragCoord.xy * 0.7) + fract(uTime * 23.1) * 517.0) - 0.5;
+    if (uDen < 0.5) col += gr * 0.05 * (1.0 - l * 0.7);
+  }
 
   float vig = smoothstep(1.05, 0.3, length(cc * vec2(1.25, 1.0)));
   col *= mix(0.55 - 0.25 * uSlow, 1.0, vig);
@@ -105,7 +138,14 @@ void main(){
   col = mix(col, vec3(1.0), uFlash);
 
   float g = hash(gl_FragCoord.xy + fract(uTime * 13.7) * 311.0) - 0.5;
-  col += g * (0.035 + uVhs * 0.05 + uSlow * 0.02);
+  if (uDen < 0.5) col += g * (0.035 + uVhs * 0.05 + uSlow * 0.02);
   if (uVhs > 0.5) col *= 0.9 + 0.1 * sin(gl_FragCoord.y * 3.14159);
+  if (uXfer > 0.0){
+    float l2 = dot(col, vec3(0.3, 0.55, 0.15));
+    col = mix(col, vec3(l2 * 0.75, l2 * 1.05, l2 * 1.2), uXfer * 0.55);           // холодный «сигнал»
+    col *= 1.0 - uXfer * 0.3 * (0.5 + 0.5 * sin(gl_FragCoord.y * 1.6 + uTime * 40.0));   // строки развёртки
+    col += (hash(gl_FragCoord.xy * 0.5 + fract(uTime * 7.3) * 97.0) - 0.5) * uXfer * 0.32; // статика
+    col += vec3(0.25, 0.6, 0.8) * uXfer * 0.12 * step(0.985, hash(vec2(floor(uv.y * 90.0), floor(uTime * 25.0))));
+  }
   frag = vec4(clamp(col, 0.0, 1.0), 1.0);
 }

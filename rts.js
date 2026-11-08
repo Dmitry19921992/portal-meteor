@@ -2,43 +2,217 @@
 //  СТРАТЕГИЯ: камера у земли, выделение, группы, приказы, способности,
 //  боковая панель производства, командная карточка, миникарта
 // =====================================================================
+// v6 rtsui: устойчивая камера стратегии.
+//  • базис строится от касательного «вперёд» (fwd ⟂ dir): right = fwd × dir — без переворотов у полюсов и антипода;
+//  • высота земли под фокусом и отъезд камеры от скал сглаживаются — без дёрганья на рельефе;
+//  • панорамирование — параллельный перенос dir+fwd поворотом вокруг оси через центр, со сглаженной скоростью;
+//  • зум плавный и к курсору; перелёты — по дуге большого круга (не через центр метеорита).
+const RTS_HMIN = 12, RTS_HMAX = 285;
 let RTS_GR = { dir: null, r: RM };
-function rtsCamera(){
+const RCAM = { gr: null, lift: 0, dt: 1 / 60, blend: null, good: null, vel: [0, 0], rotV: 0, edgeT: 0, mouseIn: false, overUI: false, mm: false };
+const finite3 = v => !!v && isFinite(v[0]) && isFinite(v[1]) && isFinite(v[2]);
+// поворот камеры вокруг оси через центр метеорита: dir и fwd вместе (fwd остаётся касательным — без рывков)
+function rtsAxisRotate(axis, ang){
+  const R = S.rts; if (!ang || !isFinite(ang)) return;
+  R.dir = norm(rotAxis(R.dir, axis, ang)); R.fwd = tangent(rotAxis(R.fwd, axis, ang), R.dir);
+  if (R.goal) R.goal = norm(rotAxis(R.goal, axis, ang));
+}
+// сдвиг камеры: вперёд/вправо на угол (рад) по экрану
+function rtsPan(fwdAng, rightAng){
   const R = S.rts;
-  R.dir = norm(R.dir);
-  R.fwd = tangent(R.fwd, R.dir);
-  if (!RTS_GR.dir || dot(RTS_GR.dir, R.dir) < 0.99999){ RTS_GR.dir = R.dir; RTS_GR.r = max(RM - 5, groundR(R.dir)); }
+  if (fwdAng) rtsAxisRotate(norm(cross(R.dir, R.fwd)), fwdAng);
+  if (rightAng){ const right = norm(cross(R.fwd, R.dir)); rtsAxisRotate(norm(cross(R.dir, right)), rightAng); }
+}
+// перенести камеру в точку по кратчайшей дуге (fwd переносится параллельно)
+function rtsTransportTo(t){
+  const R = S.rts; t = norm(t);
+  const c = cross(R.dir, t), s = len(c), d = dot(R.dir, t);
+  if (s < 1e-7 && d > 0) return;
+  const axis = s < 1e-7 ? norm(cross(R.dir, R.fwd)) : mul(c, 1 / s);
+  const ang = atan2(s, d);
+  R.dir = norm(rotAxis(R.dir, axis, ang)); R.fwd = tangent(rotAxis(R.fwd, axis, ang), R.dir);
+}
+// высота земли под фокусом (над шахтами — не ниже RM−5); сглаживается в rtsCamera
+function rtsGroundAt(N){ return max(RM - 5, groundR(N)); }
+// наклон камеры от высоты (общий для rtsCamera и модели зума к курсору)
+function rtsTilt(h){ return lerp(0.95, 0.12, smoothstep(25, RTS_HMAX, h)); }
+// v61: «модель» камеры для состояния (dir, fwd, h) — без сглаживаний; для зума к курсору
+function rtsCamModel(dir, fwd, h){
+  const N = dir, f = fwd, focus = mul(N, (RCAM.gr === null ? rtsGroundAt(N) : RCAM.gr) + 1);
+  const want = add(add(focus, mul(N, h)), mul(f, -h * tan(rtsTilt(h))));
+  const pos = add(want, mul(norm(want), RCAM.lift));
+  const look = norm(sub(focus, pos)), right = norm(cross(f, N));
+  return { pos, fwd: look, right, up: norm(cross(right, look)) };
+}
+function rtsProjWith(c, p){
+  const v = sub(p, c.pos), z = dot(v, c.fwd); if (z <= 0.3) return null;
+  const H = innerHeight, fov = S.cam ? S.cam.fov : 1;
+  return [innerWidth / 2 + dot(v, c.right) / z / fov * H, H / 2 - dot(v, c.up) / z / fov * H];
+}
+// где окажется точка p на экране, если сдвинуть камеру на (a — вперёд, b — вправо) рад при высоте h
+function rtsProjShift(a, b, h, p){
+  const R = S.rts;
+  let d = R.dir, f = R.fwd;
+  if (a){ const ax = norm(cross(d, f)); d = norm(rotAxis(d, ax, a)); f = tangent(rotAxis(f, ax, a), d); }
+  if (b){ const rt = norm(cross(f, d)), ax = norm(cross(d, rt)); d = norm(rotAxis(d, ax, b)); f = tangent(rotAxis(f, ax, b), d); }
+  return rtsProjWith(rtsCamModel(d, f, h), p);
+}
+// v61: каждый кадр зума держим точку земли под курсором на месте (решение Ньютоном, шаг ограничен)
+function rtsAnchorStep(dt){
+  const A = RCAM.anc, R = S.rts;
+  if (!A) return;
+  A.t += dt;
+  if (S.camFly || A.t > 2.5){ RCAM.anc = null; return; }
+  const maxStep = 0.025 * min(2, dt * 60);   // рад/кадр (≈12 м по поверхности) — без рывков
+  let moved = 0;
+  for (let it = 0; it < 3; it++){
+    const s0 = rtsProjShift(0, 0, R.h, A.p); if (!s0){ RCAM.anc = null; return; }
+    const ex = s0[0] - A.x, ey = s0[1] - A.y;
+    if (hypot(ex, ey) < 0.25) break;
+    const e = 2e-4, sa = rtsProjShift(e, 0, R.h, A.p), sb = rtsProjShift(0, e, R.h, A.p);
+    if (!sa || !sb){ RCAM.anc = null; return; }
+    const j11 = (sa[0] - s0[0]) / e, j21 = (sa[1] - s0[1]) / e, j12 = (sb[0] - s0[0]) / e, j22 = (sb[1] - s0[1]) / e;
+    const det = j11 * j22 - j12 * j21; if (abs(det) < 1e-6){ RCAM.anc = null; return; }
+    let da = -(j22 * ex - j12 * ey) / det, db = -(-j21 * ex + j11 * ey) / det;
+    const l = hypot(da, db), room = maxStep - moved; if (room <= 1e-6) break;
+    if (l > room){ da *= room / l; db *= room / l; }
+    if (!isFinite(da) || !isFinite(db)){ RCAM.anc = null; return; }
+    rtsPan(da, db); moved += hypot(da, db);
+  }
+  if (abs(R.h - R.hT) < 0.05) RCAM.anc = null;   // высота доехала — больше не «держим» (подъём над скалами не крутит камеру)
+}
+// v61: колесо/трекпад → «щелчки» колеса; ограничение за событие и в секунду (ведро токенов)
+const RTS_WHEEL = { step: 1.15, perEvent: 1.5, perSec: 9, burst: 3 };
+function rtsWheel(e){
+  let n = e.deltaMode === 1 ? e.deltaY / 3 : e.deltaMode === 2 ? e.deltaY * 1.5 : e.deltaY / 100;
+  if (e.ctrlKey && e.deltaMode === 0) n *= 2.5;   // щипок трекпада: маленькие deltaY
+  if (!isFinite(n) || !n) return;
+  n = clamp(n, -RTS_WHEEL.perEvent, RTS_WHEEL.perEvent);
+  if (RCAM.wtok === undefined) RCAM.wtok = RTS_WHEEL.burst;
+  const use = min(abs(n), RCAM.wtok); if (use <= 1e-4) return;
+  RCAM.wtok -= use;
+  rtsZoomN(Math.sign(n) * use, e.clientX, e.clientY);
+}
+function rtsCamera(){
+  const R = S.rts, dt = RCAM.dt;
+  if (!finite3(R.dir) || len(R.dir) < 0.5 || !finite3(R.fwd)){
+    R.dir = RCAM.good ? RCAM.good.dir.slice() : BASES[0].slice(); R.fwd = RCAM.good ? RCAM.good.fwd.slice() : anyTangent(R.dir);
+    S.camFly = null; R.goal = null;
+  }
+  if (!isFinite(R.h)) R.h = 60;
+  R.dir = norm(R.dir); R.fwd = tangent(R.fwd, R.dir);
+  R.h = clamp(R.h, RTS_HMIN, RTS_HMAX);
+  if (RCAM.good && dot(RCAM.good.dir, R.dir) < 0.97){ RCAM.gr = null; RCAM.lift = 0; }   // телепорт (загрузка, вход в режим)
+  RCAM.good = { dir: R.dir.slice(), fwd: R.fwd.slice() };
   const N = R.dir, f = R.fwd;
-  const focus = mul(N, RTS_GR.r + 1);
-  const tilt = lerp(0.95, 0.12, smoothstep(25, 285, R.h));
-  let pos = add(add(focus, mul(N, R.h)), mul(f, -R.h * tan(tilt)));
+  const grT = rtsGroundAt(N);
+  if (RCAM.gr === null) RCAM.gr = grT;
+  else RCAM.gr += (grT - RCAM.gr) * (1 - Math.exp(-dt * 5));
+  RTS_GR.dir = N; RTS_GR.r = RCAM.gr;
+  const focus = mul(N, RCAM.gr + 1);
+  let want = add(add(focus, mul(N, R.h)), mul(f, -R.h * tan(rtsTilt(R.h))));
+  // Камера не «подтягивается» к фокусу, если между ними скала или здание (в v5.3 так камера
+  // внезапно ныряла в штаб/рельеф — рывок на сотни метров и тёмный экран). Вместо этого она
+  // плавно ПОДНИМАЕТСЯ над препятствием в своей точке: вверх сразу, обратно — медленно.
+  const NU = norm(want);
+  let lift = 0;
+  for (let i = 0; i < 40; i++){ const p = add(want, mul(NU, lift)), m = mapJS(p[0], p[1], p[2]); if (m > 2.5) break; lift += max(1, 2.5 - m); }
+  if (lift > RCAM.lift) RCAM.lift += (lift - RCAM.lift) * (1 - Math.exp(-dt * 10));
+  else RCAM.lift += (lift - RCAM.lift) * (1 - Math.exp(-dt * 2.5));
+  let pos = add(want, mul(NU, RCAM.lift));
+  for (let i = 0; i < 20; i++){ const m = mapJS(pos[0], pos[1], pos[2]); if (m > 0.6) break; pos = add(pos, mul(NU, max(0.5, 0.6 - m))); }   // страховка: никогда не внутри геометрии
   if (len(pos) > S.R - 4) pos = mul(norm(pos), S.R - 4);
-  pos = pullCam(focus, pos);
-  return Object.assign({ pos }, camBasis(norm(sub(focus, pos)), N));
+  if (dist(pos, focus) < 2.5) pos = add(focus, mul(N, 2.5));
+  let look = norm(sub(focus, pos));
+  const right = norm(cross(f, N));
+  let up = norm(cross(right, look));
+  // плавный переход из шутера (камера «взлетает» от бойца)
+  const B = RCAM.blend;
+  if (B){
+    B.t += dt;
+    const e = smoothstep(0, 0.55, B.t);
+    if (e >= 1) RCAM.blend = null;
+    else {
+      pos = add(mul(B.pos, 1 - e), mul(pos, e));
+      const lk = add(mul(B.fwd, 1 - e), mul(look, e)), uk = add(mul(B.up, 1 - e), mul(up, e));
+      if (len(lk) > 0.2 && len(uk) > 0.2){ look = norm(lk); return Object.assign({ pos }, camBasis(look, norm(uk))); }
+    }
+  }
+  return { pos, right, up, fwd: look };
 }
 function rtsFocusPoint(){ return mul(S.rts.dir, RTS_GR.r); }
-function rtsLookAt(p){ S.rts.dir = norm(p); RTS_GR.dir = null; }
+function rtsLookAt(p){ S.camFly = null; S.rts.goal = null; RCAM.anc = null; rtsTransportTo(p); }
+// сброс состояния камеры при входе в стратегию (fromCam — камера шутера для плавного перехода)
+function rtsCamReset(fromCam){
+  const R = S.rts;
+  R.hT = R.h; R.goal = null; S.camFly = null; RCAM.anc = null; RCAM.vel = [0, 0]; RCAM.rotV = 0; RCAM.edgeT = 0; RCAM.gr = null; RCAM.lift = 0;
+  RCAM.blend = fromCam && finite3(fromCam.pos) ? { pos: fromCam.pos, fwd: fromCam.fwd, up: fromCam.up, t: 0 } : null;
+  drag = null; mdrag = null; RCAM.mm = false;
+}
+// можно ли сейчас скроллить краем экрана: мышь в окне, не над панелями (кроме самого края), не тянем рамку
+function rtsEdgeOK(){
+  if (!SET.edgeScroll || !S.mouse || !RCAM.mouseIn || drag || mdrag || RCAM.mm || (typeof TOUCH !== 'undefined' && TOUCH.on)) return false;
+  if (!document.hasFocus()) return false;
+  return !RCAM.overUI || S.mouse[0] >= innerWidth - 3 || S.mouse[1] >= innerHeight - 3;
+}
 function updateRTSCamera(dt){
   const R = S.rts;
+  RCAM.dt = dt;
   if (MENU.isOpen()) return;
-  const speed = (30 + R.h * 1.1) * dt / RM;
+  if (R.hT === undefined || !isFinite(R.hT)) R.hT = R.h;
   const k = (c1, c2) => (keys[c1] || keys[c2]) ? 1 : 0;
   let ud = k('KeyW', 'ArrowUp') - k('KeyS', 'ArrowDown');
   let lr = k('KeyD', 'ArrowRight') - k('KeyA', 'ArrowLeft');
   if (keys.ControlLeft || keys.ControlRight){ ud = 0; lr = 0; }
-  if (SET.edgeScroll && S.mouse && document.hasFocus() && !drag){
+  if (rtsEdgeOK()){
     const [mx, my] = S.mouse, m = 8;
-    if (mx < m) lr = -1; else if (mx > innerWidth - m) lr = 1;
-    if (my < m) ud = 1; else if (my > innerHeight - m) ud = -1;
-  }
+    const el = mx < m ? -1 : mx > innerWidth - m ? 1 : 0, eu = my < m ? 1 : my > innerHeight - m ? -1 : 0;
+    if (el || eu){ RCAM.edgeT += dt; if (RCAM.edgeT > 0.12){ lr = lr || el; ud = ud || eu; } } else RCAM.edgeT = 0;
+  } else RCAM.edgeT = 0;
   const rot = k('KeyE', 'KeyE') - k('KeyQ', 'KeyQ');
-  if (ud){ const a = ud * speed; const nd = norm(add(mul(R.dir, cos(a)), mul(R.fwd, sin(a)))); R.fwd = norm(sub(mul(R.fwd, cos(a)), mul(R.dir, sin(a)))); R.dir = nd; }
-  if (lr){ const right = norm(cross(R.fwd, R.dir)); const a = lr * speed; R.dir = norm(add(mul(R.dir, cos(a)), mul(right, sin(a)))); }
-  if (rot) R.fwd = norm(rotAxis(R.fwd, R.dir, rot * dt * 1.6));
-  R.fwd = tangent(R.fwd, R.dir);
-  if (S.camFly){ S.camFly.t += dt; const kk = smoothstep(0, 0.6, S.camFly.t); R.dir = norm(add(mul(S.camFly.from, 1 - kk), mul(S.camFly.to, kk))); if (kk >= 1) S.camFly = null; }
+  if ((ud || lr) && (S.camFly || R.goal)){ S.camFly = null; R.goal = null; }
+  if (ud || lr || rot) RCAM.anc = null;   // v61: панорама/поворот — зум дальше в центр экрана
+  RCAM.wtok = min(RTS_WHEEL.burst, (RCAM.wtok === undefined ? RTS_WHEEL.burst : RCAM.wtok) + dt * RTS_WHEEL.perSec);
+  // сглаженная скорость: разгон ~0.1 с, остановка ~0.07 с; по диагонали не быстрее
+  const a = 1 - Math.exp(-dt * ((ud || lr) ? 14 : 22));
+  RCAM.vel[0] += (ud - RCAM.vel[0]) * a; RCAM.vel[1] += (lr - RCAM.vel[1]) * a;
+  if (!ud && abs(RCAM.vel[0]) < 0.01) RCAM.vel[0] = 0;
+  if (!lr && abs(RCAM.vel[1]) < 0.01) RCAM.vel[1] = 0;
+  let vu = RCAM.vel[0], vr = RCAM.vel[1]; const vl = hypot(vu, vr); if (vl > 1){ vu /= vl; vr /= vl; }
+  const speed = (30 + R.h * 1.1) / RM;   // рад/с: скорость растёт с высотой
+  if (vu || vr) rtsPan(vu * speed * dt, vr * speed * dt);
+  RCAM.rotV += (rot - RCAM.rotV) * (1 - Math.exp(-dt * 14));
+  if (!rot && abs(RCAM.rotV) < 0.01) RCAM.rotV = 0;
+  if (RCAM.rotV) R.fwd = tangent(rotAxis(R.fwd, R.dir, RCAM.rotV * dt * 1.6), R.dir);
+  // плавный зум
+  R.hT = clamp(R.hT, RTS_HMIN, RTS_HMAX);
+  R.h += (R.hT - R.h) * (1 - Math.exp(-dt * 8));   // v61: мягче (было 12) — меньше поворот наклона за кадр
+  if (abs(R.hT - R.h) < 0.01) R.h = R.hT;
+  rtsAnchorStep(dt);   // v61: точка под курсором остаётся на месте
+  // доводка к цели
+  if (R.goal){
+    const c = cross(R.dir, R.goal), s = len(c), ang = atan2(s, dot(R.dir, R.goal));
+    if (ang < 1e-5 || s < 1e-9) R.goal = null;
+    else rtsAxisRotate(mul(c, 1 / s), ang * (1 - Math.exp(-dt * 12)));
+  }
+  // перелёт по дуге
+  const F = S.camFly;
+  if (F){
+    F.t += dt;
+    const e = smoothstep(0, 1, F.t / F.dur);
+    rtsTransportTo(rotAxis(F.from, F.axis, F.ang * e));
+    if (F.t >= F.dur) S.camFly = null;
+  }
 }
-function flyCamTo(p){ S.camFly = { from: S.rts.dir, to: norm(p), t: 0 }; }
+function flyCamTo(p){
+  const R = S.rts; if (!finite3(p)) return;
+  const to = norm(p), from = R.dir.slice();
+  const c = cross(from, to), s = len(c), ang = atan2(s, dot(from, to));
+  if (ang < 1e-4) return;
+  const axis = s < 1e-6 ? norm(cross(from, R.fwd)) : mul(c, 1 / s);
+  R.goal = null;
+  S.camFly = { from, axis, ang, t: 0, dur: clamp(0.35 + ang * 0.45, 0.35, 1.2) };
+}
 // видна ли точка с камеры (не за горизонтом метеорита)
 function facing(p){ const l = len(p); if (l < 60) return true; return dot(sub(S.cam.pos, p), mul(p, 1 / l)) > -6; }
 function screenRay(x, y){
@@ -68,6 +242,7 @@ function pickEntity(x, y, wantEnemy){
   for (const u of S.units) if (u.alive && (u.team === 0 || (wantEnemy && u.seen[0] > 0))) test(u, u.pos, 0.6);
   for (const v of S.vehicles) if (v.alive && (v.team === 0 || (wantEnemy && v.seen[0] > 0))) test(v, v.pos, 2.5);
   for (const d of S.drones) if (d.alive && (d.team === 0 || (wantEnemy && d.seen[0] > 0))) test(d, d.pos, 1.2);
+  for (const b of S.builders) if (b.alive && (b.team === 0 || (wantEnemy && b.seen[0] > 0))) test(b, b.pos, 0.9);
   for (const b of S.buildings) if (b.alive && (b.team === 0 || (wantEnemy && (b.known0 || b.seen[0] > 0)))) test(b, bldCenter(b), b.rad * 0.8);
   for (const h of S.hq) if (h.alive && (h.team === 0 || wantEnemy)) test(h, add(h.pos, mul(BASES[h.team], 4)), 10);
   return best;
@@ -77,7 +252,7 @@ function pickEntity(x, y, wantEnemy){
 let drag = null, lastClick = 0, mdrag = null;
 canvas.addEventListener('mousedown', e => {
   if (S.mode !== 'rts' || S.attract || MENU.isOpen()) return;
-  if (minimapClick(e.clientX, e.clientY, e.button)) return;
+  if (minimapClick(e.clientX, e.clientY, e.button)){ if (e.button === 0) RCAM.mm = true; return; }
   if (e.button === 1){ mdrag = { x: e.clientX, y: e.clientY }; e.preventDefault(); return; }
   if (e.button === 0){
     if (S.place){ tryPlace(e.clientX, e.clientY, e.shiftKey); return; }
@@ -88,16 +263,23 @@ canvas.addEventListener('mousedown', e => {
 });
 addEventListener('mousemove', e => {
   S.mouse = [e.clientX, e.clientY];
+  RCAM.mouseIn = true; RCAM.overUI = e.target !== canvas;
   if (drag){ drag.x1 = e.clientX; drag.y1 = e.clientY; }
+  if (RCAM.mm && S.mode === 'rts' && (e.buttons & 1)){ const d = minimapDir(e.clientX, e.clientY); if (d) rtsLookAt(d); }
   if (mdrag && S.mode === 'rts'){
-    const dx = e.clientX - mdrag.x, dy = e.clientY - mdrag.y; mdrag.x = e.clientX; mdrag.y = e.clientY;
-    S.rts.fwd = norm(rotAxis(S.rts.fwd, S.rts.dir, -dx * 0.006));
-    S.rts.h = clamp(S.rts.h * (1 + dy * 0.004), 12, 285);
+    const dx = e.clientX - mdrag.x, dy = e.clientY - mdrag.y; mdrag.x = e.clientX; mdrag.y = e.clientY; RCAM.anc = null;
+    S.rts.fwd = tangent(rotAxis(S.rts.fwd, S.rts.dir, -dx * 0.006), S.rts.dir);
+    S.rts.h = S.rts.hT = clamp(S.rts.h * (1 + dy * 0.004), RTS_HMIN, RTS_HMAX);
   }
 });
+// мышь ушла из окна — край экрана больше не крутит камеру
+document.addEventListener('mouseout', e => { if (!e.relatedTarget) RCAM.mouseIn = false; });
+addEventListener('blur', () => { RCAM.mouseIn = false; mdrag = null; RCAM.mm = false; });
 addEventListener('mouseup', e => {
   if (e.button === 1) mdrag = null;
-  if (S.mode !== 'rts' || e.button !== 0 || !drag) return;
+  if (e.button === 0) RCAM.mm = false;
+  if (S.mode !== 'rts'){ if (e.button === 0) drag = null; return; }
+  if (e.button !== 0 || !drag) return;
   const d = drag; drag = null;
   if (!d.shift){ S.sel.clear(); S.selB = null; }
   if (hypot(d.x1 - d.x0, d.y1 - d.y0) < 6){
@@ -107,27 +289,55 @@ addEventListener('mouseup', e => {
     if (!ent) return;
     if (ent.cls === 'bld' || ent.cls === 'hq'){
       S.selB = ent;
-      if (dbl && ent.cls === 'bld' && (ent.type === 'turret' || ent.type === 'aa') && ent.done){ S.turretBody = null; takeControl(ent); lockMouse(); }
+      if (dbl && ent.cls === 'bld' && (ent.type === 'turret' || ent.type === 'aa') && ent.done){ S.turretBody = null; enterFPS(ent); HINTS.used('possess'); }
       return;
     }
     const g = groupOf(ent);
-    if (d.ctrl){ for (const o of groupsOf(0)) if (groupKind(o) === groupKind(g) && onScreen(leaderPos(o))) S.sel.add(o); return; }
+    if (d.ctrl){ for (const o of g.cls === 'builder' ? teamBuilders(0) : groupsOf(0)) if (groupKind(o) === groupKind(g) && onScreen(leaderPos(o))) S.sel.add(o); return; }
     S.sel.add(g);
-    if (dbl){ takeControl(ent); lockMouse(); HINTS.used('possess'); }
+    if (dbl && g.cls === 'builder'){ for (const o of teamBuilders(0)) if (onScreen(o.pos)) S.sel.add(o); return; }   // двойной клик по инженеру — все инженеры на экране
+    if (dbl){ enterFPS(ent); HINTS.used('possess'); }
   } else {
     const x0 = min(d.x0, d.x1), x1 = max(d.x0, d.x1), y0 = min(d.y0, d.y1), y1 = max(d.y0, d.y1);
     const inBox = p => { if (!facing(p)) return false; const s = project(p); return s && s[0] >= x0 && s[0] <= x1 && s[1] >= y0 && s[1] <= y1; };
     for (const u of S.units) if (u.alive && u.team === 0 && inBox(u.pos)) S.sel.add(u.squad);
     for (const v of S.vehicles) if (v.alive && v.team === 0 && inBox(v.pos)) S.sel.add(v);
     for (const dr of S.drones) if (dr.alive && dr.team === 0 && inBox(dr.pos)) S.sel.add(dr);
+    // инженеры попадают в рамку, только если в ней нет боевых групп (как рабочие в StarCraft II)
+    if (![...S.sel].some(g => g.cls !== 'builder')) for (const b of S.builders) if (b.alive && b.team === 0 && inBox(b.pos)) S.sel.add(b);
   }
   if (S.sel.size) HINTS.used('select');
 });
 canvas.addEventListener('wheel', e => {
   if (S.mode !== 'rts' || S.attract) return;
-  S.rts.h = clamp(S.rts.h * (e.deltaY > 0 ? 1.1 : 1 / 1.1), 12, 285);
   e.preventDefault();
+  if (MENU.isOpen()) return;
+  rtsWheel(e);   // v61: нормализация, лимиты, зум к курсору
 }, { passive: false });
+// зум к точке под курсором (программный вызов: delta — пиксели колеса)
+function rtsZoomAt(delta, x, y){ rtsZoomN(clamp(delta / 100, -RTS_WHEEL.perEvent, RTS_WHEEL.perEvent), x, y); }
+// v61: n «щелчков» зума. Точка земли под курсором закрепляется и каждый кадр удерживается на месте
+// (rtsAnchorStep), пока высота плавно едет к цели. Далёкая точка (у горизонта) подтягивается к центру.
+function rtsZoomN(n, x, y){
+  const R = S.rts, h0 = R.hT === undefined ? R.h : R.hT;
+  const h1 = clamp(h0 * Math.pow(RTS_WHEEL.step, n), RTS_HMIN, RTS_HMAX);
+  if (abs(h1 - h0) < 1e-3) return;
+  R.hT = h1;
+  if (x === undefined || S.camFly){ RCAM.anc = null; return; }
+  R.goal = null;
+  const A = RCAM.anc;
+  if (A && hypot(A.x0 - x, A.y0 - y) < 4){ A.t = 0; return; }   // тот же курсор — та же точка (без дрейфа)
+  RCAM.anc = null;
+  let p = pickGround(x, y); if (!p || !S.cam) return;
+  const fd = R.dir, t = norm(p), c = cross(fd, t), s = len(c), ang = atan2(s, dot(fd, t));
+  const maxA = (30 + R.h * 0.9) / RM;
+  let sx = x, sy = y;
+  if (ang > maxA && s > 1e-6){   // точка у горизонта: берём ближе к центру (по той же дуге)
+    p = surfacePoint(norm(rotAxis(fd, mul(c, 1 / s), maxA)), 0);
+    const q = project(p); if (!q) return; sx = q[0]; sy = q[1];
+  }
+  RCAM.anc = { p, x: sx, y: sy, x0: x, y0: y, t: 0 };
+}
 function onScreen(p){ if (!p || !facing(p)) return false; const s = project(p); return s && s[0] > 0 && s[0] < innerWidth && s[1] > 0 && s[1] < innerHeight; }
 function selGroups(){ return [...S.sel].filter(g => g.team === 0 && groupAlive(g)); }
 
@@ -135,6 +345,7 @@ function selGroups(){ return [...S.sel].filter(g => g.team === 0 && groupAlive(g
 const GTAP = { n: -1, t: 0 };
 function rtsKey(e){
   const c = e.code;
+  if (builderKey(e)) return;   // v6: стройка инженерами (rts_build.js)
   if (c.startsWith('Digit')){
     const n = +c.slice(5);
     if (e.ctrlKey){ S.groupsCtl[n] = selGroups(); feed(tr(`Группа ${n}: ${S.groupsCtl[n].length}`, `Group ${n}: ${S.groupsCtl[n].length}`, `Nhóm ${n}: ${S.groupsCtl[n].length}`), '#9cf'); HINTS.used('ctlgroup'); return; }
@@ -148,16 +359,19 @@ function rtsKey(e){
     HINTS.used('ctlgroup');
     return;
   }
+  // одна клавиша режима (по умолчанию Tab): в стратегии — вселиться в выделенного или вернуться в бой
+  if (c === SET.bind.rts){ enterFPS(); return; }
+  if (typeof uixKey === 'function' && uixKey(e)) return;   // горячие клавиши панели (Z C V B N…), F1–F4 — вкладки
   switch (c){
     case 'KeyA': if (e.ctrlKey){ S.sel.clear(); for (const g of groupsOf(0)) S.sel.add(g); } return;
     case 'KeyR': case 'KeyF': case 'KeyG': case 'KeyT': abilityKey(c); return;
-    case 'KeyH': orderHold(); return;
+    case 'KeyH': if (e.shiftKey && typeof orderRetreat === 'function') orderRetreat(); else orderHold(); return;
     case 'KeyY': orderSkySel(); return;
     case 'KeyI': toggleAI(); return;
     case 'Space': { const a = S.alerts[S.alerts.length - 1]; if (a) flyCamTo(a.pos); return; }
     case 'Home': case 'Backspace': flyCamTo(S.hq[0].alive ? S.hq[0].pos : (keyBuildings(0)[0] || S.hq[0]).pos); return;
-    case 'Enter': case 'Tab': enterFPS(); return;
     case 'Escape':
+      if (typeof UIX !== 'undefined' && UIX.closePop()) return;
       if (S.place || S.cast){ S.place = null; S.cast = null; return; }
       if (S.sel.size || S.selB){ S.sel.clear(); S.selB = null; return; }
       MENU.pause(); return;
@@ -183,8 +397,16 @@ function startPower(k){
   S.cast = { kind: 'power', key: k }; S.place = null;
   feed(tr(`${N2(POWERS[k].n)}: ЛКМ — цель, ПКМ — отмена`, `${N2(POWERS[k].n)}: LMB — target, RMB — cancel`, `${N2(POWERS[k].n)}: chuột trái — mục tiêu, chuột phải — hủy`), '#9cf');
 }
+// кнопки «Идти» / «Бегом» в карточке: следующий клик (тап) по земле или врагу — приказ
+function startOrderCast(rush){
+  if (!selGroups().length){ uiExplainShow(rush ? 'cmd:rush' : 'cmd:move'); return; }
+  if (S.cast && S.cast.kind === 'order' && !!S.cast.rush === !!rush){ S.cast = null; return; }
+  S.cast = { kind: 'order', rush: !!rush }; S.place = null;
+  feed(TOUCH.on ? tr('Тапни по земле или врагу', 'Tap the ground or an enemy') : tr('Кликни по земле или врагу (ПКМ — отмена)', 'Click the ground or an enemy (RMB — cancel)'), '#9cf');
+}
 function tryCast(x, y, keep){
   if (!S.cast) return;
+  if (S.cast.kind === 'order'){ const r = S.cast.rush; S.cast = null; orderAt(x, y, false, r); return; }
   const p = pickGround(x, y); if (!p) return;
   const C = S.cast;
   if (C.kind === 'power'){
@@ -203,8 +425,11 @@ function tryCast(x, y, keep){
   else { feed(tr('Способность не готова', 'Ability not ready', 'Kỹ năng chưa sẵn sàng'), '#f88'); emit('ui', { kind: 'deny' }); }
   if (!keep) S.cast = null;
 }
-function orderAt(x, y, queue){
-  const sel = selGroups();
+function orderAt(x, y, queue, forceRush){
+  let sel = selGroups();
+  // v6: инженеры — свои приказы (стройка/ремонт/идти), остальным — как обычно
+  const bsel = sel.filter(g => g.cls === 'builder');
+  if (bsel.length){ builderOrderAt(bsel, x, y, queue); sel = sel.filter(g => g.cls !== 'builder'); if (!sel.length) return; }
   const p = pickGround(x, y);
   if (!sel.length){
     // точка сбора для производящего здания
@@ -216,14 +441,14 @@ function orderAt(x, y, queue){
   const ent = pickEntity(x, y, true);
   if (ent && ent.team === 1){
     for (const g of sel){ setOrder(g, 'focus', centerOf(ent), { focus: ent.cls === 'hq' ? null : ent, by: 'player', lock: 120 }); if (ent.cls === 'hq') g.order = 'attack'; }
-    S.orderMark = { p: centerOf(ent), t: 0.8, col: '#ff6050' };
+    S.orderMark = { p: centerOf(ent), t: 0.8, col: '#ff6050', kind: 'attack' };
     emit('ui', { kind: 'ok' });
     return;
   }
   if (!p) return;
   // двойной ПКМ — бегом, не ввязываясь в бой; одиночный — движение с атакой по пути
   const now = performance.now();
-  const rush = S.lastRmb && now - S.lastRmb.t < 380 && hypot(S.lastRmb.x - x, S.lastRmb.y - y) < 30;
+  const rush = forceRush || S.lastRmb && now - S.lastRmb.t < 380 && hypot(S.lastRmb.x - x, S.lastRmb.y - y) < 30;
   S.lastRmb = { t: now, x, y };
   let target = p, order = 'move', cp = null;
   for (const c of S.cps) if (!c.core && dist(c.pos, p) < 25){ target = c.pos; order = 'cap'; cp = c; }
@@ -236,15 +461,16 @@ function orderAt(x, y, queue){
     if (n > 1 && order === 'move'){ const up = norm(p), a = i / n * PI * 2; tp = add(p, mul(add(mul(anyTangent(up), cos(a)), mul(cross(up, anyTangent(up)), sin(a))), 5 + n * 1.5)); }
     setOrder(g, order, tp, { cp, by: 'player', lock: 120, rush });
   });
-  S.orderMark = { p: target, t: 0.8, col: rush ? '#9cf' : null };
+  S.orderMark = { p: target, t: 0.8, col: rush ? '#9cf' : null, kind: rush ? 'march' : order === 'cap' ? 'cap' : 'amove', from: leaderPos(sel[0]) };
   if (rush) HINTS.used('rush');
-  if (rush) feed(tr('Бегом! Не ввязываться в бой', 'On the double! Do not engage', 'Chạy nhanh! Không giao chiến'), '#9cf');
+  if (rush) feed(tr('Марш! Бегом, не останавливаясь — стреляют на ходу', 'March! Running without stopping — firing on the move', 'Hành quân! Chạy không dừng — vừa chạy vừa bắn'), '#9cf');
   emit('ui', { kind: 'ok' });
   HINTS.used('order');
 }
 function orderHold(){
-  for (const g of selGroups()){ const L = leaderOf(g); if (L) setOrder(g, 'hold', L.pos, { by: 'player', lock: 300 }); }
-  feed(tr('Удерживать позицию', 'Hold position', 'Giữ vị trí')); emit('ui', { kind: 'ok' });
+  const bs = selBuilders(); if (bs.length) builderStop(bs);   // v61: инженеры — «Стоп» (бросить задания)
+  for (const g of selGroups()){ if (g.cls === 'builder') continue; const L = leaderOf(g); if (L) setOrder(g, 'hold', L.pos, { by: 'player', lock: 300 }); }
+  feed(selGroups().every(g => g.cls === 'builder') ? tr('Инженеры: стоп', 'Builders: stop', 'Kỹ sư: dừng') : tr('Удерживать позицию', 'Hold position', 'Giữ vị trí')); emit('ui', { kind: 'ok' });
 }
 function orderSkySel(){
   const sel = selGroups().filter(isSquad);
@@ -254,24 +480,24 @@ function orderSkySel(){
   if (!n){ feed(tr('Для десанта нужен «Небесный десант» или исследование «Ранцы II» (Аэродок)', 'Sky assault needs Sky troopers or the "Jetpacks II" research (Airdock)', 'Đổ bộ cần Lính đổ bộ hoặc nghiên cứu “Ba lô phản lực II” (Bến bay)'), '#f88'); emit('ui', { kind: 'deny' }); }
   else { feed(tr(`Десант через купол: ${n} отр. — сбор у штаба и взлёт`, `Sky assault: ${n} squad(s) — gathering at HQ and launching`, `Đổ bộ: ${n} đội — tập trung ở sở chỉ huy và cất cánh`), TEAM[0].css); emit('ui', { kind: 'ok' }); }
 }
-function startPlace(type){
-  const why = canBuild(0, type);
-  if (why){ feed(`${bname(type)}: ${why}`, '#f88'); emit('ui', { kind: 'deny' }); return; }
-  S.place = type; S.cast = null;
-  feed(tr(`${bname(type)}: ЛКМ — поставить, ПКМ/Esc — отмена`, `${bname(type)}: LMB — place, RMB/Esc — cancel`, `${bname(type)}: chuột trái — đặt, chuột phải/Esc — hủy`), '#9cf');
-}
+function startPlace(type){ startBuild(type); }   // v6: стройка через инженеров (rts_build.js)
 function tryPlace(x, y, keep){
   const p = pickGround(x, y); if (!p) return;
+  if (TOUCH.on){ S.placeAt = p; return; }   // телефон: тап — место, подтверждение кнопкой «Строить»
   const type = S.place;
-  const why = placeBuilding(0, type, norm(p));
+  const why = playerPlace(type, norm(p), keep);
   if (why){ feed(why, '#f88'); emit('ui', { kind: 'deny' }); return; }
-  feed(tr(`Стройка: ${bname(type)} — дроны-строители летят`, `Construction: ${bname(type)} — builder drones on the way`, `Xây dựng: ${bname(type)} — drone thợ xây đang tới`), TEAM[0].css); emit('ui', { kind: 'ok' });
+  feed(tr(`Стройка: ${bname(type)} — инженер в пути`, `Construction: ${bname(type)} — builder on the way`, `Xây dựng: ${bname(type)} — kỹ sư đang tới`), TEAM[0].css); emit('ui', { kind: 'ok' });
   HINTS.used('build');
   if (!keep || canBuild(0, type)) S.place = null;
 }
 function uiProduce(key){
   const why = produce(0, key);
-  if (why){ feed(`${pname(key)}: ${why}`, '#f88'); emit('ui', { kind: 'deny' }); }
+  if (why){
+    const r = rtsReason('produce:' + key);   // v6: причина + как исправить; «Нужно: здание» — сразу ставим его чертёж
+    feed(`${pname(key)}: ${r.reason || why}${r.fix ? ' — ' + r.fix : ''}`, '#f88'); emit('ui', { kind: 'deny' });
+    if (r.act && r.act.startsWith('build:')) startBuild(r.act.slice(6));
+  }
   else { feed(tr(`В очереди: ${pname(key)}`, `Queued: ${pname(key)}`, `Đã xếp hàng: ${pname(key)}`), TEAM[0].css); emit('ui', { kind: 'ok' }); HINTS.used('produce'); S.pOrder = S.pOrder || {}; S.pOrder[key] = (S.pOrder[key] || 0) + 1; }
 }
 function pushAlert(pos){ if (!pos) return; S.alerts.push({ pos, t: S.rtime }); if (S.alerts.length > 6) S.alerts.shift(); }
@@ -293,108 +519,193 @@ function rtsWatch(dt){
 //  БОКОВАЯ ПАНЕЛЬ (как в C&C) и КОМАНДНАЯ КАРТОЧКА
 // =====================================================================
 const SIDE = { tab: 'build', btns: [] };
+// v6 rtsui: крупные кнопки со значком, ценой, временем, горячей клавишей и строкой состояния
+// (причина недоступности / сколько осталось). Клик по серой кнопке — объяснение и решение (uix.js).
 function buildSidebar(){
   const el = $('side'); el.innerHTML = '';
   const tabs = document.createElement('div'); tabs.className = 'tabs';
-  const T = [['build', tr('Здания', 'Build', 'Xây')], ['units', tr('Войска', 'Units', 'Quân')], ['tech', tr('Улучш.', 'Tech', 'Công nghệ')], ['cmd', tr('Командование', 'Command', 'Chỉ huy')]];
-  for (const [k, n] of T){ const b = document.createElement('button'); b.textContent = n; b.className = SIDE.tab === k ? 'cur' : ''; b.onclick = e => { e.stopPropagation(); SIDE.tab = k; buildSidebar(); emit('ui', { kind: 'ok' }); }; tabs.appendChild(b); }
+  const T = [['build', '⚒', tr('Здания', 'Build', 'Xây'), 'F1'], ['units', '◆', tr('Войска', 'Units', 'Quân'), 'F2'], ['tech', '⚗', tr('Улучш.', 'Tech', 'Công nghệ'), 'F3'], ['cmd', '✺', tr('Удары', 'Powers', 'Chỉ huy'), 'F4']];
+  for (const [k, ic, n, f] of T){
+    const b = document.createElement('button'); b.dataset.tab = k; b.className = SIDE.tab === k ? 'cur' : '';
+    b.innerHTML = `<i>${ic}</i><span>${n}</span><em></em>`; b.dataset.tip = `<b>${ic} ${n}</b> <kbd>${f}</kbd>`;
+    b.onclick = e => { e.stopPropagation(); SIDE.tab = k; buildSidebar(); emit('ui', { kind: 'ok' }); };
+    tabs.appendChild(b);
+  }
   el.appendChild(tabs);
   const list = document.createElement('div'); list.className = 'items'; el.appendChild(list);
   SIDE.btns = [];
-  const mk = (icon, name, cost, desc, fn, check, extra) => {
-    const b = document.createElement('button'); b.className = 'item';
-    b.innerHTML = `<i>${icon}</i><b>${name}</b><span class="cost">${cost}</span><span class="q"></span><span class="bar"><s></s></span>`;
+  const ore = c => `<i class="ore"></i>${c}`;
+  const mk = (id, icon, name, cost, time, fn, extra) => {
+    const b = document.createElement('button'); b.className = 'item'; b.dataset.ux = id;
+    const hk = extra && 'hk' in extra ? extra.hk : SLOT_KEYS[SIDE.btns.length]; if (hk) b.dataset.hk = hk;
+    b.innerHTML = `<i>${icon}</i>${hk ? `<kbd>${keyLabel(hk)}</kbd>` : ''}<b>${name}</b><span class="cost">${cost}</span>${time ? `<span class="tm">${time}</span>` : ''}<span class="q"></span><span class="st"></span><span class="bar"><s></s></span>`;
     b.onclick = e => { e.stopPropagation(); AU.init(); fn(); };
     b.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); if (extra && extra.cancel) extra.cancel(); };
     list.appendChild(b);
-    SIDE.btns.push({ el: b, check, desc, extra: extra || {} });
+    SIDE.btns.push({ el: b, id, extra: extra || {} });
   };
   if (SIDE.tab === 'build'){
-    const ic = { turret: '⌖', aa: '⇡', outpost: '⛫', factory: '⚙', hub: '◎', airdock: '✈' };
-    for (const k in BTYPES){ const B = BTYPES[k]; mk(ic[k], bname(k), B.cost, N2(B.d), () => startPlace(k), () => canBuild(0, k)); }
+    // v61: клавиши зданий = клавиши стройки инженера (Z X C V B N K) — одна и та же клавиша везде
+    for (const k in BTYPES){ const B = BTYPES[k]; mk('build:' + k, UIX_ICON.b[k] || BICON[k] || '▣', bname(k), ore(B.cost), fmtDur(B.time), () => startPlace(k), { hk: BUILD_KEYS[k] || '' }); }
+    mk('prod:builder', BICON.builder, pname('builder'), ore(pCost(0, 'builder')), fmtDur(pTime(0, 'builder')), () => uiProduce('builder'), { key: 'builder', hk: '' });
+    const bq = document.createElement('div'); bq.className = 'bqueue'; bq.id = 'bqueue'; list.appendChild(bq);
   } else if (SIDE.tab === 'units' || SIDE.tab === 'tech'){
     for (const k in PRODUCTS){
       const P = PRODUCTS[k];
       if (!!P.research !== (SIDE.tab === 'tech')) continue;
-      const where = P.at.map(a => a === 'hq' ? tr('штаб', 'HQ', 'Sở chỉ huy') : bname(a)).join('/');
-      mk(P.icon, pname(k), pCost(0, k), tr(`Где: ${where}. ПКМ — отменить последний в очереди.`, `At: ${where}. RMB — cancel the last queued.`, `Tại: ${where}. Chuột phải — hủy mục cuối trong hàng.`), () => uiProduce(k), () => canProduce(0, k),
-         { key: k, cancel: () => { for (const s of [S.hq[0], ...S.buildings]) { const i = s.team === 0 ? s.queue.lastIndexOf(k) : -1; if (i >= 0){ cancelProduct(s, i); emit('ui', { kind: 'ok' }); return; } } } });
+      mk('prod:' + k, P.icon, pname(k), ore(pCost(0, k)), fmtDur(pTime(0, k)), () => uiProduce(k),
+         { key: k, cancel: () => { if (UIX.wants.includes(k)){ UIX.wants = UIX.wants.filter(w => w !== k); emit('ui', { kind: 'ok' }); return; } for (const s of [S.hq[0], ...S.buildings]) { const i = s.team === 0 ? s.queue.lastIndexOf(k) : -1; if (i >= 0){ cancelProduct(s, i); emit('ui', { kind: 'ok' }); return; } } } });
     }
   } else {
-    for (const k in POWERS){ const P = POWERS[k]; mk(P.icon, N2(P.n), P.cost + ' ' + tr('КО', 'CP', 'ĐCH'), N2(P.d), () => startPower(k), () => S.teams[0].cmd < P.cost ? tr('Мало командных очков', 'Not enough command points', 'Không đủ điểm chỉ huy') : powerLeft(0, k) > 0 ? tr(`Перезарядка ${Math.ceil(powerLeft(0, k))} с`, `Cooldown ${Math.ceil(powerLeft(0, k))} s`, `Hồi chiêu ${Math.ceil(powerLeft(0, k))} giây`) : null, { power: k }); }
+    for (const k in POWERS){ const P = POWERS[k]; mk('power:' + k, P.icon, N2(P.n), P.cost + ' ' + tr('КО', 'CP', 'ĐCH'), fmtDur(P.cd), () => startPower(k), { power: k }); }
   }
+  const hint = document.createElement('div'); hint.className = 'shint';
+  hint.innerHTML = SIDE.tab === 'units' || SIDE.tab === 'tech' ? tr('ПКМ по кнопке — отменить последний заказ', 'RMB on a button — cancel the last order') : SIDE.tab === 'build' ? tr('Строит только инженер. Инженер не выделен — кнопка выберет ближайшего свободного и включит чертёж; затем ЛКМ по месту.', 'Only builders build. No builder selected — the button picks the nearest idle one and starts the blueprint; then LMB on a spot.', 'Chỉ kỹ sư xây. Chưa chọn kỹ sư — nút sẽ chọn kỹ sư rảnh gần nhất.') : tr('Выбери удар и кликни цель на карте', 'Pick a power, then click the target');
+  list.appendChild(hint);
   const foot = document.createElement('div'); foot.className = 'sfoot';
-  foot.innerHTML = `<button id="aiBtn"></button><button id="fpsBtn">${tr('В бой', 'To battle', 'Vào trận')} <kbd>Enter</kbd></button>`;
+  foot.innerHTML = `<button id="aiBtn"></button><button id="abBtn"></button><button id="helpBtn" data-tip="${uixEsc(`<b>${tr('Управление', 'Controls')}</b><p>${tr('Все клавиши стратегии', 'All strategy keys')}</p>`)}">?${TOUCH.on ? '' : ' <kbd>/</kbd>'}</button>`;
   el.appendChild(foot);
+  $('helpBtn').onclick = e => { e.stopPropagation(); S.showHelp = !S.showHelp; updateModeUI(); };
   $('aiBtn').onclick = e => { e.stopPropagation(); toggleAI(); updateSidebar(); };
-  $('fpsBtn').onclick = e => { e.stopPropagation(); enterFPS(); };
+  $('aiBtn').dataset.tip = `<b>${tr('ИИ-стратег', 'AI strategist')}</b><p>${tr('Включён — сам строит базу, заказывает войска и раздаёт приказы (твои приказы важнее). Выключен — всё делаешь ты.', 'On — builds the base, orders troops and gives orders by itself (your orders take priority). Off — you do everything.')}</p>`;
+  $('abBtn').onclick = e => { e.stopPropagation(); const T = S.teams[0]; T.autoBuild = T.autoBuild === false; feed(T.autoBuild ? tr('Автостройка включена: стратег строит базу инженерами', 'Auto-build on: the strategist builds the base with builders', 'Tự xây bật') : tr('Автостройка выключена: здания строишь только ты', 'Auto-build off: only you build', 'Tự xây tắt'), '#9cf'); updateSidebar(); };
   updateSidebar();
 }
 function updateSidebar(){
   for (const b of SIDE.btns){
-    const why = b.check();
-    b.el.classList.toggle('off', !!why);
-    b.el.title = (why ? why + '\n' : '') + b.desc;
-    const q = b.el.querySelector('.q'), bar = b.el.querySelector('.bar s');
+    const x = uiExplain(b.id);
+    b.el.classList.toggle('off', !x.ok); b.el.classList.toggle('soft', !x.ok && !!x.soft);
+    const q = b.el.querySelector('.q'), bar = b.el.querySelector('.bar s'), st = b.el.querySelector('.st');
+    let stT = x.ok ? '' : (x.short || x.reason), stC = x.ok ? '' : 'bad', prog = 0;
+    // v61: строит только инженер. Не выделен — кнопка в состоянии «нужен инженер» (приглушена),
+    // клик сам выберет ближайшего свободного инженера и включит чертёж
+    const need = x.ok && b.id.startsWith('build:') && !selBuilders().length;
+    b.el.classList.toggle('need', need);
+    if (need){ stT = '⚒ ' + (teamBuilders(0).some(builderIdle) ? tr('выберет ближ. инженера', 'picks nearest builder', 'chọn kỹ sư gần') : tr('займёт инженера', 'takes a busy builder', 'lấy kỹ sư đang bận')); stC = 'need'; }
     if (b.extra.key){
       const k = b.extra.key, n = countQueued(0, [k]);
       q.textContent = n ? '×' + n : '';
-      let prog = 0;
-      for (const s of [S.hq[0], ...S.buildings]) if (s.team === 0 && s.queue[0] === k){ prog = max(prog, s.prodT / pTime(0, k)); }
-      bar.style.width = (prog * 100).toFixed(0) + '%';
+      let left = null;
+      for (const s of [S.hq[0], ...S.buildings]) if (s.team === 0 && s.alive && s.queue[0] === k){ const tt = pTime(0, k); if (s.prodT / tt >= prog){ prog = s.prodT / tt; left = tt - s.prodT; } }
+      if (UIX.wants.includes(k)){ stT = '⏳ ' + tr('ждёт руды', 'waiting for ore'); stC = 'wait'; }
+      else if (left !== null && (x.ok || x.soft)){ stT = '▶ ' + fmtDur(left); stC = 'run'; }
       const P = PRODUCTS[k];
-      if (P.max){ const lv = pLevel(0, k); b.el.querySelector('b').textContent = `${pname(k)} ${lv >= P.max ? 'MAX' : 'I'.repeat(lv + 1)}`; b.el.querySelector('.cost').textContent = lv >= P.max ? '—' : pCost(0, k); }
+      if (P.max){ const lv = pLevel(0, k); b.el.querySelector('b').textContent = `${pname(k)} ${lv >= P.max ? 'MAX' : 'I'.repeat(lv + 1)}`; b.el.querySelector('.cost').innerHTML = lv >= P.max ? '—' : `<i class="ore"></i>${pCost(0, k)}`; }
     } else if (b.extra.power){
       const left = powerLeft(0, b.extra.power);
-      bar.style.width = left > 0 ? ((1 - left / POWERS[b.extra.power].cd) * 100).toFixed(0) + '%' : '0%';
+      prog = left > 0 ? 1 - left / POWERS[b.extra.power].cd : 0;
       q.textContent = '';
+    } else if (b.id.startsWith('build:')){
+      const n = S.buildings.filter(o => o.alive && o.team === 0 && o.type === b.id.slice(6)).length;
+      q.textContent = n ? n + '' : '';
     }
+    bar.style.width = (clamp(prog, 0, 1) * 100).toFixed(0) + '%';
+    if (st.textContent !== stT) st.textContent = stT;
+    st.className = 'st ' + stC;
   }
-  const ai = $('aiBtn'); if (ai) ai.innerHTML = `${tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI')}: <b>${S.teams[0].ai ? tr('ВКЛ', 'ON', 'BẬT') : tr('ВЫКЛ', 'OFF', 'TẮT')}</b> <kbd>I</kbd>`;
+  // счётчики на вкладках
+  const tq = { units: 0, tech: 0 };
+  for (const s of [S.hq[0], ...S.buildings]) if (s && s.team === 0 && s.alive && s.queue) for (const k of s.queue) tq[PRODUCTS[k].research ? 'tech' : 'units']++;
+  document.querySelectorAll('#side .tabs button').forEach(t => { const n = tq[t.dataset.tab]; const em = t.querySelector('em'); const v = n ? n + '' : ''; if (em.textContent !== v) em.textContent = v; });
+  const ai = $('aiBtn'); if (ai) ai.innerHTML = `${tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI')}: <b class="${S.teams[0].ai ? 'on' : ''}">${S.teams[0].ai ? tr('ВКЛ', 'ON', 'BẬT') : tr('ВЫКЛ', 'OFF', 'TẮT')}</b> <kbd>I</kbd>`;
+  const ab = $('abBtn'); if (ab){ ab.innerHTML = `${tr('Автостройка', 'Auto-build', 'Tự xây')}: <b>${S.teams[0].autoBuild !== false && S.teams[0].ai ? tr('ВКЛ', 'ON', 'BẬT') : tr('ВЫКЛ', 'OFF', 'TẮT')}</b>`; ab.title = tr('Стратег сам строит здания и экстракторы своими инженерами (когда ИИ-стратег включён). Твои приказы инженерам в стратегии — главнее.', 'The strategist builds buildings and extractors with its builders (when the AI strategist is on). Your orders to builders take priority.', 'Chiến lược gia tự xây'); }
+  updateBuildQueue();
 }
+// ---------- нижняя карточка: кто выделен, приказы, большая кнопка «Вселиться» ----------
 const CARD = { sig: '' };
+// в кого вселит Tab / кнопка «Вселиться»
+function cardPossessTarget(){
+  const b = S.selB;
+  if (b && b.alive && b.team === 0 && b.cls === 'bld' && (b.type === 'turret' || b.type === 'aa') && b.done && !selGroups().length) return { e: b, label: bname(b.type) };
+  for (const g of selGroups()){ if (g.cls === 'builder') continue; const u = isSquad(g) ? g.units.find(x => x.alive) : g; if (u) return { e: u, label: groupLabel(g) }; }
+  return null;
+}
+function cardGroupIcon(g){ return g.vk && typeof VK !== 'undefined' && VK[g.vk] ? VK[g.vk].icon : g.cls === 'builder' ? '⚒' : isSquad(g) ? (g.elite ? '✦' : g.solo ? (g.solo === 'sniper' ? '⌖' : '◈') : '◆') : g.cls === 'tank' ? '■' : '▲'; }
+function cardHP(list){ let h = 0, m = 0; for (const u of list){ h += max(0, u.hp); m += u.maxhp; } return [h, m]; }
 function updateCard(){
   const el = $('card');
   const sel = selGroups();
-  const icon = g => isSquad(g) ? (g.elite ? '✦' : '◆') : g.cls === 'tank' ? '■' : '▲';
-  let h = '';
-  if (sel.length){
-    h += '<div class="ports">' + sel.slice(0, 14).map(g => {
-      const hp = groupHP(g), n = groupUnits(g).length;
-      return `<div class="port" data-gid="${S.squads.indexOf(g)}|${g.id}"><i>${icon(g)}</i><b>${groupLabel(g)}</b><span>${isSquad(g) ? '●'.repeat(n) + '○'.repeat(max(0, 4 - n)) : ''}${g.vet ? ' ' + '★'.repeat(g.vet) : ''}</span><em>${orderText(g)}</em><s style="width:${(hp * 100).toFixed(0)}%;background:${hp > 0.5 ? '#9c9' : hp > 0.25 ? '#dc6' : '#e66'}"></s></div>`;
-    }).join('') + (sel.length > 14 ? `<div class="port more">+${sel.length - 14}</div>` : '') + '</div>';
-    // способности
-    const keysSeen = {};
-    for (const g of sel) for (const k of abilList(g)){ const A = ABIL[k]; const left = abilLeft(g, k); if (!keysSeen[k] || left < keysSeen[k].left) keysSeen[k] = { left, A, k }; }
-    h += '<div class="abils">';
-    for (const k in keysSeen){
-      const { left, A } = keysSeen[k];
-      h += `<button class="ab ${left > 0 ? 'cd' : ''} ${S.cast && S.cast.code === A.key ? 'cast' : ''}" data-key="${A.key}" title="${N2(A.d)}"><i>${A.icon}</i><b>${N2(A.n)}</b><kbd>${keyLabel(A.key)}</kbd>${left > 0 ? `<em>${Math.ceil(left)}</em><s style="height:${(left / A.cd * 100).toFixed(0)}%"></s>` : ''}</button>`;
+  const B = !sel.length && S.selB && S.selB.team === 0 && (S.selB.alive || S.selB.cls === 'hq') ? S.selB : (!sel.length && S.selB && S.selB.team === 1 && S.selB.alive ? S.selB : null);
+  const pt = cardPossessTarget();
+  const abil = {};
+  for (const g of sel) for (const k of abilList(g)) abil[ABIL[k].key] = k;
+  const sky = sel.some(isSquad);
+  const bxh = builderCardHTML(sel) + (B && B.team === 0 ? siteCardHTML(B) : '');
+  const prods = B && B.team === 0 ? Object.keys(PRODUCTS).filter(k => PRODUCTS[k].at.includes(B.cls === 'hq' ? 'hq' : B.type)) : [];
+  const sig = [LANG.cur, sel.map(uixId).join(','), B ? uixId(B) + (B.done || B.cls === 'hq' ? 'd' : '') + ':' + (B.queue || []).join(',') : '', pt ? uixId(pt.e) : '', Object.keys(abil).join(''), sky, sel.length === 1 && isSquad(sel[0]) ? groupUnits(sel[0]).length : '', bxh].join('#');
+  if (sig !== CARD.sig){
+    CARD.sig = sig;
+    let h = '<div class="inf">';
+    if (sel.length === 1){
+      const g = sel[0], L = leaderOf(g), us = groupUnits(g);
+      const port = isSquad(g) && L && typeof SQUADUI !== 'undefined' ? `<img src="${SQUADUI.portrait(L)}">` : `<div class="glyph">${cardGroupIcon(g)}</div>`;
+      const cls = isSquad(g) ? `${us.map(u => `<span title="${N2(roleOf(u).n)}">${roleOf(u).icon}</span>`).join('')} · ${us.length} ${tr('бойц.', 'troopers')}` : g.cls === 'tank' ? (g.vk ? V2.label(g) : `${tr('Танк', 'Tank')} ${tankName(0)}`) : g.cls === 'builder' ? tr('Инженер-строитель', 'Builder') : tr('Боевой дрон', 'Combat drone');
+      h += `<div class="pt">${port}</div><div class="tx"><b>${groupLabel(g)}${g.vet ? ' <span class="vet">' + '★'.repeat(g.vet) + '</span>' : ''}</b><small>${cls}</small><div class="hp"><s data-hp="0"></s><em data-hpt="0"></em></div><em class="ord" data-ord="0"></em></div>`;
+    } else if (sel.length > 1){
+      const cnt = {}; for (const g of sel){ const i = cardGroupIcon(g); cnt[i] = (cnt[i] || 0) + 1; }
+      h += `<div class="tx"><b>${tr('Выделено', 'Selected')}: ${sel.length}</b><small>${Object.keys(cnt).map(i => `${i}×${cnt[i]}`).join('  ')}</small><div class="ports">` +
+        sel.slice(0, 12).map((g, i) => `<div class="port" data-pi="${i}" data-tip="${uixEsc(`<b>${groupLabel(g)}</b><p>${orderText(g)}</p><p class="dt">${tr('Клик — выделить только его · Shift — убрать · двойной — камера', 'Click — select only it · Shift — remove · double — camera')}</p>`)}"><i>${cardGroupIcon(g)}</i><s data-hp="${i}"></s></div>`).join('') +
+        (sel.length > 12 ? `<div class="port more">+${sel.length - 12}</div>` : '') + '</div></div>';
+    } else if (B){
+      const nm = B.cls === 'hq' ? tr('Штаб', 'HQ', 'Sở chỉ huy') : bname(B.type);
+      const ic = B.cls === 'hq' ? '⌂' : (UIX_ICON.b[B.type] || '▣');
+      h += `<div class="pt"><div class="glyph ${B.team ? 'enemy' : ''}">${ic}</div></div><div class="tx"><b>${nm}${B.team ? ' · ' + tr('враг', 'enemy') : ''}</b><div class="hp"><s data-bhp></s><em data-bhpt></em></div><em class="ord" data-bst></em>`;
+      if (B.queue && B.queue.length && B.team === 0) h += '<div class="queue">' + B.queue.map((k, i) => `<button data-q="${i}" data-tip="${uixEsc(`<b>${PRODUCTS[k].icon} ${pname(k)}</b><p class="dt">${tr('Клик — отменить (руда вернётся)', 'Click — cancel (ore refunded)')}</p>`)}"><i>${PRODUCTS[k].icon}</i>${i === 0 ? '<s data-qp></s>' : ''}</button>`).join('') + '</div>';
+      h += '</div>';
+    } else {
+      h += `<div class="tx"><small class="help">${TOUCH.on ? tr('Тап — выделить · долгий тап — приказ · двойной тап — вселиться · палец — камера, два — масштаб', 'Tap — select · long tap — order · double tap — possess · drag — camera, pinch — zoom') : tr('ЛКМ — выделить · рамка — несколько · ПКМ — приказ · двойной клик — вселиться · Ctrl+1…9 — группа', 'LMB — select · drag — box · RMB — order · double-click — possess · Ctrl+1…9 — group')}</small></div>`;
     }
-    h += `<button class="ab" data-act="hold"><i>⛊</i><b>${tr('Удерживать', 'Hold', 'Giữ')}</b><kbd>H</kbd></button>`;
-    if (sel.some(g => isSquad(g) && (g.elite || S.teams[0].jet2))) h += `<button class="ab" data-act="sky"><i>⇑</i><b>${tr('Десант', 'Sky assault', 'Đổ bộ')}</b><kbd>Y</kbd></button>`;
-    h += `<button class="ab" data-act="fps"><i>◉</i><b>${tr('Вселиться', 'Possess', 'Nhập vai')}</b><kbd>Enter</kbd></button>`;
-    h += '</div>';
-  } else if (S.selB && (S.selB.alive || S.selB.cls === 'hq')){
-    const b = S.selB;
-    const nm = b.cls === 'hq' ? tr('Штаб', 'HQ', 'Sở chỉ huy') : bname(b.type);
-    h += `<div class="binfo"><b>${nm}</b><span>${Math.round(max(0, b.hp))}/${b.maxhp}${b.cls === 'bld' && !b.done ? ' · ' + tr('стройка', 'building', 'công trình') + ' ' + Math.floor(b.built * 100) + '%' : ''}</span>`;
-    if (b.queue && b.queue.length) h += '<div class="queue">' + b.queue.map((k, i) => `<button data-q="${i}" title="${tr('Отменить', 'Cancel', 'Hủy')}">${PRODUCTS[k].icon} ${pname(k)}${i === 0 ? ` <s style="width:${(b.prodT / pTime(0, k) * 100).toFixed(0)}%"></s>` : ''}</button>`).join('') + '</div>';
-    const prods = Object.keys(PRODUCTS).filter(k => PRODUCTS[k].at.includes(b.cls === 'hq' ? 'hq' : b.type));
-    if (prods.length && (b.cls === 'hq' || b.done)) h += '<div class="abils">' + prods.map(k => `<button class="ab ${canProduce(0, k) ? 'cd' : ''}" data-prod="${k}" title="${canProduce(0, k) || ''}"><i>${PRODUCTS[k].icon}</i><b>${pname(k)}</b><kbd>${pCost(0, k)}</kbd></button>`).join('') + '</div>';
-    if (prods.length) h += `<em>${tr('ПКМ по земле — точка сбора', 'RMB on the ground — rally point', 'Chuột phải xuống đất — điểm tập kết')}</em>`;
-    if (b.cls === 'bld' && (b.type === 'turret' || b.type === 'aa') && b.done) h += `<em>${tr('Двойной клик — занять', 'Double-click — man it', 'Nhấp đúp — điều khiển')}</em>`;
-    h += '</div>';
-  } else {
-    h += `<div class="binfo"><em>${tr('ЛКМ — выделить · рамка — несколько · двойной клик — вселиться · Ctrl+1…9 — группа', 'LMB — select · box — many · double-click — possess · Ctrl+1…9 — group', 'Chuột trái — chọn · khung — nhiều · nhấp đúp — nhập vai · Ctrl+1…9 — nhóm')}</em></div>`;
+    h += '</div><div class="cmds">';
+    // v61: командная карточка — только команды ВЫДЕЛЕННОГО: способности + «Ещё приказы ▾»
+    // (ПКМ = атакующее движение, 2×ПКМ = марш). Инженерам — их карточка (builderCardHTML),
+    // заказ войск/исследований и стройка базы — только в правой панели (глобальное).
+    if (sel.some(g => g.cls !== 'builder')){
+      for (const code of ['KeyR', 'KeyF', 'KeyG', 'KeyT']){ const k = abil[code]; if (!k) continue; const A = ABIL[k]; h += `<button class="ab" data-ux="abil:${code}" data-key="${code}"><i>${A.icon}</i><b>${N2(A.n)}</b><kbd>${keyLabel(code)}</kbd><em></em><s></s></button>`; }
+      if (sky) h += `<button class="ab" data-ux="cmd:sky" data-act="sky"><i>⇑</i><b>${tr('Десант', 'Sky assault', 'Đổ bộ')}</b><kbd>Y</kbd></button>`;
+      h += r61MoreHTML();
+    } else if (B && prods.length && (B.cls === 'hq' || B.done)){
+      h += `<em class="note r61pn">${tr('Производство этого здания — панель справа', 'This building\'s production — panel on the right', 'Sản xuất của công trình này — bảng bên phải')} ▸ <kbd>F2</kbd></em>`;
+    }
+    h += '</div>' + bxh;
+    const rally = B && B.team === 0 && prods.length ? `<em class="note">${TOUCH.on ? tr('Долгий тап по земле — точка сбора', 'Long tap on the ground — rally point') : tr('ПКМ по земле — точка сбора', 'RMB on the ground — rally point')}</em>` : '';
+    h += `<button class="poss ${pt ? '' : 'back'}" data-ux="possess"><i>▶</i><b>${pt ? tr('Вселиться', 'Possess', 'Nhập vai') : tr('В бой', 'To battle', 'Vào trận')}</b><small>${pt ? uixEsc(pt.label) : tr('к своему бойцу', 'your unit')}</small>${TOUCH.on ? '' : `<kbd>${bk('rts')}</kbd>`}</button>` + rally;
+    el.innerHTML = h;
+    bindBuilderCard(el);
+    el.querySelectorAll('[data-key]').forEach(b => b.onclick = e => { e.stopPropagation(); abilityKey(b.dataset.key); });
+    el.querySelectorAll('[data-act]').forEach(b => b.onclick = e => { e.stopPropagation(); const a = b.dataset.act; r61More(false); if (a === 'hold') orderHold(); else if (a === 'retreat') orderRetreat(); else if (a === 'sky') orderSkySel(); else if (a === 'move' || a === 'rush') startOrderCast(a === 'rush'); });
+    r61BindMore(el);
+    el.querySelectorAll('[data-prod]').forEach(b => b.onclick = e => { e.stopPropagation(); uiProduce(b.dataset.prod); });
+    el.querySelectorAll('[data-q]').forEach(b => b.onclick = e => { e.stopPropagation(); if (S.selB && S.selB.queue){ cancelProduct(S.selB, +b.dataset.q); emit('ui', { kind: 'ok' }); } });
+    el.querySelector('.poss').onclick = e => { e.stopPropagation(); AU.init(); const t = cardPossessTarget(); enterFPS(t ? t.e : undefined); HINTS.used('possess'); };
+    el.querySelectorAll('.port[data-pi]').forEach(p => p.onclick = e => { e.stopPropagation(); const g = sel[+p.dataset.pi]; if (!g) return; if (e.shiftKey){ S.sel.delete(g); return; } S.sel.clear(); S.sel.add(g); const L = leaderPos(g); if (L && performance.now() - (p._t || 0) < 400) flyCamTo(L); p._t = performance.now(); });
   }
-  if (h === CARD.sig) return;
-  CARD.sig = h; el.innerHTML = h;
-  el.querySelectorAll('[data-key]').forEach(b => b.onclick = e => { e.stopPropagation(); abilityKey(b.dataset.key); });
-  el.querySelectorAll('[data-act]').forEach(b => b.onclick = e => { e.stopPropagation(); const a = b.dataset.act; if (a === 'hold') orderHold(); else if (a === 'sky') orderSkySel(); else enterFPS(); });
-  el.querySelectorAll('[data-prod]').forEach(b => b.onclick = e => { e.stopPropagation(); uiProduce(b.dataset.prod); });
-  el.querySelectorAll('[data-q]').forEach(b => b.onclick = e => { e.stopPropagation(); cancelProduct(S.selB, +b.dataset.q); emit('ui', { kind: 'ok' }); });
-  el.querySelectorAll('.port').forEach((p, i) => p.onclick = e => { e.stopPropagation(); const g = sel[i]; if (!g) return; if (e.shiftKey){ S.sel.delete(g); return; } S.sel.clear(); S.sel.add(g); const L = leaderPos(g); if (L && performance.now() - (p._t || 0) < 400) flyCamTo(L); p._t = performance.now(); });
+  cardLive(el, sel, B);
+}
+// живые значения карточки (без пересборки DOM)
+function cardLive(el, sel, B){
+  const col = k => k > 0.5 ? '#9c9' : k > 0.25 ? '#dc6' : '#e66';
+  el.querySelectorAll('[data-hp]').forEach(s => { const g = sel[+s.dataset.hp]; if (!g) return; const k = groupHP(g); s.style.width = (k * 100).toFixed(0) + '%'; s.style.background = col(k); });
+  const ht = el.querySelector('[data-hpt]'); if (ht && sel[0]){ const [h, m] = cardHP(groupUnits(sel[0])); ht.textContent = `${Math.round(h)} / ${m}`; }
+  const ord = el.querySelector('[data-ord]'); if (ord && sel[0]){ const t = orderText(sel[0]); if (ord.textContent !== t) ord.textContent = t; }
+  if (B){
+    const k = max(0, B.hp) / B.maxhp, s = el.querySelector('[data-bhp]'); if (s){ s.style.width = (k * 100).toFixed(0) + '%'; s.style.background = col(k); }
+    const t = el.querySelector('[data-bhpt]'); if (t) t.textContent = `${Math.round(max(0, B.hp))} / ${B.maxhp}`;
+    const st = el.querySelector('[data-bst]');
+    if (st){ let v = ''; if (B.cls === 'bld' && !B.done){ const eta = uixBuildEta(B); v = tr('Стройка', 'Building') + ` ${Math.floor(B.built * 100)}%` + (eta ? ` · ≈${fmtDur(eta)}` : ' · ' + tr('ждёт строителей', 'waiting for builders')); } else if (B.queue && B.queue.length){ const tt = pTime(0, B.queue[0]); v = `${PRODUCTS[B.queue[0]].icon} ${pname(B.queue[0])} · ${fmtDur(tt - B.prodT)}` + (B.queue.length > 1 ? ` · ${tr('в очереди', 'queued')} ${B.queue.length - 1}` : ''); } else if (B.team === 0 && B.type !== 'turret' && B.type !== 'aa') v = tr('Простаивает', 'Idle'); if (st.textContent !== v) st.textContent = v; }
+    const qp = el.querySelector('[data-qp]'); if (qp && B.queue && B.queue.length) qp.style.width = (clamp(B.prodT / pTime(0, B.queue[0]), 0, 1) * 100).toFixed(0) + '%';
+  }
+  el.querySelectorAll('.ab[data-ux]').forEach(b => {
+    const x = uiExplain(b.dataset.ux);
+    b.classList.toggle('off', !x.ok);
+    const em = b.querySelector('em'), s = b.querySelector('s');
+    const cd = b.dataset.key && !x.ok && x.eta;   // отсчёт и шторка — только для перезарядки способностей
+    if (em) em.textContent = cd ? Math.ceil(x.eta) : '';
+    if (s) s.style.height = cd && x.progress !== undefined ? ((1 - clamp(x.progress, 0, 1)) * 100).toFixed(0) + '%' : '0%';
+    if (b.dataset.key) b.classList.toggle('cast', !!(S.cast && S.cast.code === b.dataset.key));
+  });
+  el.querySelectorAll('[data-act="move"],[data-act="rush"]').forEach(b => b.classList.toggle('on', !!(S.cast && S.cast.kind === 'order' && S.cast.rush === (b.dataset.act === 'rush'))));
+  const mb = el.querySelector('[data-more]'); if (mb) mb.classList.toggle('on', !!(R61.more || (S.cast && S.cast.kind === 'order')));
+  const pb = el.querySelector('.poss'); if (pb) pb.classList.toggle('off', !uiExplain('possess').ok);
 }
 function updateRTSHUD(){ $('sel').textContent = ''; }
 function helpRTS(){
@@ -402,10 +713,16 @@ function helpRTS(){
   const row = (k, t) => L.push(`<b>${k}</b> ${t}`);
   row('WASD / ←↑→↓', tr('камера (и края экрана)', 'camera (and screen edges)', 'camera (và mép màn hình)')); row('Q / E', tr('поворот', 'rotate', 'xoay')); row(tr('колесо', 'wheel', 'con lăn'), tr('высота', 'zoom', 'phóng to')); row(tr('СКМ', 'MMB', 'chuột giữa'), tr('вращать', 'orbit', 'xoay quanh'));
   row(tr('ЛКМ', 'LMB', 'Chuột trái'), tr('выделить, рамка — несколько', 'select, drag — many', 'chọn, kéo khung — nhiều')); row('Ctrl+' + tr('клик', 'click', 'nhấp'), tr('все такие на экране', 'all of that type on screen', 'mọi đơn vị cùng loại trên màn hình'));
-  row(tr('ПКМ', 'RMB', 'Chuột phải'), tr('идти / захват / атаковать цель', 'move / capture / attack target', 'đi / chiếm / tấn công mục tiêu'));
+  row(tr('ПКМ', 'RMB', 'Chuột phải'), tr('атакующее движение ⚔ (встретят врага — остановятся и будут воевать, потом дальше) · по врагу — атаковать · по точке — захват', 'attack-move ⚔ (stop and fight on contact, then continue) · on an enemy — attack · on a point — capture', 'di chuyển tấn công ⚔ · vào địch — tấn công · vào điểm — chiếm'));
+  row('2×' + tr('ПКМ', 'RMB', 'Chuột phải'), tr('марш » — бегом, не останавливаясь, отстреливаясь на ходу', 'march » — run without stopping, firing on the move', 'hành quân » — chạy không dừng, vừa chạy vừa bắn'));
+  row('Alt', tr('(удерживать) подписи всех юнитов', '(hold) labels on all units', '(giữ) nhãn mọi đơn vị'));
   row(tr('двойной клик', 'double-click', 'nhấp đúp'), tr('вселиться', 'possess', 'nhập vai')); row('R F G T', tr('способности', 'abilities', 'kỹ năng'));
+  row('Z X C V B N K', tr('стройка: турель, ПВО, экстрактор, форпост, мехзавод, дрон-хаб, аэродок (строит инженер; не выделен — выберется ближайший)', 'build: turret, AA, extractor, outpost, factory, hub, airdock (a builder builds; none selected — the nearest is picked)', 'xây (kỹ sư xây)'));
+  row('.', tr('свободный инженер', 'idle builder', 'kỹ sư rảnh')); row('Del', tr('отменить стройку (+руда)', 'cancel construction (refund)', 'hủy xây (hoàn quặng)'));
   row('H', tr('удерживать', 'hold', 'giữ')); row('Y', tr('десант через купол', 'sky assault', 'đổ bộ')); row('Ctrl+1…9 / 1…9', tr('группы', 'groups', 'nhóm')); row('Ctrl+A', tr('вся армия', 'whole army', 'toàn quân'));
-  row(tr('Пробел', 'Space', 'Space'), tr('к последней тревоге', 'jump to last alert', 'tới cảnh báo gần nhất')); row('Home', tr('к базе', 'to base', 'về căn cứ')); row('Enter / Tab', tr('в бой', 'to battle', 'vào trận')); row('I', tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI'));
+  row(tr('Пробел', 'Space', 'Space'), tr('к последней тревоге', 'jump to last alert', 'tới cảnh báo gần nhất')); row('Home', tr('к базе', 'to base', 'về căn cứ')); row(bk('rts'), tr('вселиться в выделенного (ничего не выделено — в бой)', 'possess the selection (nothing selected — to battle)', 'nhập vai đơn vị đã chọn')); row('I', tr('ИИ-стратег', 'AI strategist', 'chiến lược gia AI'));
+  row('Shift+H', tr('отступить к базе', 'retreat to base', 'rút về căn cứ')); row('Z C V B N J K L', tr('кнопки вкладок «Войска», «Улучш.», «Удары» справа', 'buttons of the Units/Tech/Powers tabs on the right', 'nút bảng bên phải')); row('F1…F4', tr('вкладки панели', 'panel tabs', 'thẻ bảng'));
+  row(tr('миникарта', 'minimap', 'bản đồ nhỏ'), tr('клик/перетаскивание — камера, ПКМ — приказ', 'click/drag — camera, RMB — order', 'nhấp/kéo — camera, chuột phải — lệnh'));
   return L.join('<br>');
 }
 
@@ -428,15 +745,9 @@ function drawRTSOverlay(dt){
       octx.strokeStyle = 'rgba(140,255,170,.85)'; octx.lineWidth = 1.5;
       groundRing(u.pos, u.cls === 'tank' ? 3.2 : u.cls === 'drone' ? 1.6 : 0.9, 16);
     }
-    const far = S.rts.h > 120;
-    if (far || u.cls === 'builder'){
-      octx.fillStyle = u.cls === 'builder' ? '#7fd4ff' : col;
-      if (u.cls === 'tank') octx.fillRect(s[0] - 5, s[1] - 4, 10, 8);
-      else if (u.cls === 'drone'){ octx.beginPath(); octx.moveTo(s[0], s[1] - 5); octx.lineTo(s[0] + 4, s[1] + 3); octx.lineTo(s[0] - 4, s[1] + 3); octx.fill(); }
-      else { octx.beginPath(); octx.arc(s[0], s[1], u.leader ? 3.6 : 2.6, 0, PI * 2); octx.fill(); }
-    }
-    if ((isSel || u.hp < u.maxhp * 0.95) && u.cls !== 'builder'){
-      const hp = add(u.pos, mul(u.up, u.cls === 'tank' ? 4 : 2.2));
+    r61Dot(u, s, col);   // v61: высоко — точки (модели сливаются), значки групп рисует r61Badges
+    if ((isSel || u.hp < u.maxhp * 0.95) && S.rts.h < 110){
+      const hp = add(u.pos, mul(u.up, u.cls === 'tank' ? 4 : u.cls === 'builder' ? 1.4 : 2.2));
       const q = project(hp);
       if (q){ const w = u.cls === 'tank' ? 30 : 16; octx.fillStyle = 'rgba(0,0,0,.6)'; octx.fillRect(q[0] - w / 2, q[1], w, 3); octx.fillStyle = u.hp / u.maxhp > 0.5 ? '#9c9' : u.hp / u.maxhp > 0.25 ? '#dc6' : '#e66'; octx.fillRect(q[0] - w / 2, q[1], w * max(0, u.hp) / u.maxhp, 3); }
     }
@@ -450,18 +761,14 @@ function drawRTSOverlay(dt){
     if (!tgt) continue;
     const a = project(L.pos), b = project(tgt);
     if (a && b && facing(L.pos)){ octx.strokeStyle = g.focus ? 'rgba(255,110,90,.7)' : 'rgba(255,255,255,.5)'; octx.beginPath(); octx.moveTo(a[0], a[1]); octx.lineTo(b[0], b[1]); octx.stroke(); }
-    octx.fillStyle = '#fff'; octx.font = '600 11px "Exo 2", sans-serif'; octx.textAlign = 'center';
-    if (a && facing(L.pos) && S.rts.h < 200) octx.fillText(groupLabel(g), a[0], a[1] - 18);
   }
   octx.setLineDash([]);
+  r61Badges(sel, dt);   // v61: значки-маркеры групп, номера, подписи (наведение/выделенные/все, Alt)
+  V2.rtsOverlay(sel);   // дальность и цель огня артиллерии (vehicles2.js)
   // точка сбора
   const B = S.selB;
   if (B && B.rally){ const a = project(B.cls === 'hq' ? B.pos : B.pos), b = project(B.rally); if (b){ octx.strokeStyle = '#9cf'; octx.setLineDash([3, 4]); if (a){ octx.beginPath(); octx.moveTo(a[0], a[1]); octx.lineTo(b[0], b[1]); octx.stroke(); } octx.setLineDash([]); octx.fillStyle = '#9cf'; octx.fillRect(b[0], b[1] - 14, 10, 7); octx.fillRect(b[0], b[1] - 14, 1.5, 14); } }
-  if (S.orderMark && S.orderMark.t > 0){
-    S.orderMark.t -= dt;
-    const s = project(S.orderMark.p);
-    if (s){ octx.strokeStyle = S.orderMark.col || '#7f7'; octx.lineWidth = 2; octx.beginPath(); octx.arc(s[0], s[1], 6 + (0.8 - S.orderMark.t) * 20, 0, PI * 2); octx.stroke(); }
-  }
+  r61OrderMarks(sel, dt);   // v61: ⚔ атакующее движение / » марш / ⌖ атака — разные значки
   if (drag && hypot(drag.x1 - drag.x0, drag.y1 - drag.y0) > 6){
     octx.strokeStyle = '#8fffaa'; octx.lineWidth = 1; octx.fillStyle = 'rgba(140,255,170,.08)';
     const x = min(drag.x0, drag.x1), y = min(drag.y0, drag.y1), w = abs(drag.x1 - drag.x0), h = abs(drag.y1 - drag.y0);
@@ -481,47 +788,42 @@ function drawRTSOverlay(dt){
       }
     }
   }
-  // призрак стройки
-  if (S.place && S.mouse){
-    const p = pickGround(S.mouse[0], S.mouse[1]);
-    if (p){
-      const dir = norm(p), T = BTYPES[S.place];
-      const why = siteProblem(0, S.place, dir);
-      octx.strokeStyle = why ? '#ff6050' : '#8fffaa'; octx.lineWidth = 2;
-      groundRing(mul(dir, len(p) + 0.3), T.rad, 32);
-      const s = project(p);
-      if (s){ octx.fillStyle = why ? '#ff6050' : '#8fffaa'; octx.textAlign = 'center'; octx.font = '600 12px "Exo 2", sans-serif'; octx.fillText(why || bname(S.place), s[0], s[1] - 14); }
-    }
-    octx.setLineDash([6, 6]); octx.strokeStyle = 'rgba(214,198,154,.35)'; octx.lineWidth = 1.5;
-    if (S.hq[0].alive) groundRing(mul(BASES[0], RM + 1), GAME.BASE_R, 64);
-    for (const cp of S.cps) if (!cp.core && cp.owner === 0 && facing(cp.pos)) groundRing(cp.pos, GAME.CP_BUILD_R, 40);
-    octx.setLineDash([]);
-  }
+  // призрак-чертёж стройки рисует drawEcoWorld → drawPlaceGhost (rts_build.js)
   // тревоги
   for (const a of S.alerts){ const k = (S.rtime - a.t); if (k > 6 || !facing(a.pos)) continue; const s = project(a.pos); if (!s) continue; octx.strokeStyle = `rgba(255,80,60,${(1 - k / 6).toFixed(2)})`; octx.lineWidth = 2; octx.beginPath(); octx.arc(s[0], s[1], 10 + (k * 30) % 30, 0, PI * 2); octx.stroke(); }
+  uixWorldOverlay();   // прогресс стройки и производства над зданиями
   drawRTSMinimap();
 }
 // ---------- миникарта: два полушария (север — наша база, юг — Рой)
 const MM = { R: 62 };
-function mmCenters(){ const R = MM.R, y = innerHeight - 22 - R; return [[20 + R, y], [20 + R * 3 + 14, y]]; }
+function mmCenters(){ MM.R = innerHeight < 500 || innerWidth < 1100 ? 50 : innerHeight > 900 ? 72 : 62; const R = MM.R, y = innerHeight - 22 - R; return [[20 + R, y], [20 + R * 3 + 14, y]]; }
 function mmProject(p){
   const d = norm(p), C = mmCenters(), R = MM.R;
   if (d[1] >= 0) return [C[0][0] + d[0] * R, C[0][1] + d[2] * R, 0];
   return [C[1][0] - d[0] * R, C[1][1] + d[2] * R, 1];
 }
-function minimapClick(x, y, btn){
+// точка миникарты → направление на метеорите (null — мимо кругов)
+function minimapDir(x, y, slack){
   const C = mmCenters(), R = MM.R;
   for (let i = 0; i < 2; i++){
-    const dx = (x - C[i][0]) / R, dz = (y - C[i][1]) / R;
-    if (dx * dx + dz * dz > 1.02) continue;
+    let dx = (x - C[i][0]) / R, dz = (y - C[i][1]) / R;
+    const r2 = dx * dx + dz * dz;
+    if (r2 > (slack || 1.02)) continue;
+    if (r2 > 1){ const l = sqrt(r2); dx /= l; dz /= l; }
     const yy = sqrt(max(0, 1 - dx * dx - dz * dz));
-    const dir = i === 0 ? [dx, yy, dz] : [-dx, -yy, dz];
-    if (btn === 0) rtsLookAt(dir);
+    return i === 0 ? [dx, yy, dz] : [-dx, -yy, dz];
+  }
+  return null;
+}
+function minimapClick(x, y, btn){
+  const dir = minimapDir(x, y);
+  if (dir){
+    if (btn === 0){ if (S.camFly || dot(dir, S.rts.dir) < 0.9995) flyCamTo(dir); }
     else if (btn === 2){
       const sel = selGroups(); if (!sel.length) return true;
       const p = surfacePoint(dir, 0.5);
       for (const g of sel) setOrder(g, 'move', p, { by: 'player', lock: 120 });
-      S.orderMark = { p, t: 0.8 }; emit('ui', { kind: 'ok' });
+      S.orderMark = { p, t: 0.8, kind: 'amove' }; emit('ui', { kind: 'ok' });
     }
     return true;
   }
@@ -539,14 +841,19 @@ function drawRTSMinimap(){
   drawFogMinimap(C, R, mmProject);
   const pt = (p, col, r, sq) => { const m = mmProject(p); octx.fillStyle = col; if (sq) octx.fillRect(m[0] - r, m[1] - r, r * 2, r * 2); else { octx.beginPath(); octx.arc(m[0], m[1], r, 0, PI * 2); octx.fill(); } };
   for (const b of S.buildings) if (b.alive && (b.team === 0 || b.known0 || !SET.fog)) pt(b.pos, TEAM[b.team].dim, 2.5, true);
+  ecoMinimap(mmProject);   // v6: рудные жилы и инженеры
   for (const h of S.hq) pt(h.pos, h.alive ? TEAM[h.team].css : '#555', 4, true);
   for (const cp of S.cps){ if (cp.core) continue; const m = mmProject(cp.pos); drawDiamond(m[0], m[1], 4, teamCss(cp.owner), 'rgba(0,0,0,.6)'); }
-  for (const g of groupsOf(0)){ const L = leaderOf(g); if (L) pt(L.pos, S.sel.has(g) ? '#fff' : TEAM[0].css, g.cls === 'tank' ? 2.4 : 1.8); }
-  for (const g of groupsOf(1)){ for (const u of groupUnits(g)) if (u.alive && (u.seen[0] > 0 || !SET.fog)){ pt(u.pos, TEAM[1].css, u.cls === 'tank' ? 2.4 : 1.6); } }
+  for (const g of groupsOf(0)){ const L = leaderOf(g); if (!L) continue; if (g.vk){ const m = mmProject(L.pos); V2.icon(m[0], m[1], g, S.sel.has(g) ? '#fff' : TEAM[0].css, 0.6); } else pt(L.pos, S.sel.has(g) ? '#fff' : TEAM[0].css, g.cls === 'tank' ? 2.4 : 1.8); }
+  for (const g of groupsOf(1)){ for (const u of groupUnits(g)) if (u.alive && (u.seen[0] > 0 || !SET.fog)){ if (u.vk){ const m = mmProject(u.pos); V2.icon(m[0], m[1], u, TEAM[1].css, 0.6); } else pt(u.pos, TEAM[1].css, u.cls === 'tank' ? 2.4 : 1.6); } }
   for (const a of S.alerts){ const k = S.rtime - a.t; if (k > 6) continue; const m = mmProject(a.pos); octx.strokeStyle = `rgba(255,80,60,${(1 - k / 6).toFixed(2)})`; octx.beginPath(); octx.arc(m[0], m[1], 4 + (k * 8) % 8, 0, PI * 2); octx.stroke(); }
   for (const s of S.strikes){ const m = mmProject(s.pos); octx.strokeStyle = s.team ? '#ff5040' : '#ffb070'; octx.beginPath(); octx.arc(m[0], m[1], 4, 0, PI * 2); octx.stroke(); }
   // камера
-  const f = mmProject(rtsFocusPoint());
-  octx.strokeStyle = '#7cf'; octx.lineWidth = 1.5; octx.strokeRect(f[0] - 6, f[1] - 4, 12, 8);
+  const fp = rtsFocusPoint(), f = mmProject(fp);
+  // видимая область (по высоте камеры) и стрелка «куда смотрим»
+  const vr = clamp(S.rts.h * 1.4 / RM * R, 4, R * 0.9);
+  octx.strokeStyle = '#7cf'; octx.lineWidth = 1.5; octx.beginPath(); octx.arc(f[0], f[1], vr, 0, PI * 2); octx.stroke();
+  const fa = mmProject(add(fp, mul(S.rts.fwd, 60)));
+  if (fa[2] === f[2]){ const ax = fa[0] - f[0], ay = fa[1] - f[1], al = hypot(ax, ay) || 1; octx.fillStyle = '#7cf'; octx.beginPath(); octx.moveTo(f[0] + ax / al * (vr + 7), f[1] + ay / al * (vr + 7)); octx.lineTo(f[0] + ax / al * vr - ay / al * 4, f[1] + ay / al * vr + ax / al * 4); octx.lineTo(f[0] + ax / al * vr + ay / al * 4, f[1] + ay / al * vr - ax / al * 4); octx.closePath(); octx.fill(); }
   octx.restore();
 }

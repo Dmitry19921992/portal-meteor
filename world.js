@@ -4,7 +4,10 @@
 // =====================================================================
 const RM = 500;            // радиус метеорита, м
 const DOME = 800;          // радиус портального купола (300 м над поверхностью)
-const TUN_R = 6, CORE_R = 35;
+// v7.5: ядра и тоннелей сквозь метеорит больше нет (метеорит сплошной). Радиусы −1000 выключают
+// и вырез в шейдере/коллизиях, и все проверки «под землёй / в шахте». Вернуть: localStorage pm_core75 = 1
+const NOCORE75 = (() => { try { if (new URLSearchParams(location.search).get('core75') === '1') return false; return localStorage.getItem('pm_core75') !== '1'; } catch (e){ return true; } })();
+const TUN_R = NOCORE75 ? -1000 : 6, CORE_R = NOCORE75 ? -1000 : 35;
 const PAD_B = [0.990, 0.997], PAD_C = [0.9965, 0.9992];
 const DET_F = 1 / 48, DET_A = 1.0;   // мелкий рельеф (шум), ±0.45 м
 const D2R = Math.PI / 180;
@@ -19,6 +22,26 @@ const NK = [
   [5,   [0.031, -0.022, 0.017], [0.019, 0.027, -0.024]],
   [0.6, [0.13, 0.09, -0.11],    [-0.08, 0.14, 0.10]],
 ];
+// v7.4: рельеф интереснее — каньоны (извилистые линии нуля поля), скальные останцы-столовые горы, впадины с
+// плоским дном (озёра льда / метана / лавы — цвет в шейдере). Та же формула в шейдере (render.js → shaderConsts).
+// Выключить: localStorage pm_ter74 = '0' (нужен перезапуск страницы).
+const TER74 = (() => { try { return localStorage.getItem('pm_ter74') !== '0'; } catch (e){ return true; } })();
+const TK = { A: [0.0105, -0.0042, 0.0063], B: [-0.0051, 0.0097, -0.0068], C: [0.024, 0.014, -0.019], D: [-0.017, 0.025, 0.013], E: [0.019, -0.012, 0.015], F: [-0.011, 0.021, 0.013], G: [0.0061, 0.0043, -0.0057] };
+const TKd = (k, x, y, z) => x * k[0] + y * k[1] + z * k[2];
+function relief74(x, y, z){
+  if (!TER74) return 0;
+  const s = Math.cos(TKd(TK.A, x, y, z)) + 0.7 * Math.cos(TKd(TK.B, x, y, z));
+  const can = -8 * (1 - smoothstep(0.06, 0.42, Math.abs(s)));
+  const m = Math.cos(TKd(TK.C, x, y, z)) * Math.cos(TKd(TK.D, x, y, z));
+  const rock = 7 * smoothstep(0.5, 0.95, m);
+  const b = Math.cos(TKd(TK.E, x, y, z)) * Math.cos(TKd(TK.F, x, y, z));
+  const w = smoothstep(0.62, 0.95, b) * smoothstep(0.15, 0.55, Math.cos(TKd(TK.G, x, y, z)));   // впадины — не везде
+  const bas = -Math.min(8 * w, 4.5);
+  // у баз (зона обучения и стройки) рельеф прежний: плавно гаснет в 75–140 м от центра базы
+  const r = Math.hypot(x, y, z) || 1; let fade = 1;
+  for (const B of BASES) fade = Math.min(fade, 1 - smoothstep(0.961, 0.9888, (x * B[0] + y * B[1] + z * B[2]) / r));
+  return (can + rock + bas) * fade;
+}
 
 // ---------- векторы ----------
 const { sin, cos, tan, hypot, max, min, abs, sqrt, acos, asin, atan2, random, floor, round, PI } = Math;
@@ -108,7 +131,7 @@ function sdCylZ(x,y,z,r,h){ const dx = hypot(x,y)-r, dy = abs(z)-h; return min(m
 function hgt(qx,qy,qz){
   let h = 0;
   for (const [a,k1,k2] of NK) h += a * cos(qx*k1[0]+qy*k1[1]+qz*k1[2]) * cos(qx*k2[0]+qy*k2[1]+qz*k2[2]);
-  return h;
+  return h + relief74(qx, qy, qz);
 }
 // статичный мир: рельеф, туннели, ядро, штабы, маяки
 function mapStatic(x,y,z){
@@ -117,11 +140,13 @@ function mapStatic(x,y,z){
   for (const b of BASES) mask = min(mask, 1 - smoothstep(PAD_B[0], PAD_B[1], nx*b[0]+ny*b[1]+nz*b[2]));
   for (const c of CPD)   mask = min(mask, 1 - smoothstep(PAD_C[0], PAD_C[1], nx*c[0]+ny*c[1]+nz*c[2]));
   let d = r - RM - hgt(nx*RM, ny*RM, nz*RM) * mask;
+  if (typeof TER81 !== 'undefined' && TER81.on){ d = TER81.sdf(x, y, z, r, nx, ny, nz, d); mask *= TER81.mk; }   // v81: скалы, гряды, ангар, трещины, озёра (v81_terrain.js)
+  if (CR76 && CR76.n) d += CR76.dent(nx, ny, nz);   // v7.6: воронки от взрывов (v76_craters.js)
   for (const c of CRATERS) d = max(d, -(hypot(x-c[0], y-c[1], z-c[2]) - c[3]));
   const tun = min(hypot(y,z) - TUN_R, hypot(x,y) - TUN_R, r - CORE_R);
   d = max(d, -tun);
   if (d < 1.5 && mask > 0) d -= (fbm3JS(x*DET_F, y*DET_F, z*DET_F) - 0.44) * DET_A * mask;
-  d = min(d, hypot(x, abs(y) - 16, z) - 6);
+  if (!NOCORE75) d = min(d, hypot(x, abs(y) - 16, z) - 6);
   const by = abs(y) - RM;
   if (hypot(x, by, z) - 48 < d && (y > 0 ? HQ_ALIVE[0] : HQ_ALIVE[1])){
     const ax = abs(x), az = abs(z);
@@ -182,7 +207,11 @@ function propLocalSDF(kind, x, y, z, v){
       return d;
     }
     case 4: return min(sdBox3(x, y - 0.65, z, 0.65, 0.65, 8.2), sdBox3(x, y - 1.0, z + 8.6, 1.4, 1.0, 1.4));
-    case 5: return sdCapsule(x, y, z, 0, -0.2, 0, 0, 1.6, 0, 0.55);
+    case 5:   // v6.2: кристаллы жил (variant 8..10) — огранённые, крупный лежит на камне
+      if (v === 8) return min(hypot(x, y - 1.62, z) - 0.95, sdBox3(x, y - 0.32, z, 1.2, 0.55, 0.95));
+      if (v === 9) return hypot(x, y - 0.5, z) - 0.72;
+      if (v === 10) return hypot(x, y - 0.3, z) - 0.47;
+      return sdCapsule(x, y, z, 0, -0.2, 0, 0, 1.6, 0, 0.55);
     case 6: return min(sdCapsule(x, y, z, -3.4, 1.9, 0, 3.4, 1.9, 0, 1.6), sdCapsule(x, y, z, -1, 3.3, 0, -1, 5.6, 0, 0.1));
     case 7: return max(hypot(x, y) - 3.1, -y, abs(z) - 4.5);
   }
@@ -290,6 +319,7 @@ function bldSDF(b, x, y, z){
     case 'hub':     d = min(sdCylY(qx, qy + 1, qz, 6.5, 1.4), hypot(qx, qy - 0.4, qz) - 3.2); break;
     case 'airdock': d = min(sdBox3(qx, qy + 1, qz, 6, 1.6, 6), sdBox3(abs(qx) - 3.2, qy - 7, qz + 3.5, 0.45, 6.5, 0.45)); break;
     case 'outpost': d = min(sdBox3(qx, qy + 0.5, qz, 4.6, 1.5, 4.6), sdBox3(qx, qy - 2.4, qz - 0.6, 3.2, 1.6, 2.8), sdCapsule(qx, qy, qz, 2.2, 3, -2, 2.2, 8.5, -2, 0.18)); break;
+    case 'extractor': d = min(sdCylY(qx, qy + 0.05, qz, 2.4, 0.6), hypot(qx, max(0, qy - 0.72), qz) - 1.38, sdBox3(qx + 1.0, qy - 4.0, qz + 1.732, 0.42, 3.5, 0.42)); break;   // v6.2: постамент, купол, вышка
     default: d = 1e9;
   }
   return max(d, qy - H);
@@ -337,6 +367,6 @@ function groundR(dir){
 const gAt = r => r >= RM ? RULES.G * (1 + RULES.G_TOP * smoothstep(0, DOME - RM, r - RM)) : RULES.G * r / RM;
 function inShaft(p){ const r = len(p); return r > 28 && r < RM + 8 && (hypot(p[1], p[2]) < TUN_R + 0.5 || hypot(p[0], p[1]) < TUN_R + 0.5); }
 function underground(p){ const r = len(p); return r < CORE_R + 3 || (r < RM - 10 && inShaft(p)); }
-const AXES = [[1,0,0], [-1,0,0], [0,0,1], [0,0,-1]];
-function bestAxis(dir){ let b = AXES[0], bd = -2; for (const a of AXES){ const d = dot(a, dir); if (d > bd){ bd = d; b = a; } } return b; }
+const AXES = NOCORE75 ? [] : [[1,0,0], [-1,0,0], [0,0,1], [0,0,-1]];   // v7.5: устья шахт — только если ядро вернули
+function bestAxis(dir){ let b = AXES[0] || [1, 0, 0], bd = -2; for (const a of AXES){ const d = dot(a, dir); if (d > bd){ bd = d; b = a; } } return b; }
 function altitude(p){ return len(p) - RM; }

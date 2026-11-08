@@ -1,14 +1,16 @@
-# Сборка версии для публикации как артефакт claude.ai (без doctype/html/head/body — их добавляет хостинг)
+﻿# Сборка версии для публикации как артефакт claude.ai (без doctype/html/head/body — их добавляет хостинг)
 import re, os, sys
-src = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'dist', 'portal_meteor_v5_3.html')
+src = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'dist', sys.argv[1] if len(sys.argv) > 1 else 'portal_meteor_v6.html')
 h = open(src, encoding='utf-8').read()
 h = re.sub(r'<!doctype html>\s*', '', h, flags=re.I)
 h = re.sub(r'<html[^>]*>\s*', '', h); h = h.replace('</html>', '')
 h = re.sub(r'<head>\s*', '', h); h = h.replace('</head>', '')
 h = re.sub(r'<body>\s*', '', h); h = h.replace('</body>', '')
 h = re.sub(r'<meta charset="utf-8">\s*', '', h)
-h = h.replace('<title>Portal Meteor — v5.3</title>', '<title>Portal Meteor</title>\n<meta name="theme-color" content="#000000">', 1)
+title = sys.argv[3] if len(sys.argv) > 3 else 'Portal Meteor v7.4'   # v80: заголовок — третьим аргументом
+h = re.sub(r'<title>Portal Meteor[^<]*</title>', lambda m: '<title>' + title + '</title>\n<meta name="theme-color" content="#000000">\n<script>window.PM_ART80=1</script>', h, count=1)   # v80: флаг артефакта (внешние модели/статистика — выкл)
+h = re.sub(r'<link rel="preconnect"[^>]*>\s*', '', h); h = re.sub(r'<link href="https://fonts\.googleapis\.com[^>]*>\s*', '', h)   # v80: внешние шрифты в артефакте недоступны
 h = h.replace('html,body{margin:0;height:100%;background:#000;', ':root{color-scheme:dark;padding:0 !important} html,body{margin:0;height:100%;background:#000;', 1)
-out = os.path.join(os.path.dirname(src), 'portal_meteor_artifact.html')
+out = os.path.join(os.path.dirname(src), sys.argv[2] if len(sys.argv) > 2 else 'portal_meteor_artifact.html')
 open(out, 'w', encoding='utf-8', newline='\n').write(h)
 print(out, len(h))

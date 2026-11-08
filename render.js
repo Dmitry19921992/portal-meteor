@@ -17,7 +17,37 @@ const float DET_F = ${DET_F.toFixed(6)}; const float DET_A = ${DET_A.toFixed(3)}
 const vec3 BASES[2] = vec3[2](${BASES.map(d => `vec3(${f5(d)})`).join(',')});
 const vec3 CPD[6] = vec3[6](${CPD.map(d => `vec3(${f5(d)})`).join(',')});
 const vec4 CRAT[8] = vec4[8](${CRATERS.map(c => `vec4(${f5(c)})`).join(',')});
-float hgt(vec3 q){ return ${NK.map(([a,k1,k2]) => `${a.toFixed(3)}*cos(dot(q,vec3(${f5(k1)})))*cos(dot(q,vec3(${f5(k2)})))`).join(' + ')}; }`;
+const float TER74 = ${TER74 ? '1.0' : '0.0'};
+const vec3 TKA = vec3(${f5(TK.A)}); const vec3 TKB = vec3(${f5(TK.B)}); const vec3 TKC = vec3(${f5(TK.C)});
+const vec3 TKD = vec3(${f5(TK.D)}); const vec3 TKE = vec3(${f5(TK.E)}); const vec3 TKF = vec3(${f5(TK.F)}); const vec3 TKG = vec3(${f5(TK.G)});
+float relief74(vec3 q){   // v7.4: каньоны, останцы, впадины (= relief74 в world.js)
+  if (TER74 < 0.5) return 0.0;
+  float s = cos(dot(q, TKA)) + 0.7 * cos(dot(q, TKB));
+  float can = -8.0 * (1.0 - smoothstep(0.06, 0.42, abs(s)));
+  float m = cos(dot(q, TKC)) * cos(dot(q, TKD));
+  float b = cos(dot(q, TKE)) * cos(dot(q, TKF));
+  float w = smoothstep(0.62, 0.95, b) * smoothstep(0.15, 0.55, cos(dot(q, TKG)));
+  vec3 nq = normalize(q); float fade = 1.0;
+  for (int i = 0; i < 2; i++) fade = min(fade, 1.0 - smoothstep(0.961, 0.9888, dot(nq, BASES[i])));
+  return (can + 7.0 * smoothstep(0.5, 0.95, m) - min(8.0 * w, 4.5)) * fade;
+}
+float hgt(vec3 q){ return ${NK.map(([a,k1,k2]) => `${a.toFixed(3)}*cos(dot(q,vec3(${f5(k1)})))*cos(dot(q,vec3(${f5(k2)})))`).join(' + ')} + relief74(q); }`;
+}
+let GP_U = null;   // v6.2: передаётся юниформом uGP (константный массив в шейдере компилируется в D3D минутами)
+// v6.2: центры граней многогранника Гольдберга GP(3,0) = вершины геодезической сферы частоты 3:
+// 12 вершин икосаэдра (пятиугольники) + 20 центров граней (вместе — усечённый икосаэдр) + 60 точек на рёбрах
+function gpNormals(){
+  const P = (1 + Math.sqrt(5)) / 2, V = [];
+  for (const s1 of [-1, 1]) for (const s2 of [-1, 1]) V.push([0, s1, s2 * P], [s1, s2 * P, 0], [s2 * P, 0, s1]);
+  const E = [], F = [], isE = (i, j) => Math.abs(dist(V[i], V[j]) - 2) < 1e-6;
+  for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) if (isE(i, j)){
+    E.push([i, j]);
+    for (let k = j + 1; k < 12; k++) if (isE(i, k) && isE(j, k)) F.push([i, j, k]);
+  }
+  const out = V.map(norm);
+  for (const [i, j, k] of F) out.push(norm(add(add(V[i], V[j]), V[k])));
+  for (const [i, j] of E) out.push(norm(add(mul(V[i], 2), V[j])), norm(add(V[i], mul(V[j], 2))));
+  return out;
 }
 const VS = `#version 300 es
 void main(){ vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
@@ -42,8 +72,9 @@ function finishProgram(h, names){
   return { p: h.p, U };
 }
 const SCENE_U = ['uRes','uCam','uRot','uR','uBounces','uGrid','uSelf','uTiles','uFov','uTime','uQ','uMe','uObj','uNO','uPar','uNP','uNoise',
-                 'uLP','uLC','uNL','uCP','uVM','uVM2','uLamp','uHQ','uZero','uStorm'];
-const POST_U = ['uTex','uRes','uTime','uExpo','uFlash','uDmg','uVhs','uBloom','uWave','uNW','uTrc','uNT','uSlow','uDist'];
+                 'uLP','uLC','uNL','uCP','uVM','uVM2','uLamp','uHQ','uZero','uStorm','uVM3','uVein','uNV','uGP',
+                 'uG72','uScor','uScorH','uNSc'];   // v7.2gfx (v72_gfx.js)
+const POST_U = ['uTex','uRes','uTime','uExpo','uFlash','uDmg','uVhs','uBloom','uWave','uNW','uTrc','uNT','uSlow','uDist','uXfer','uG72'];
 let SCENE = null, POST = null;
 let texObj, texPar, texNoise;
 const MAXO = 160, MAXP = 200;
@@ -67,7 +98,7 @@ function initTextures(){
   for (const w of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R]) gl.texParameteri(gl.TEXTURE_3D, w, gl.REPEAT);
   gl.bindVertexArray(gl.createVertexArray());
 }
-let fbo = null, fboTex = null, fboW = 0, fboH = 0;
+let fbo = null, fboTex = null, fboW = 0, fboH = 0, fboDepth = null;
 function makeFBO(w, h){
   if (fboTex) gl.deleteTexture(fboTex);
   if (fbo) gl.deleteFramebuffer(fbo);
@@ -82,6 +113,12 @@ function makeFBO(w, h){
   fbo = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fboTex, 0);
+  // v6.5: буфер глубины — рэймарчер пишет gl_FragDepth, 3D-модели (heavy65.js) рисуются поверх с тестом глубины
+  if (fboDepth) gl.deleteRenderbuffer(fboDepth);
+  fboDepth = gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER, fboDepth);
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, fboDepth);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   fboW = w; fboH = h;
 }
@@ -162,13 +199,17 @@ function setupCamera(dt){
   else if (S.mode === 'fps' && c){
     if (c.cls === 'inf' && !S.third){
       const right = norm(cross(c.fwd, c.up));
-      cam = { pos: add(c.pos, mul(c.up, RULES.EYE + parkourEye(dt))), right, up: cross(right, c.fwd), fwd: c.fwd };
+      cam = { pos: add(c.pos, mul(c.up, RULES.EYE + parkourEye(dt) - 0.32 * GUNS.crouchK)), right, up: cross(right, c.fwd), fwd: c.fwd };
     } else if (c.cls === 'inf'){
       const head = add(c.pos, mul(c.up, 1.2));
       const right = norm(cross(c.fwd, c.up));
       const want = add(add(head, mul(c.fwd, -3.4)), add(mul(c.up, 0.5), mul(right, 0.7)));
       const pos = pullCam(head, want);
       cam = Object.assign({ pos }, camBasis(c.fwd, c.up));
+    } else if (typeof FPS61 !== 'undefined' && FPS61.vehFP(c)){
+      cam = FPS61.vehCam(c, dt);   // v6.1: техника от первого лица (V — снаружи)
+    } else if (c.cls === 'tank' && c.vk){
+      cam = V2.camera(c, dt);
     } else if (c.cls === 'tank'){
       const center = add(c.pos, mul(c.up, 1.2));
       const af = tangent(c.aim, c.up);
@@ -195,7 +236,7 @@ function setupCamera(dt){
   } else cam = rtsCamera();
   cam = CAMFX.apply(cam, dt);
   S.aimK = (S.aimK || 0) + (((S.mode === 'fps' && S.aiming) ? 1 : 0) - (S.aimK || 0)) * min(1, dt * 12);
-  cam.fov = FOV * (1 - 0.4 * S.aimK);
+  cam.fov = FOV * (1 - (S.adsZ || 0.4) * S.aimK);   // v6: приближение зависит от оружия
   S.cam = cam;
   eyeShT -= dt;
   if (eyeShT <= 0){ eyeShT = 0.15; eyeSh = shadowJS(cam.pos); }
@@ -204,21 +245,28 @@ function setupCamera(dt){
 }
 
 // ---- сбор объектов
-const BLD_BC = { turret: 1.0, aa: 1.2, factory: 4, hub: 1, airdock: 5, outpost: 2.5 };
-const BLD_SC = { turret: 1.2, aa: 1.3, factory: 4, hub: 1.5, airdock: 7, outpost: 2.2 };
-const BLD_SR = { turret: 0.7, aa: 1.0, factory: 6, hub: 3, airdock: 3, outpost: 4 };
-const BLD_BR = { turret: 2.7, aa: 3.7, factory: 14, hub: 8, airdock: 12, outpost: 10 };
+const BLD_BC = { turret: 1.0, aa: 1.2, factory: 4, hub: 1, airdock: 5, outpost: 2.5, extractor: 3.3 };   // v6.2: экстрактор с вышкой-маяком выше
+const BLD_SC = { turret: 1.2, aa: 1.3, factory: 4, hub: 1.5, airdock: 7, outpost: 2.2, extractor: 0.9 };
+const BLD_SR = { turret: 0.7, aa: 1.0, factory: 6, hub: 3, airdock: 3, outpost: 4, extractor: 1.5 };
+const BLD_BR = { turret: 2.7, aa: 3.7, factory: 14, hub: 8, airdock: 12, outpost: 10, extractor: 5.4 };
+// v6.2: рудные жилы для шейдера (тёмный базальт и крошка вокруг) — позиции постоянны
+const VEIN_U = new Float32Array(20 * 4); let veinUN = -1;
+function veinUniforms(){
+  const V = veins();
+  if (V.length !== veinUN){ veinUN = min(20, V.length); VEIN_U.fill(0); for (let i = 0; i < veinUN; i++) VEIN_U.set([V[i].pos[0], V[i].pos[1], V[i].pos[2], 1], i * 4); }
+  return veinUN;
+}
 function objInfo(e){
   switch (e.cls){
     case 'inf': {
       if (!e.alive){ const o = sub(e.pos, mul(e.up, 0.5)); return { type: 2, origin: o, bc: add(o, mul(e.up, 0.2)), br: 0.95, prog: e.heat || 0 }; }
-      const o = sub(e.pos, mul(e.up, 0.5));
-      return { type: 1, origin: o, bc: add(o, mul(e.up, 0.9)), br: 1.2, variant: (e.leader ? 1 : 0) + (e.elite ? 2 : 0) + 4 * roleOf(e).i,
-               sc: add(o, mul(e.up, 0.9)), sr: 0.33, thrust: e.thrusting ? 1 : 0 };
+      const o = sub(e.pos, mul(e.up, 0.5 + (e.kdSink || 0))), U = e.kdUp || e.up;   // v7.0: падение от взрыва — наклон и «осадка»
+      return { type: 1, origin: o, bc: add(o, mul(U, 0.9)), br: 1.2, variant: (e.leader ? 1 : 0) + (e.elite ? 2 : 0) + 4 * roleOf(e).i,
+               sc: add(o, mul(U, 0.9)), sr: 0.33, thrust: e.thrusting ? 1 : 0 };
     }
-    case 'tank': { const o = sub(e.pos, mul(e.up, 1.5)); return { type: 5, origin: o, bc: add(o, mul(e.up, 1.6)), br: 4.3, sc: add(o, mul(e.up, 1.3)), sr: 1.6, thrust: e.overT > 0 ? 1 : 0 }; }
+    case 'tank': { if (e.vk) return V2.objInfo(e); const o = sub(e.pos, mul(e.up, 1.5)); return { type: 5, origin: o, bc: add(o, mul(e.up, 1.6)), br: 4.3, sc: add(o, mul(e.up, 1.3)), sr: 1.6, thrust: e.overT > 0 ? 1 : 0 }; }
     case 'drone': return { type: 4, origin: e.pos, bc: e.pos, br: 1.5, sc: e.pos, sr: 0.5, thrust: 1 };
-    case 'builder': return { type: 3, origin: e.pos, bc: e.pos, br: 0.75, sc: e.pos, sr: 0.25 };
+    case 'builder': { const o = sub(e.pos, mul(e.up, ECO.HOVER)); return { type: 3, origin: o, bc: add(o, mul(e.up, 0.9)), br: 1.9, sc: add(o, mul(e.up, 0.8)), sr: 0.6, thrust: e.work || 0 }; }
     case 'bld': {
       const T = BTYPES[e.type];
       return { type: T.code, origin: e.pos, bc: add(e.pos, mul(e.up, BLD_BC[e.type])), br: BLD_BR[e.type],
@@ -256,15 +304,19 @@ function gatherObjects(){
   L.sort((a, b) => a.d - b.d);
   renderList = L.slice(0, MAXO);
   let meIdx = -1;
-  const firstPerson = S.mode === 'fps' && !S.attract && S.me && S.me.cls === 'inf' && !S.third;
+  const fpE = arguments[0] || null;   // v7.5: сплитскрин — бот, из чьих глаз смотрит камера (его тело не рисуем)
+  const firstPerson = !!fpE || S.mode === 'fps' && !S.attract && S.me && ((S.me.cls === 'inf' && !S.third) || (typeof FPS61 !== 'undefined' && FPS61.vehFP(S.me) && !CAMFX.busy()));   // v6.1: свою машину не рисуем в кабине (тень и отражения остаются)
+  const meE = fpE || S.me;
+  const hv = typeof HV65 !== 'undefined' && HV65.begin(firstPerson);   // v6.5: 3D-модели тяжёлых бойцов
   renderList.forEach((o, i) => {
     const e = o.e, k = i * 28;
-    if (firstPerson && e === S.me) meIdx = i;
-    const fwd = tangent(e.fwd, e.up);
+    if (firstPerson && e === meE) meIdx = i;
+    const eu = e.kdUp || e.up, fwd = tangent(e.fwd, eu);   // v7.0: наклон при падении
     const aim = e.aim || fwd;
-    OBJ.set([o.bc[0], o.bc[1], o.bc[2], o.br,
+    const meshed = hv && HV65.take(e, o, firstPerson && e === meE);
+    OBJ.set([o.bc[0], o.bc[1], o.bc[2], meshed ? -o.br : o.br,
              o.origin[0], o.origin[1], o.origin[2], o.type,
-             e.up[0], e.up[1], e.up[2], e.team,
+             eu[0], eu[1], eu[2], e.team,
              fwd[0], fwd[1], fwd[2], e.phase || 0,
              aim[0], aim[1], aim[2], e.flash || 0,
              o.thrust || 0, o.prog !== undefined ? o.prog : 1, o.variant || 0, e.moveAmt || 0,
@@ -277,7 +329,8 @@ function gatherParticles(){
   const rts = S.mode !== 'fps' && !S.attract;
   let n = 0;
   const near = (p, r) => rts || min(dist(p, cam), dist(p, anti)) < (r || 320);
-  const push = (a, ra, b, ty) => { if (n >= MAXP) return; PAR.set([a[0], a[1], a[2], ra, b[0], b[1], b[2], ty], n * 8); n++; };
+  const pmax = LITE73.on ? LITE73.maxP : MAXP;   // v7.3: лёгкий режим — минимум частиц
+  const push = (a, ra, b, ty) => { if (n >= pmax) return; PAR.set([a[0], a[1], a[2], ra, b[0], b[1], b[2], ty], n * 8); n++; };
   // яркие лучи — первыми
   for (const s of S.strikes){
     if (s.type !== 'orb') continue;
@@ -309,6 +362,7 @@ function gatherParticles(){
     const ty = p.type === 'b' ? (p.inc ? 3 : p.team) : p.type === 'f' ? 5 : 3;
     push(p.pos, p.type === 's' || p.type === 'a' ? 0.12 : p.type === 'r' ? 0.1 : p.type === 'g' ? 0.14 : 0.055, b, ty);
   }
+  tracersGather(push, near);   // v6: трассеры мгновенных пуль
   for (const s of S.sparks){
     if (!near(s.pos, 250)) continue;
     push(s.pos, s.big ? 0.07 : 0.035, sub(s.pos, mul(s.vel, s.big ? 0.05 : 0.03)), s.heal ? 9 : 2);
@@ -317,6 +371,7 @@ function gatherParticles(){
     if (!b.alive || !b.beam || !near(b.pos, 250)) continue;
     if (random() < 0.85) push(add(b.pos, mul(b.up, -0.15)), 0.04, add(b.beam, mul(randUnit(), 0.6)), 4);
   }
+  if (typeof GFX72 !== 'undefined') GFX72.particles(push, near);   // v7.2gfx: обломки и пыль попаданий
   return n;
 }
 const LP = new Float32Array(16 * 4), LC = new Float32Array(16 * 4);
@@ -332,25 +387,35 @@ function gatherLights(){
   const tg = pr => pr >= 0 ? [lerp(0.5, 2.0, pr), lerp(0.5, 2.8, pr), lerp(0.5, 3.2, pr)] : [lerp(0.5, 4.2, -pr), lerp(0.5, 0.25, -pr), lerp(0.5, 0.12, -pr)];
   for (const cp of S.cps){
     if (cp.core){ add2([0, 16, 0], [2.5, 1.2, 4], 40, 0.002); add2([0, -16, 0], [2.5, 1.2, 4], 40, 0.002); continue; }
-    add2(cp.beacon, tg(cp.prog), 32, 0.004);
+    add2(cp.beacon, tg(FI76(0) === 1 ? -cp.prog : cp.prog), 32, 0.004);
   }
   for (const h of S.hq){
     if (!h.alive) continue;
     const b = BASES[h.team], t1 = anyTangent(b), t2 = cross(b, t1);
-    add2(mul(b, RM + 37.2), h.team ? [6, 0.4, 0.2] : [2.6, 3.4, 4], 45, 0.004);
+    add2(mul(b, RM + 37.2), FI76(h.team) ? [6, 0.4, 0.2] : [2.6, 3.4, 4], 45, 0.004);
     for (let k = 0; k < 4; k++){
       const a = k * PI / 2 + PI / 4;
-      add2(add(mul(b, RM + 11), add(mul(t1, cos(a) * 12), mul(t2, sin(a) * 12))), h.team ? [1.4, 0.45, 0.35] : [1.3, 1.2, 1.0], 30, 0);
+      add2(add(mul(b, RM + 11), add(mul(t1, cos(a) * 12), mul(t2, sin(a) * 12))), FI76(h.team) ? [1.4, 0.45, 0.35] : [1.3, 1.2, 1.0], 30, 0);
     }
   }
   for (const b of S.buildings){
     if (!b.alive) continue;
-    const E = b.team ? [3.5, 0.3, 0.15] : [1.6, 2.2, 2.6];
+    const E = FI76(b.team) ? [3.5, 0.3, 0.15] : [1.6, 2.2, 2.6];
     if (!b.done) add2(add(b.pos, mul(b.up, b.H * b.built)), [0.6, 1.6, 2.2], 14, 0.003);
     else if (b.type === 'factory') add2(add(add(b.pos, mul(b.up, 5)), mul(b.fwd, 9.5)), E, 18, 0.002);
     else if (b.type === 'airdock') add2(add(b.pos, mul(b.up, 2)), E, 16, 0.003);
     else if (b.type === 'hub') add2(add(b.pos, mul(b.up, 1.5)), E, 14, 0.002);
     else if (b.type === 'outpost') add2(add(b.pos, mul(b.up, 4.5)), E, 14, 0.003);
+    else if (b.type === 'extractor'){   // v6.2: зелёный огонь-маяк на вышке (с ореолом) и свет купола на постамент
+      const k = 0.75 + 0.25 * sin(S.time * 3.4);
+      add2(add(add(add(b.pos, mul(b.up, 7.9)), mul(b.R, -1.0)), mul(b.fwd, -1.732)), [0.5 * k, 3.2 * k, 1.5 * k], 8, 0.006);
+      add2(add(b.pos, mul(b.up, 2.4)), [0.25, 2.0, 0.9], 9, 0);
+    }
+  }
+  // v6.2: кристаллы жил подсвечивают грунт и камни вокруг зелёным, лёгкая дымка в воздухе
+  for (const v of veins()){
+    const k = 0.9 + 0.1 * sin(S.time * 1.6 + v.i);
+    add2(add(v.pos, mul(norm(v.pos), 1.8)), [0.22 * k, 2.1 * k, 0.9 * k], 11, 0.0015);
   }
   for (const p of PROPS){
     if (p.alive && p.kind === 1) add2(add(p.pos, mul(p.up, 3)), [1.6, 0.8, 0.2].map(x => x * (0.5 + 0.5 * (sin(S.time * 2 + p.id) > 0.6 ? 1 : 0))), 9, 0.002);
@@ -360,7 +425,7 @@ function gatherLights(){
     add2(sub(u.pos, mul(u.up, 0.3)), [3, 1.4, 0.4], 7, 0.002);
   }
   C.sort((a, b) => b.score - a.score);
-  const n = min(16, C.length);
+  const n = min(LITE73.on ? LITE73.maxL : 16, C.length);
   for (let i = 0; i < n; i++){
     const l = C[i];
     LP.set([l.pos[0], l.pos[1], l.pos[2], l.rad], i * 4);
@@ -392,6 +457,13 @@ function gatherDistortion(){
     const d = dist(p.pos, S.cam.pos); if (d > 45 || d < 0.8) continue;
     tr.push({ p, d });
   }
+  // v6: трассеры мгновенных пуль у камеры
+  tracersNear((T, h) => {
+    if (nt >= 8) return;
+    const h2 = max(0, h - 4);
+    const a = project([T.a[0] + T.d[0] * h, T.a[1] + T.d[1] * h, T.a[2] + T.d[2] * h]), b = project([T.a[0] + T.d[0] * h2, T.a[1] + T.d[1] * h2, T.a[2] + T.d[2] * h2]);
+    if (a && b){ TRC.set([a[0] / W, 1 - a[1] / H, b[0] / W, 1 - b[1] / H], nt * 4); nt++; }
+  });
   tr.sort((a, b) => a.d - b.d);
   for (const { p } of tr){
     if (nt >= 8) break;
@@ -405,12 +477,25 @@ function gatherDistortion(){
     const a = project(b.a), c = project(b.b); if (!a || !c) continue;
     TRC.set([a[0] / W, 1 - a[1] / H, c[0] / W, 1 - c[1] / H], nt * 4); nt++;
   }
+  if (typeof WPN69 !== 'undefined') nt = WPN69.shimmer(TRC, nt);   // v6.9: марево над горячим стволом
   return [nw, nt];
 }
 const CPU = new Float32Array(7 * 4);
 function render(dt, now){
+  // v7.5: кино-сплитскрин — две камеры в одном кадре (каждая рисует свою половину буфера, пост-обработка общая)
+  const SV = typeof CINE75 !== 'undefined' ? CINE75.views() : null;
+  if (SV){
+    const c0 = S.cam, w0 = fboW;
+    try { for (const v of SV){ S.cam = v.cam; fboW = v.w; renderScene(dt, now, v); } } finally { fboW = w0; S.cam = c0; }
+    renderPost(now, true);
+    return;
+  }
+  renderScene(dt, now, null);
+  renderPost(now, false);
+}
+function renderScene(dt, now, V){
   const c = S.cam;
-  const meIdx = gatherObjects();
+  const meIdx = gatherObjects(V ? V.fp : null);
   const np = gatherParticles();
   const nl = gatherLights();
   S.cps.forEach((cp, i) => CPU.set([cp.beacon[0], cp.beacon[1], cp.beacon[2], cp.prog], i * 4));
@@ -422,13 +507,13 @@ function render(dt, now){
 
   // --- сцена
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-  gl.viewport(0, 0, fboW, fboH);
+  gl.viewport(V ? V.x : 0, 0, fboW, fboH);
   gl.useProgram(SCENE.p);
   const U = SCENE.U;
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texObj); gl.uniform1i(U.uObj, 0);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texPar); gl.uniform1i(U.uPar, 1);
   gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_3D, texNoise); gl.uniform1i(U.uNoise, 2);
-  gl.uniform2f(U.uRes, fboW, fboH);
+  gl.uniform2f(U.uRes, V ? V.rx : fboW, fboH);   // v7.5: правая половина сплитскрина — сдвиг центра через uRes.x
   gl.uniform3fv(U.uCam, c.pos);
   gl.uniformMatrix3fv(U.uRot, false, [...c.right, ...c.up, ...mul(c.fwd, -1)]);
   gl.uniform1f(U.uR, S.R);
@@ -447,18 +532,32 @@ function render(dt, now){
   gl.uniform4fv(U.uCP, CPU);
   gl.uniform2f(U.uHQ, HQ_ALIVE[0] ? 1 : 0, HQ_ALIVE[1] ? 1 : 0);
   gl.uniform1i(U.uZero, 0);
+  gl.uniform1i(U.uNV, veinUniforms()); gl.uniform4fv(U.uVein, VEIN_U);
+  if (!GP_U) GP_U = new Float32Array(gpNormals().flat());
+  gl.uniform3fv(U.uGP, GP_U);
   gl.uniform1f(U.uStorm, (S.storm ? S.storm.k : 0) * (fpsLike ? 1 : 0.12));
-  const me = S.me;
-  const showVM = S.mode === 'fps' && !S.attract && me && me.cls === 'inf' && !S.third && !S.freecam;
-  const wk = S.kit ? S.kit.w : 'rifle';
-  const reload = S.kit && S.kit.reloadT > 0 ? min(1, S.kit.reloadT / WEAPONS[wk].reload) : 0;
-  gl.uniform4f(U.uVM, showVM ? 1 : 0, S.bob, S.recoil, S.muzzle > 0 ? 1 : 0);
-  gl.uniform4f(U.uVM2, me ? me.team : 0, (wk === 'rail' ? 2 : wk === 'hmg' ? 3 : (me && me.elite ? 1 : 0)) + reload * 0.9, eyeSh, me ? (me.moveAmt || 0) : 0);
-  gl.uniform1f(U.uLamp, S.mode === 'fps' && !S.attract ? 1 : 0);
+  if (typeof GFX72 !== 'undefined') GFX72.sceneU(U); else gl.uniform1f(U.uG72, 0);   // v7.2gfx
+  const me = V ? V.fp : S.me;
+  const showVM = V ? !!V.vm : S.mode === 'fps' && !S.attract && me && me.cls === 'inf' && !S.third && !S.freecam;
+  const wk = V ? (V.wk || 'rifle') : S.kit ? S.kit.w : 'rifle';
+  const reload = !V && S.kit && S.kit.reloadT > 0 ? min(1, S.kit.reloadT / WEAPONS[wk].reload) : 0;
+  const vm3 = V ? [0, 0, 0, 0] : gunVM3();   // v6: прицел, опускание оружия при перелёте, заряд рельсы
+  const vmMesh = !V && showVM && !vm3[3] && typeof WPN69 !== 'undefined' && WPN69.ok();   // v6.9: 3D-оружие отдельным проходом
+  gl.uniform4f(U.uVM, showVM && !vm3[3] && !vmMesh ? 1 : 0, V ? (V.bob || 0) : S.bob, V ? (V.recoil || 0) : S.recoil, V ? (V.muzzle ? 1 : 0) : S.muzzle > 0 ? 1 : min(0.5, vm3[2] * 0.5));
+  gl.uniform4f(U.uVM3, vm3[0], vm3[1], vm3[2], 0);
+  gl.uniform4f(U.uVM2, me ? FI76(me.team) : 0, (wk === 'rail' ? 2 : wk === 'hmg' ? 3 : (me && me.elite ? 1 : 0)) + reload * 0.9, eyeSh, me ? (me.moveAmt || 0) : 0);
+  gl.uniform1f(U.uLamp, V ? (V.lamp || 0) : S.mode === 'fps' && !S.attract ? 1 : 0);
+  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.ALWAYS); gl.depthMask(true);   // v6.5: рэймарчер заполняет глубину
   gl.drawArrays(gl.TRIANGLES, 0, 3);
-
+  if (typeof HV65 !== 'undefined') HV65.draw(c, nl, np);   // v6.5: 3D-модели поверх, с тестом глубины
+  if (typeof ST70 !== 'undefined'){ ST70.collect(); ST70.draw(c, nl); }   // v7.0: постройки улучшений форпостов и штаба
+  if (vmMesh) WPN69.draw(c, nl, eyeSh, vm3, wk, me);       // v6.9: оружие в руках — поверх всего
+  gl.disable(gl.DEPTH_TEST);
+}
+function renderPost(now, split){
+  const fpsLike = S.mode === 'fps' || S.attract;
   // --- пост
-  const [nw, nt] = gatherDistortion();
+  const [nw, nt] = split ? [0, 0] : gatherDistortion();   // v7.5: в сплитскрине искажения (экранные координаты одной камеры) выключены
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, fboTex);
@@ -477,6 +576,8 @@ function render(dt, now){
   gl.uniform4fv(P.uWave, WAVE); gl.uniform1i(P.uNW, nw);
   gl.uniform4fv(P.uTrc, TRC); gl.uniform1i(P.uNT, nt);
   gl.uniform1f(P.uSlow, S.slow);
-  gl.uniform1f(P.uDist, SET.distort ? 1 : 0);
+  gl.uniform1f(P.uDist, SET.distort && !LITE73.on ? 1 : 0);
+  gl.uniform1f(P.uXfer, S.attract ? 0 : (S.xfer || 0));
+  gl.uniform1f(P.uG72, typeof GFX72 !== 'undefined' ? GFX72.postK() : 0);   // v7.2gfx: 1 — всё, 0.5 — только цвет (телефон), 0 — v7.1
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }

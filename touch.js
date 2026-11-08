@@ -16,7 +16,8 @@ const TOUCH = {
       <div class="tf fps">
         <button data-t="fire" class="big">●</button>
         <button data-t="jet" class="mid">⇑</button>
-        <button data-t="aim">◎</button>
+        <button data-t="aim" class="adsb">◎</button>
+        <button data-k="dash">»</button>
         <button data-k="rocket">Q</button>
         <button data-k="grenade">G</button>
         <button data-k="reload">R</button>
@@ -67,7 +68,7 @@ const TOUCH = {
       // стрельба с одновременным поворотом: тянем палец по кнопке огня
       if (t === 'fire') b.addEventListener('touchmove', e => {
         e.preventDefault();
-        for (const tc of e.changedTouches) if (this.fireT && tc.identifier === this.fireT.id){ lookBy((tc.clientX - this.fireT.x) * 1.4, (tc.clientY - this.fireT.y) * 1.4); this.fireT.x = tc.clientX; this.fireT.y = tc.clientY; }
+        for (const tc of e.changedTouches) if (this.fireT && tc.identifier === this.fireT.id){ lookBy((tc.clientX - this.fireT.x) * 1.4 * (this.sens || 1), (tc.clientY - this.fireT.y) * 1.4 * (this.sens || 1)); this.fireT.x = tc.clientX; this.fireT.y = tc.clientY; }
       }, { passive: false });
     });
     canvas.addEventListener('touchstart', e => this.start(e), { passive: false });
@@ -86,10 +87,10 @@ const TOUCH = {
     for (const tc of e.changedTouches){
       const x = tc.clientX, y = tc.clientY;
       if (S.mode === 'fps' && !S.attract){
-        if (x < innerWidth * 0.42 && !this.joy){ this.joy = { id: tc.identifier, x0: x, y0: y }; this.showJoy(x, y, 0, 0); }
+        if (x < innerWidth * (this.split || 0.42) && !this.joy){ this.joy = { id: tc.identifier, x0: x, y0: y }; this.showJoy(x, y, 0, 0); }
         else if (!this.look) this.look = { id: tc.identifier, x, y };
       } else if (S.mode === 'rts'){
-        if (minimapClick(x, y, this.orderMode ? 2 : 0)) continue;
+        if (minimapClick(x, y, this.orderMode ? 2 : 0)){ if (!this.orderMode) this.mmId = tc.identifier; continue; }
         const n = e.touches.length;
         if (n >= 2){ this.rts = null; this.pinch = this.pinchState(e.touches); continue; }
         this.rts = { id: tc.identifier, x0: x, y0: y, x, y, t: performance.now(), moved: false, long: false };
@@ -103,36 +104,41 @@ const TOUCH = {
   moveEv(e){
     e.preventDefault();
     if (S.mode === 'rts' && e.touches.length >= 2 && this.pinch){
+      // два пальца: щипок — высота, поворот — разворот камеры, общий сдвиг — панорама
       const p = this.pinchState(e.touches);
-      S.rts.h = clamp(S.rts.h * this.pinch.d / max(10, p.d), 12, 285);
-      S.rts.fwd = norm(rotAxis(S.rts.fwd, S.rts.dir, -(p.a - this.pinch.a)));
+      S.rts.h = S.rts.hT = clamp(S.rts.h * this.pinch.d / max(10, p.d), RTS_HMIN, RTS_HMAX);
+      let da = p.a - this.pinch.a; if (da > PI) da -= 2 * PI; if (da < -PI) da += 2 * PI;
+      S.rts.fwd = tangent(rotAxis(S.rts.fwd, S.rts.dir, -da), S.rts.dir);
+      this.panPx(p.cx - this.pinch.cx, p.cy - this.pinch.cy);
       this.pinch = p; return;
     }
     for (const tc of e.changedTouches){
       const x = tc.clientX, y = tc.clientY;
+      if (S.mode === 'rts' && this.mmId === tc.identifier){ const d = minimapDir(x, y); if (d) rtsLookAt(d); continue; }   // палец по миникарте — камера следом
       if (this.joy && tc.identifier === this.joy.id){
-        let dx = (x - this.joy.x0) / 55, dy = (y - this.joy.y0) / 55; const l = hypot(dx, dy); if (l > 1){ dx /= l; dy /= l; }
+        let dx = (x - this.joy.x0) / 55, dy = (y - this.joy.y0) / 55; let l = hypot(dx, dy);
+        if (this.follow){   // v6.7: палец ушёл далеко — основа джойстика едет за ним (как в PUBG Mobile); мёртвая зона
+          if (l > 1.35){ const k = (l - 1.35) / l; this.joy.x0 += (x - this.joy.x0) * k; this.joy.y0 += (y - this.joy.y0) * k; dx = (x - this.joy.x0) / 55; dy = (y - this.joy.y0) / 55; l = hypot(dx, dy); }
+          if (l < 0.12){ dx = 0; dy = 0; l = 0; }
+        }
+        if (l > 1){ dx /= l; dy /= l; }
         this.move = [dx, -dy]; this.showJoy(this.joy.x0, this.joy.y0, dx, dy);
       } else if (this.look && tc.identifier === this.look.id){
-        lookBy((x - this.look.x) * 1.5, (y - this.look.y) * 1.5); this.look.x = x; this.look.y = y;
+        lookBy((x - this.look.x) * 1.5 * (this.sens || 1), (y - this.look.y) * 1.5 * (this.sens || 1)); this.look.x = x; this.look.y = y;
       } else if (this.rts && tc.identifier === this.rts.id){
         const dx = x - this.rts.x, dy = y - this.rts.y;
         this.rts.x = x; this.rts.y = y; S.mouse = [x, y];
         if (hypot(x - this.rts.x0, y - this.rts.y0) > 12) this.rts.moved = true;
         if (this.boxMode || S.place || S.cast){ dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y })); continue; }
-        if (this.rts.moved){   // тащим камеру
-          const R = S.rts, k = (R.h * 1.6 + 20) / innerHeight / RM;
-          const right = norm(cross(R.fwd, R.dir));
-          R.dir = norm(add(R.dir, add(mul(right, -dx * k), mul(R.fwd, dy * k))));
-          R.fwd = tangent(R.fwd, R.dir);
-        }
+        if (this.rts.moved){ S.camFly = null; S.rts.goal = null; this.panPx(dx, dy); }   // тащим камеру: точка под пальцем едет за пальцем
       }
     }
   },
   end(e){
     e.preventDefault();
     for (const tc of e.changedTouches){
-      if (this.joy && tc.identifier === this.joy.id){ this.joy = null; this.move = [0, 0]; $('tjoy').style.display = 'none'; }
+      if (this.mmId === tc.identifier) this.mmId = null;
+      if (this.joy && tc.identifier === this.joy.id){ this.joy = null; this.move = [0, 0]; if (this.fadeJoy) this.fadeJoy(); else $('tjoy').style.display = 'none'; }
       if (this.look && tc.identifier === this.look.id) this.look = null;
       if (this.rts && tc.identifier === this.rts.id){
         clearTimeout(this.longT);
@@ -149,7 +155,14 @@ const TOUCH = {
     const ev = new MouseEvent(type, { clientX: x, clientY: y, button, bubbles: true });
     (type === 'mousedown' ? canvas : window).dispatchEvent(ev);
   },
-  pinchState(t){ const a = t[0], b = t[1]; return { d: hypot(a.clientX - b.clientX, a.clientY - b.clientY), a: atan2(b.clientY - a.clientY, b.clientX - a.clientX) }; },
+  pinchState(t){ const a = t[0], b = t[1]; return { d: hypot(a.clientX - b.clientX, a.clientY - b.clientY), a: atan2(b.clientY - a.clientY, b.clientX - a.clientX), cx: (a.clientX + b.clientX) / 2, cy: (a.clientY + b.clientY) / 2 }; },
+  // сдвиг камеры стратегии на dx,dy пикселей «за землю» (1:1 у фокуса, с учётом наклона)
+  panPx(dx, dy){
+    if (!dx && !dy) return;
+    const R = S.rts, tilt = lerp(0.95, 0.12, smoothstep(25, RTS_HMAX, R.h));
+    const mpp = R.h / cos(tilt) * ((S.cam && S.cam.fov) || 1) / innerHeight;
+    rtsPan(dy * mpp / max(0.5, cos(tilt)) / RM, -dx * mpp / RM);
+  },
   showJoy(x, y, dx, dy){
     const j = $('tjoy'); j.style.display = 'block'; j.style.left = (x - 60) + 'px'; j.style.top = (y - 60) + 'px';
     j.firstChild.style.transform = `translate(${dx * 42}px, ${dy * 42}px)`;

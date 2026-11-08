@@ -1,0 +1,174 @@
+{
+ "err": [],
+ "start": {
+  "attract": false,
+  "mode": "fps",
+  "menu": null,
+  "me": true,
+  "T31": {
+   "on": true,
+   "VEG": true,
+   "BLD": true,
+   "AN": true
+  },
+  "verdans": 10,
+  "anomalies": "vein,vein,grav,arc,burn,burn,mist,lens,disloc,mosaic,geyser,draft,mute,fluff"
+ },
+ "veg_v86tree": {
+  "s": 1.08,
+  "R": 0.72,
+  "on": {
+   "minD": 0.72,
+   "moved": 2.31
+  },
+  "off": {
+   "minD": 0,
+   "moved": 3.04
+  },
+  "pass": true
+ },
+ "veg_v86crys": {
+  "s": 1.21,
+  "R": 0.86,
+  "on": {
+   "minD": 0.86,
+   "moved": 2.07
+  },
+  "off": {
+   "minD": 0,
+   "moved": 2.93
+  },
+  "pass": true
+ },
+ "veg_v86ice": {
+  "s": 0.92,
+  "R": 0.78,
+  "on": {
+   "minD": 0.78,
+   "moved": 2.2
+  },
+  "off": {
+   "minD": 0,
+   "moved": 2.98
+  },
+  "pass": true
+ },
+ "veg_bush": {
+  "on": {
+   "minD": 0.03,
+   "moved": 3.03
+  },
+  "off": {
+   "minD": 0.03,
+   "moved": 3.62
+  },
+  "ratio": 0.84
+ },
+ "veg_crush": {
+  "broken": true,
+  "added": 1,
+  "crushed": 1
+ },
+ "bld": {
+  "sp": "tri",
+  "type": "turret",
+  "edge": 3.7,
+  "hp0": 600
+ },
+ "bldWhip": {
+  "type": "wall82",
+  "edge": 3.5
+ },
+ "bldResult": {
+  "st": "dead",
+  "tgtIsBld": false,
+  "hpLost": 15,
+  "bldAlive": true,
+  "verdanAlive": false,
+  "whip": {
+   "st": "agro",
+   "tgtIsBld": true,
+   "hpLost": 126
+  },
+  "stats": {
+   "agro": 1,
+   "hits": 7
+  }
+ },
+ "anom": {
+  "arc": {
+   "sp": "whip",
+   "dHp": -112,
+   "alive": true,
+   "moved": 0,
+   "frz": false,
+   "lift": null
+  },
+  "grav": {
+   "sp": "tri",
+   "dHp": -65,
+   "alive": true,
+   "moved": 2.7,
+   "frz": false,
+   "lift": null
+  },
+  "vein": {
+   "sp": "spore",
+   "dHp": 25,
+   "alive": true,
+   "moved": 0,
+   "frz": false,
+   "lift": null
+  },
+  "burn": {
+   "sp": "spore",
+   "dHp": -90,
+   "alive": true,
+   "moved": 0,
+   "frz": false,
+   "lift": null
+  },
+  "mist": {
+   "sp": "root",
+   "dHp": 0,
+   "alive": true,
+   "moved": 5.9,
+   "frz": false,
+   "lift": null
+  },
+  "disloc": {
+   "sp": "root",
+   "dHp": 0,
+   "alive": true,
+   "moved": 1570.2,
+   "frz": false,
+   "lift": null
+  },
+  "geyser": "no verdan",
+  "draft": "no verdan"
+ },
+ "stats": {
+  "T31": {
+   "blocked": 341,
+   "slowed": 92,
+   "crushed": 1,
+   "bldAgro": 1,
+   "bldHits": 11,
+   "bldKills": 0,
+   "anHits": 15,
+   "anHeal": 1,
+   "pushed": 83,
+   "frozen": 0,
+   "lifts": 1,
+   "exits": 1,
+   "lost": 0,
+   "avoided": 36
+  },
+  "err": {},
+  "VERerr": {},
+  "A78err": {},
+  "AN86err": {},
+  "BIOerr": {}
+ },
+ "treeShot": "ok"
+}

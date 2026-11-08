@@ -1,0 +1,140 @@
+1kxdy5y	céu
+1ouel6a	chegando
+odu3uf	Livre
+xf3i18	Ordens
+lfiugj	Reposicionar
+h19ye	Para a luta
+95ckws	Acompanhar
+yjk4h	Seguir ordens
+nh309w	SAIR DA BATALHA?
+1uxr2th	A batalha será guardada no espaço "Salvamento automático"; continue pelo menu principal.
+1tpqwqt	Salvar e sair para o menu principal
+isg310	Sair sem salvar
+qeuaau	Ficar na batalha
+hn81pf	Partida de 60 min
+tw705v	sem fim
+1anj7lj	batalha
+t1oh6x	Carregar
+1cmiu6	Exportar para arquivo
+jx7g78	Ainda não há jogos salvos.
+pdps5d	JOGOS SALVOS
+1stkz2b	Os jogos salvos ficam só neste navegador deste dispositivo (localStorage). Quem baixar o jogo não recebe os seus. Para levar uma batalha a outro computador ou navegador: aqui "Exportar para arquivo" → lá "Importar de arquivo". O salvamento automático roda a cada 3 minutos de batalha e ao sair para o menu.
+kht02c	Importar de arquivo…
+u8tsk8	Colar texto do jogo salvo
+d6p6r3	Importar este texto
+rsdwln	Copiar texto
+fn95gy	Importado em "{0}". Aperte "Carregar".
+ck5gzx	Tem certeza?
+51r6dq	Espaço vazio
+17s185f	O arquivo foi enviado para downloads. 
+1xmatm6	Se nenhum arquivo apareceu (por exemplo, o jogo roda dentro do claude.ai), aperte "Copiar texto" e cole em qualquer arquivo .json ou .txt.
+wwpb9k	Não foi possível ler o arquivo
+w1rzh0	Cole o texto do jogo salvo (Ctrl+V) e aperte "Importar este texto".
+n67yk1	Copiado.
+16wdtfj	Texto selecionado: aperte Ctrl+C.
+evwb4y	Copiado para a área de transferência.
+18sogyt	Painel
+1nbjcuq	Caixa
+y8aad9	Todo o exército
+15hb32v	Batalha
+1lqvc18	Soldado
+u5fcjg	Cabo
+19lyqvl	Terceiro-sargento
+1wr5ite	Segundo-sargento
+1uulqd4	Primeiro-sargento
+1e5l4la	Subtenente
+b1xf1c	Aspirante
+50gcyc	Tenente
+1208ih7	Capitão
+6zybgi	Major
+if74dx	Coronel
+1ksbpgu	General de brigada
+5k5450	General de divisão
+7j78f9	General de exército
+182bvh8	Marechal de exército
+yrnstp	Marechal
+1mhb94f	G: arremesse uma granada. Explosão com onda de choque.
+1oso2rw	Armas +15%
+1rirygd	Seus tiros causam mais dano.
+1hordjz	Reflexo
+v0mi8	F: desacelere o tempo, no estilo F.E.A.R.
+j0724k	2: railgun, a mais forte a longa distância.
+sghvim	T: peça artilharia no ponto de mira.
+1q4a4xq	Blindagem +20%
+r6t88l	Você recebe menos dano.
+irm56n	Jetpack turbinado
+18rjioi	Combustível do jetpack ×1,5.
+145lffb	Armas +30%
+1xxp83	Ainda mais dano.
+1njnklb	Reflexo II
+umqbj7	A câmera lenta dura 50% mais.
+xgfzh7	Agora T chama um feixe orbital.
+1v2omoj	Promoção! {0}.
+3nion8	Tecla 
+1l6gpun	robô
+1rbhwe8	engenheiro
+1y5g7bl	drone
+3dft6x	tanque
+1xotzg7	torreta
+c5twqf	AA
+fs2ir9	construção
+nsijld	esquadrão
+12tx0pa	assistência
+1x1c0i9	capturou {0}
+ohvbrm	ordem cumprida
+1n4et64	O estrategista liberou uma metralhadora experimental por 90 s (tecla 3)
+ac7bdo	Balas incendiárias por 60 s: +50% de dano
+14l7leb	Suprimento: 3 foguetes sem recarga (Q)
+11btkw6	Reflexo totalmente carregado (F)
+l4yh4q	Você ganhou uma carga de artilharia (T)
+1gi5pd4	Seu esquadrão recebeu reforço fora da vez
+2tlnkp	O QG concedeu +2 pontos de comando
+q2b4mz	Grupo {0}: {1}
+1pkg0t9	Selecione um esquadrão ou veículo
+1k9krz2	Nenhuma habilidade pronta nessa tecla
+olgs92	{0}: botão esq.: alvo, botão dir.: cancelar
+x2rkx4	Toque no chão ou num inimigo
+1vnbtq1	Clique no chão ou num inimigo (botão direito: cancelar)
+cwidbf	Habilidade não está pronta
+g5k7f5	Ponto de encontro definido
+1rvo6ig	Marcha! Correndo sem parar, atirando em movimento
+1036qsj	Engenheiros: parar
+1k1vsq8	Selecione um esquadrão
+dyocu1	O assalto aéreo exige Tropas aéreas ou a pesquisa "Jetpacks II" (Aerodoca)
+1j5co5a	Assalto aéreo: {0} esquadrão(ões), reunindo no QG e decolando
+v9gpes	Construção: {0}, engenheiro a caminho
+1ni7wdc	Na fila: {0}
+1obi9qw	{0} sob ataque! Espaço: ir até lá
+ten547	{0} sob ataque
+15i6udf	Construir
+ur18vw	Unidades
+a11s41	Tecnologia
+lmhdov	Poderes
+sjcrnq	PC
+1v3zrgv	Botão direito num botão: cancelar a última ordem
+1n0w49n	Só engenheiros constroem. Sem engenheiro selecionado, o botão pega o mais próximo livre e inicia a planta; depois, botão esquerdo num lugar.
+1aooczj	Escolha um poder e clique no alvo
+1wio94n	Controles
+l9beyz	Todas as teclas da estratégia
+tix9bv	Estrategista IA
+an79i9	Ligado: constrói a base, pede tropas e dá ordens sozinho (suas ordens têm prioridade). Desligado: você faz tudo.
+cv2wki	Construção automática ligada: o estrategista constrói a base com engenheiros
+rvbyl5	Construção automática desligada: só você constrói
+1o07iw0	pega o engenheiro mais próximo
+18jzo8a	pega um engenheiro ocupado
+13z1rzn	aguardando minério
+1xm2nhb	Construção automática
+1jhq8ih	O estrategista constrói prédios e extratores com seus engenheiros (com o estrategista IA ligado). Suas ordens aos engenheiros têm prioridade.
+12j2bmh	soldados
+1ucoec4	Selecionado
+1spap4s	Clique: selecionar só ele · Shift: remover · duplo: câmera
+tdynqj	inimigo
+1vyr0u3	Clique: cancelar (minério devolvido)
+wsjtwa	Toque: selecionar · toque longo: ordem · toque duplo: controlar · arrastar: câmera, pinça: zoom
+spqya1	Botão esq.: selecionar · arrastar: caixa · botão dir.: ordem · clique duplo: controlar · Ctrl+1…9: grupo
+dg1b6l	Assalto aéreo
+pa3gl6	Produção desta construção: painel à direita
+v8z42h	Toque longo no chão: ponto de encontro
+ubfh6p	Botão direito no chão: ponto de encontro
+1lgedpr	Controlar
+1n14wti	Para a batalha

@@ -1,0 +1,6 @@
+out_*/
+chrome_*/
+sh_*/
+_*.jpg
+_*.png
+.wrangler/
