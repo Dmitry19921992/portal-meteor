@@ -18,7 +18,7 @@
 const XR8 = {
   QS: new URLSearchParams(location.search),
   on: false, supported: false, active: false, starting: false, sess: null, ref: null, layer: null, xf: null, pose: null,
-  q: [], gen: 0, mainPend: 0, drawn: false, err: {}, granted: false, want: null,
+  q: [], side: [], gen: 0, mainPend: 0, drawn: false, err: {}, granted: false, want: null,
   k: 0.42, kMin: 0.25, kMax: 0.75, fbs: 0.5, vig: 0, vigOn: true, fade: 0, snapDeg: 30,
   refF: null, U: [0, 1, 0], R: [1, 0, 0], pos0: [0, 0, 0], anchor: [0, 0, 0], head: null, lastMe: undefined, still: null,
   pad: { left: { b: [], pb: [], ax: [0, 0, 0, 0], src: null }, right: { b: [], pb: [], ax: [0, 0, 0, 0], src: null } }, snapArm: true,
@@ -183,6 +183,11 @@ const XR8 = {
     this.safe(() => this.pre(xf, min(0.05, dtX / 1000)), 'pre');
     const q = this.q; this.q = [];
     for (const cb of q){ try { cb(t); } catch (e){ console.error(e); } }
+    if (this.side.length){
+      const now = performance.now(), sd = this.side; this.side = [];
+      const stale = now - (this.winT || 0) > 600;   // window rAF has not fired for 0.6 s — suspended while immersive
+      for (const o of sd){ if (o.done) continue; if (stale && now - o.t > 400){ o.done = true; try { o.cb(t); } catch (e){ console.error(e); } } else this.side.push(o); }
+    }
     if (!this.drawn) this.safe(() => this.fallback(), 'fallback');
     this.xf = null;
   },
@@ -433,7 +438,7 @@ const XR8 = {
     gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
     try {
       for (const view of P.views){
-        const vp = layer.getViewport(view); if (!vp) continue;
+        const vp = layer.getViewport(view); if (!vp || vp.width < 16 || vp.height < 16) continue;   // (an emulator may report an empty second view)
         const m = view.projectionMatrix;
         const l = (-1 + m[8]) / m[0], r = (1 + m[8]) / m[0], b = (-1 + m[9]) / m[5], t = (1 + m[9]) / m[5];
         const Tx = max(-l, r), Ty = max(-b, t);
@@ -552,7 +557,7 @@ void main(){ vec4 c = uCol;
     if (!this.panel.open) this.openPanel();
     this.panelTick();
     gl.bindFramebuffer(gl.FRAMEBUFFER, layer.framebuffer); gl.disable(gl.SCISSOR_TEST); gl.clearColor(0.02, 0.03, 0.05, 1); gl.clear(gl.COLOR_BUFFER_BIT);
-    for (const view of P.views){ const vp = layer.getViewport(view); if (!vp) continue; gl.viewport(vp.x, vp.y, vp.width, vp.height); this.overlays(this.m4(view.projectionMatrix, view.transform.inverse.matrix), []); }
+    for (const view of P.views){ const vp = layer.getViewport(view); if (!vp || vp.width < 16) continue; gl.viewport(vp.x, vp.y, vp.width, vp.height); this.overlays(this.m4(view.projectionMatrix, view.transform.inverse.matrix), []); }
   },
   // ---------------------------------------------------------------- VR menu panel (canvas texture, right-controller pointer)
   canvasTex(o, w, h){
@@ -676,6 +681,8 @@ function aimRay(){
   const c = typeof S !== 'undefined' && S.cam;
   return c ? { origin: c.pos, dir: c.fwd, src: 'camera' } : null;
 }
+// Quest boot preset (Q820, first module): no environment 3D props on a headset browser (saved settings are loaded in boot -> after MENU.load)
+if (typeof Q820 !== 'undefined' && Q820.on && typeof MENU !== 'undefined'){ const ld0 = MENU.load; MENU.load = function(){ const r = ld0.apply(this, arguments); try { SET.as75 = false; } catch (e){} return r; }; }
 XR8.rafO = window.requestAnimationFrame.bind(window);
 XR8.init();
 if (XR8.on){
@@ -686,9 +693,13 @@ if (XR8.on){
       const g = XR8.gen;
       if (XR8.active){ XR8.mainPend = 2; return XR8.queue(t => { if (g !== XR8.gen) return; XR8.mainPend = 0; frame(t); }); }
       XR8.mainPend = 1;
-      return XR8.rafO(t => { if (g !== XR8.gen) return; XR8.mainPend = 0; frame(t); });
+      return XR8.rafO(t => { XR8.winT = performance.now(); if (g !== XR8.gen) return; XR8.mainPend = 0; frame(t); });
     }
-    return XR8.active ? XR8.queue(cb) : XR8.rafO(cb);
+    if (!XR8.active) return XR8.rafO(cb);
+    // other callbacks (boot nextTick, effects — and the XR runtime's own pump in an emulator) stay on window rAF; if the browser
+    // suspends window rAF while immersive (allowed by the spec), the XR loop runs them after 0.4 s instead
+    const o = { cb, t: performance.now(), done: false }; XR8.side.push(o);
+    return XR8.rafO(t => { XR8.winT = performance.now(); if (o.done) return; o.done = true; cb(t); });
   };
   { const sc0 = setupCamera; setupCamera = function(dt){ sc0.apply(this, arguments); if (XR8.active && XR8.pose) XR8.safe(() => XR8.postCam(), 'cam'); }; }
   { const r0 = render; render = function(dt, now){ if (XR8.active && XR8.xf && XR8.pose){ let ok = false; XR8.safe(() => { ok = XR8.draw(dt, now); }, 'draw'); if (ok) return; } return r0.apply(this, arguments); }; }
