@@ -273,7 +273,7 @@ T243.draw = function(c, nl){
       const fw = tangent([0, 0, 1], up), hq = (typeof S !== 'undefined' && S.hq && S.hq[t]) || {};
       const s = this.st.get(hq) || { sh: 1, shAt: -9 }; this.st.set(hq, s);
       if (S.time - s.shAt > 0.5){ s.shAt = S.time; s.sh = shadowJS(add(P, mul(up, 6))); }
-      count(kind, lod, this.one(U, m, this.DEF[kind], kind, P, up, fw, 1, s, hq.flash || 0, 0, c));
+      count(kind, lod, this.one(U, m, this.DEF[kind], kind, P, up, fw, 1, s, 0, 0, c));   // без вспышки: у штаба flash не гаснет (SDF его не использует)
       this.stats.hq++;
     }
     this.stats.drawn = drawn; this.stats.tris = tris;
