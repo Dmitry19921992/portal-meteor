@@ -2,6 +2,7 @@
 #   powershell -File tools_vrmain\pipeline.ps1 [-Scen xr,flat,phone] [-NoBuild]
 param([string[]]$Scen = @(), [switch]$NoBuild, [string]$Tag = (Get-Date -Format 'HHmm'))
 $w = 'D:\AI\pm_v6\wt_vrmain'; Set-Location $w
+$Scen = @($Scen | ForEach-Object { $_ -split ',' } | Where-Object { $_ })   # -File passes "a,b" as one string
 $py = 'D:\AI\pm_rate\venv\Scripts\python.exe'; $lg = "$w\tests_vrmain\pipeline.log"
 function L($m) { $s = (Get-Date -Format 'HH:mm:ss') + ' ' + $m; Add-Content $lg $s; $s }
 if (-not $NoBuild) {

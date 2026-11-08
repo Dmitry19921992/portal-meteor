@@ -1,0 +1,25 @@
+12:37:34 boot… Compiling shaders… 3 s
+12:38:35 boot… Compiling shaders… 65 s
+12:40:35 boot… Compiling shaders… 184 s
+12:42:37 boot… Compiling shaders… 306 s
+12:44:20 boot done in 407 s
+12:44:22 PASS xr_supported 
+12:44:23 PASS menu_buttons 
+12:44:32 PASS battle_button "◉ Enter VR"
+12:44:33 PASS session_active 
+12:44:36 layer {"fb":"null(canvas)","fbw":1280,"fbh":720,"canvas":[1280,720],"views":[[0,0,1280,720],[640,0,0,720]],"st":{"frames":160,"gameFrames":160,"cuts":0,"gashes":0,"scratches":0,"blocks":0,"swings":0,"dashes":0,"teles":0,"snaps":0,"eyeW":384,"eyeH":216,"ms":16.56,"starts":1,"ends":0,"fallback":0},"q":1,"side":4,"err":{}}
+12:44:36 PASS xr_frames_and_game_draws {"frames":20,"game":180,"fallback":0,"eye":[320,180],"k":0.25}
+12:44:39 PASS ninja_possessed {"cls":"inf","role":"ninja","ninja":true}
+12:44:39 PASS aimRay_headset 
+12:44:39 PASS gaze_drives_unit {"ang":0.014815140196849689}
+12:44:40 xrshot {"w":1280,"h":720,"mean":104.61364293981482}
+12:44:40 PASS vr_image_not_black 104.61364293981482
+12:44:40 PASS katana_hits_enemy {"hp0":129,"hp1":-49.640000000000015,"alive":false,"cuts":1,"gashes":0,"scratches":0,"swings":1,"last":{"kind":"cut","part":"head","sp":26.14,"r":"hit","cls":"inf"},"bladeLocal":[0.0913452071300973,0.7495332945656493,-0.7439461583864923],"pieces":1}
+12:44:41 PASS dash_trigger {"dashes":1,"moved":6.57,"snaps":1,"turn":30}
+12:44:41 PASS snap_turn_30 {"dashes":1,"moved":6.57,"snaps":1,"turn":30}
+12:44:42 PASS teleport_left_aim {"aim":{"ok":true,"d":10.3},"started":true,"teles":1,"moved":10.3,"fadeSeen":0}
+12:44:42 PASS vr_menu {"a":{"open":true,"paused":true,"items":["resume","switch","arena","exit"]},"b":{"open":false,"paused":false}}
+12:44:45 PASS soldier_gaze_fire {"me":true,"shots":8,"ang":0.04,"third":false}
+12:44:49 PASS exit_restores {"active":false,"menu":"pause","q":1,"lite":true,"loop":true,"dT":1449}
+12:44:58 PASS second_session {"game":663,"starts":2,"loop":true,"active":false}
+12:44:58 RESULT {"xr_supported":true,"menu_buttons":true,"battle_button":true,"session_active":true,"xr_frames_and_game_draws":true,"ninja_possessed":true,"aimRay_headset":true,"gaze_drives_unit":true,"vr_image_not_black":true,"katana_hits_enemy":true,"dash_trigger":true,"snap_turn_30":true,"teleport_left_aim":true,"vr_menu":true,"soldier_gaze_fire":true,"exit_restores":true,"second_session":true} passed 17/17
