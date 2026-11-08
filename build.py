@@ -102,6 +102,7 @@ JS.insert(JS.index('v818_ver.js') + 1, 'v819_ver.js')   # v8.19 TEST (test/v819-
 JS.insert(JS.index('main.js'), 'v819_tanks.js')         # v8.19 (T94): Tripo tank meshes (Bulldog 6 wheels + turret, Spider legs) instead of sdTank + tank silhouettes for strategist/commander + minimap (?t94=0)
 JS.insert(JS.index('main.js'), 'v819_units120.js')      # v8.19 (T120): Tripo unit meshes for the Consortium (assault/jetpack, elite MG, rocket/flamer, medic/engineer, scout/saboteur, builder/robodog, Grad + Hammer = mechs) instead of SDF (?t120=0)
 JS.insert(JS.index('main.js'), 'v819_t243.js')          # v8.19 (T243): Tripo wave 2 - buildings (turret/AA/outpost/factory/hub/airdock/extractor), both HQs (scene.glsl uHQ=2), Swarm infantry, sniper, drones, Jackal - visuals only, after T120 (?t243=0)
+JS.insert(JS.index('v819_ver.js') + 1, 'v820_ver.js')   # v8.20 release (T243 Tripo wave 2): version label 8.20, v8.19 to old versions
 for f in JS:
     if os.path.exists(src + f): html += '// ---- ' + f + '\n' + r(f) + '\n'
 html += '</script>\n</body>\n</html>\n'
