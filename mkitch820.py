@@ -27,8 +27,8 @@ def page(local_ids):
     assert '/*VER75_ARCHIVE*/false' in t and '/*VER75_LOCAL*/[]' in t
     t = t.replace('/*VER75_ARCHIVE*/false', '/*VER75_ARCHIVE*/true', 1)
     return t.replace('/*VER75_LOCAL*/[]', '/*VER75_LOCAL*/' + json.dumps(local_ids), 1)
-def oldver(vid, s, label):   # = mkitch816.oldver
-    t = rd(s)
+def oldver(vid, s, label, text=None):   # = mkitch816.oldver (text= : already loaded page)
+    t = rd(s) if text is None else text
     m = '<meta charset="utf-8">'; i = t.find(m); assert i >= 0, s
     t = t[:i + len(m)] + '\n' + shim(vid) + t[i + len(m):]
     j = t.rfind('</body>')
@@ -55,7 +55,10 @@ if os.path.exists(CF): shutil.rmtree(CF)
 idx_html, dicts, nd = split(pwa(page(ALL)))
 w(CF + 'index.html', idx_html); w(CF + 'l106/dicts.js', dicts)
 shutil.copytree(LIVE + 'versions', CF + 'versions')
-w(CF + 'versions/v8_19.html', oldver('v8_19', D + 'itch819/index.html', 'v8.19'))
+# v8.19 is ~30 MB (first archived version over the 25 MiB Pages limit): same dictionary split, loader reads versions/l106/dicts.js
+o19, d19, n19 = split(rd(D + 'itch819/index.html'))
+w(CF + 'versions/v8_19.html', oldver('v8_19', None, 'v8.19', o19)); w(CF + 'versions/l106/dicts.js', d19)
+assert d19 == rd(LIVE + 'l106/dicts.js'), 'v8.19 dictionaries differ from the live l106/dicts.js'
 shutil.copytree(LIVE + 'icons', CF + 'icons')
 for f in ('manifest.webmanifest', 'sw.js'): shutil.copy2(LIVE + f, CF + f)
 shutil.copytree(LIVE + 'assets3d', CF + 'assets3d')
