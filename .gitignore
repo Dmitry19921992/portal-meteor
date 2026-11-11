@@ -1,3 +1,5 @@
 dist/
 *.pyc
 chrome_xr/
+chrome_t34/
+tests34/chrome_t34.pid

@@ -1,0 +1,42 @@
+﻿{
+ "err": [],
+ "phone": {
+  "touch": true,
+  "tab": false,
+  "k": 1,
+  "m67": true,
+  "vp": [
+   844,
+   390
+  ],
+  "dpr": 3
+ },
+ "battle": {
+  "mode": "fps",
+  "attract": false
+ },
+ "fpsCtx": {
+  "mode": "fps",
+  "me": true
+ },
+ "mm": {
+  "rOn": 143.99999463558197,
+  "rOff": 143.99999463558197,
+  "expect": 144,
+  "api": null
+ },
+ "page": {
+  "cur": "gp812",
+  "rows": 16,
+  "reset": true
+ },
+ "pageClose": null,
+ "verdict": {
+  "isPhone": true,
+  "battle": true,
+  "mmUnchanged": true,
+  "page": true,
+  "noErr": true
+ },
+ "pass": true
+}

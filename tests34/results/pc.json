@@ -1,0 +1,161 @@
+﻿{
+ "err": [],
+ "boot": {
+  "T34on": true,
+  "roles": 16,
+  "attract": true,
+  "lsMap": true,
+  "mapIsNull": true
+ },
+ "battle": {
+  "mode": "fps",
+  "attract": false,
+  "paused": false
+ },
+ "fpsCtx": {
+  "mode": "fps",
+  "attract": false,
+  "me": true,
+  "paused": false
+ },
+ "padStub": {
+  "stubbed": true,
+  "id": "Xbox Wireless Controller"
+ },
+ "pad": {
+  "active": true,
+  "id": "Xbox Wireless Controller",
+  "kind": "xbox"
+ },
+ "assignFire": {
+  "fire": 4,
+  "aim": 6,
+  "lb": 7,
+  "active": true
+ },
+ "sanitize": {
+  "swapMouse": false
+ },
+ "swap": {
+  "v0": 1,
+  "v1": 0
+ },
+ "remap": {
+  "fire4": {
+   "mouseL": true,
+   "mouseR": false
+  },
+  "fire7": {
+   "mouseL": false,
+   "mouseR": false
+  },
+  "swap": {
+   "v0": 1,
+   "v1": 0
+  }
+ },
+ "pageOpen": "gp812",
+ "page": {
+  "rows": 16,
+  "reset": true,
+  "note": true
+ },
+ "capStart": {
+  "at": [
+   354.25,
+   337.546875
+  ]
+ },
+ "capArmed": {
+  "cap": "fire",
+  "page": "gp812",
+  "waitCell": true
+ },
+ "capDone": {
+  "cap": null,
+  "page": "gp812",
+  "fire": 5,
+  "holdFire": 0,
+  "mouseL": false
+ },
+ "capEscArm": "b",
+ "capEsc": {
+  "cap": null,
+  "page": "gp812",
+  "cancels": 1
+ },
+ "capTimeoutArm": "x",
+ "capTimeout": {
+  "cap": null,
+  "page": "gp812"
+ },
+ "persist": {
+  "saved": true,
+  "lsFire": 4,
+  "setFire": 4,
+  "mapAfterReset": null,
+  "setHasKey": false
+ },
+ "glyph": {
+  "glyph": "LB",
+  "g4": "LB",
+  "eq": true
+ },
+ "flagOff": "ok",
+ "flagOn": "ok",
+ "flag": {
+  "off7": {
+   "mouseL": true,
+   "mouseR": false
+  }
+ },
+ "flagHtml": {
+  "hasTable": false,
+  "mmApi": null
+ },
+ "mmPc": {
+  "rOn": 82,
+  "rOff": 82,
+  "api": null,
+  "tab": false,
+  "m67": false
+ },
+ "verdict": {
+  "bootOn": true,
+  "stdMap": true,
+  "roles16": true,
+  "battleFps": true,
+  "stubOk": true,
+  "padActive": true,
+  "assignFire": true,
+  "fireOn4": true,
+  "fireNotOn7": true,
+  "swapAB": true,
+  "rows16": true,
+  "capArmed": true,
+  "capAssign": true,
+  "capEsc": true,
+  "capTimeout": true,
+  "persist": true,
+  "glyph": true,
+  "flagOff": true,
+  "flagHtml": true,
+  "mmPc": true,
+  "noErr": true
+ },
+ "pass": true,
+ "stats": {
+  "T34": {
+   "assigns": 5,
+   "resets": 2,
+   "caps": 3,
+   "cancels": 2,
+   "mmDraws": 0,
+   "mmSig": 0
+  },
+  "map": {
+   "fire": 4
+  },
+  "on": true
+ }
+}

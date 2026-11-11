@@ -1,0 +1,96 @@
+﻿{
+ "err": [],
+ "tab": {
+  "touch": true,
+  "tab": true,
+  "k": 1.28,
+  "m67": true,
+  "mm": true,
+  "vp": [
+   1024,
+   768
+  ]
+ },
+ "battle": {
+  "mode": "fps",
+  "me": true,
+  "attract": false,
+  "tab": true,
+  "k": 1.28,
+  "dpr": 2
+ },
+ "fpsCtx": {
+  "mode": "fps",
+  "attract": false,
+  "me": true
+ },
+ "mmOn": {
+  "r": 122.00000095367432,
+  "arcs": 11,
+  "k": 1.28,
+  "expect": 122,
+  "tol": 4,
+  "api": 61,
+  "dpr": 2
+ },
+ "mmHotspot": {
+  "w": 122,
+  "h": 122,
+  "expect": 122
+ },
+ "mmClash": {
+  "m73": true,
+  "map": [
+   22,
+   16,
+   144,
+   138
+  ],
+  "hud": [
+   160,
+   20,
+   239,
+   62
+  ],
+  "overlap": false,
+  "cls": true
+ },
+ "mmOff": {
+  "r": 95.99999642372131,
+  "arcs": 11,
+  "expect": 96,
+  "tol": 4
+ },
+ "toRts": "fps",
+ "rtsMM": {
+  "R": 46,
+  "expect": 46,
+  "k": 1.28,
+  "tab": true,
+  "m67": true
+ },
+ "pageOpen": "gp812",
+ "pageFit": {
+  "rows": 16,
+  "pageH": 728,
+  "tblH": 371,
+  "vh": 768,
+  "scroll": true
+ },
+ "pageClose": null,
+ "backFps": "fps",
+ "verdict": {
+  "tabOn": true,
+  "battleFps": true,
+  "mmOn": true,
+  "mmApi": true,
+  "mmHotspot": true,
+  "mmOff": true,
+  "rtsNoRegress": true,
+  "rows16": true,
+  "pageGroups": true,
+  "mmNoClash": true,
+  "noErr": true
+ },
+ "pass": true
+}
