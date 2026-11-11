@@ -3,3 +3,7 @@ dist/
 chrome_xr/
 chrome_t34/
 tests34/chrome_t34.pid
+chrome_t34.log
+*.log
+*_smoke*.json
+tests34/commitmsg_t34.txt
